@@ -234,6 +234,202 @@ export const moodLog = async (req: UserRequest, res: Response) => {
         }
     }
 
+    // SociallyFed data validation
+    // Virtue alignment validation
+    if (data.virtueAlignment) {
+        if (typeof data.virtueAlignment !== "object") {
+            res.send(400);
+            return;
+        }
+        
+        const virtues = ['stoicism', 'courage', 'wisdom', 'justice', 'temperance'];
+        for (const virtue of virtues) {
+            if (data.virtueAlignment[virtue] !== undefined) {
+                const value = Number(data.virtueAlignment[virtue]);
+                if (typeof value !== "number" || isNaN(value) || value < 1 || value > 10 || value !== parseInt(value.toString())) {
+                    res.send(400);
+                    return;
+                }
+            }
+        }
+        
+        // Validate optional context fields
+        if (data.virtueAlignment.dailyContext && (typeof data.virtueAlignment.dailyContext !== "string" || data.virtueAlignment.dailyContext.length > 1000)) {
+            res.send(400);
+            return;
+        }
+        
+        if (data.virtueAlignment.focusVirtue && !virtues.includes(data.virtueAlignment.focusVirtue)) {
+            res.send(400);
+            return;
+        }
+    }
+
+    // Media consumption validation
+    if (data.mediaConsumption) {
+        if (typeof data.mediaConsumption !== "object") {
+            res.send(400);
+            return;
+        }
+        
+        const categories = ['servedContent', 'casualBrowsing', 'intentionalContent', 'creation', 'deepFocus'];
+        for (const category of categories) {
+            if (data.mediaConsumption[category] !== undefined) {
+                const value = Number(data.mediaConsumption[category]);
+                if (typeof value !== "number" || isNaN(value) || value < 0 || value > 1440 || value !== parseInt(value.toString())) {
+                    res.send(400);
+                    return;
+                }
+            }
+        }
+        
+        // Validate optional temporal and mood fields
+        const validTimeOfDay = ['morning', 'afternoon', 'evening', 'night'];
+        if (data.mediaConsumption.timeOfDay && !validTimeOfDay.includes(data.mediaConsumption.timeOfDay)) {
+            res.send(400);
+            return;
+        }
+        
+        if (data.mediaConsumption.triggers && (!Array.isArray(data.mediaConsumption.triggers) || data.mediaConsumption.triggers.some((t: any) => typeof t !== "string" || t.length > 200))) {
+            res.send(400);
+            return;
+        }
+        
+        if (data.mediaConsumption.moodBefore !== undefined) {
+            const moodBefore = Number(data.mediaConsumption.moodBefore);
+            if (typeof moodBefore !== "number" || isNaN(moodBefore) || moodBefore < 1 || moodBefore > 10) {
+                res.send(400);
+                return;
+            }
+        }
+        
+        if (data.mediaConsumption.moodAfter !== undefined) {
+            const moodAfter = Number(data.mediaConsumption.moodAfter);
+            if (typeof moodAfter !== "number" || isNaN(moodAfter) || moodAfter < 1 || moodAfter > 10) {
+                res.send(400);
+                return;
+            }
+        }
+    }
+
+    // Patterns validation (Enhanced)
+    if (data.patterns) {
+        if (typeof data.patterns !== "object") {
+            res.send(400);
+            return;
+        }
+        
+        const patternCategories = ['emotionalTriggers', 'copingStrategies', 'socialContexts', 'aiGenerated', 'userNoted'];
+        for (const category of patternCategories) {
+            if (data.patterns[category] !== undefined) {
+                if (!Array.isArray(data.patterns[category])) {
+                    res.send(400);
+                    return;
+                }
+                
+                // Validate each string in the array
+                for (const item of data.patterns[category]) {
+                    if (typeof item !== "string" || item.length > 500) {
+                        res.send(400);
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // Validate confidence
+        if (data.patterns.confidence !== undefined) {
+            const confidence = Number(data.patterns.confidence);
+            if (typeof confidence !== "number" || isNaN(confidence) || confidence < 0 || confidence > 1) {
+                res.send(400);
+                return;
+            }
+        }
+        
+        // Validate category
+        const validCategories = ['emotional', 'behavioral', 'media', 'virtue', 'temporal'];
+        if (data.patterns.category && !validCategories.includes(data.patterns.category)) {
+            res.send(400);
+            return;
+        }
+        
+        // Validate optional fields
+        if (data.patterns.actionable !== undefined && typeof data.patterns.actionable !== "boolean") {
+            res.send(400);
+            return;
+        }
+        
+        if (data.patterns.correlations && (!Array.isArray(data.patterns.correlations) || data.patterns.correlations.some((c: any) => 
+            typeof c !== "object" || typeof c.pattern !== "string" || typeof c.strength !== "number" || 
+            c.strength < -1 || c.strength > 1 || c.pattern.length > 500))) {
+            res.send(400);
+            return;
+        }
+    }
+
+    // Cybernetics validation
+    if (data.cybernetics) {
+        if (typeof data.cybernetics !== "object") {
+            res.send(400);
+            return;
+        }
+        
+        if (data.cybernetics.goalProgress !== undefined) {
+            const goalProgress = Number(data.cybernetics.goalProgress);
+            if (typeof goalProgress !== "number" || isNaN(goalProgress) || goalProgress < 0 || goalProgress > 100) {
+                res.send(400);
+                return;
+            }
+        }
+        
+        const arrayFields = ['feedbackLoops', 'adjustments'];
+        for (const field of arrayFields) {
+            if (data.cybernetics[field] !== undefined) {
+                if (!Array.isArray(data.cybernetics[field])) {
+                    res.send(400);
+                    return;
+                }
+                
+                // Validate each string in the array
+                for (const item of data.cybernetics[field]) {
+                    if (typeof item !== "string" || item.length > 500) {
+                        res.send(400);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // Prompt metadata validation
+    if (data.promptMetadata) {
+        if (typeof data.promptMetadata !== "object") {
+            res.send(400);
+            return;
+        }
+        
+        const validCategories = ['stoic', 'cybernetic', 'media-awareness', 'baseline'];
+        if (data.promptMetadata.category && !validCategories.includes(data.promptMetadata.category)) {
+            res.send(400);
+            return;
+        }
+        
+        if (data.promptMetadata.subcategory && (typeof data.promptMetadata.subcategory !== "string" || data.promptMetadata.subcategory.length > 100)) {
+            res.send(400);
+            return;
+        }
+        
+        if (data.promptMetadata.aiGenerated !== undefined && typeof data.promptMetadata.aiGenerated !== "boolean") {
+            res.send(400);
+            return;
+        }
+        
+        if (data.promptMetadata.userConfirmed !== undefined && typeof data.promptMetadata.userConfirmed !== "boolean") {
+            res.send(400);
+            return;
+        }
+    }
+
     let filePaths: string[] = [];
     let images = files["file"];
     // If user has screenshots:
@@ -370,7 +566,27 @@ export const moodLog = async (req: UserRequest, res: Response) => {
         logData.average = data.average;
         promises.push(db.ref(`/${req.user!.user_id}/offline`).set(Math.random()));
     }
+
+    // Add SociallyFed data to logData if provided
+    if (data.virtueAlignment) {
+        logData.virtueAlignment = data.virtueAlignment;
+    }
     
+    if (data.mediaConsumption) {
+        logData.mediaConsumption = data.mediaConsumption;
+    }
+    
+    if (data.patterns) {
+        logData.patterns = data.patterns;
+    }
+    
+    if (data.cybernetics) {
+        logData.cybernetics = data.cybernetics;
+    }
+    
+    if (data.promptMetadata) {
+        logData.promptMetadata = data.promptMetadata;
+    }
 
     const p1 = db.ref(`/${req.user!.user_id}/logs/${globalNow.toMillis()}`).set({
         data: AES.encrypt(JSON.stringify(logData), encryptionKey).toString()

@@ -1,7 +1,7 @@
 import AES from "crypto-js/aes";
 import { DateTime } from "luxon";
 import Toastify from "toastify-js";
-import ldb, { Log } from "./db";
+import ldb, { Log, validateVirtueAlignment, validateMediaConsumption, validatePatterns, validateCybernetics, validatePromptMetadata, validateSociallyFedPreferences, getDefaultVirtueAlignment, getDefaultMediaConsumption, getDefaultPatterns, getDefaultCybernetics, getDefaultPromptMetadata, getDefaultSociallyFedPreferences, SociallyFedPreferences } from "./db";
 import { signOutAndCleanUp, db } from "./firebase";
 import history from "./history";
 import aesutf8 from "crypto-js/enc-utf8";
@@ -453,3 +453,246 @@ export function timeToString (time: number) {
     const seconds = time % 60;
     return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
+
+// SociallyFed data migration utilities
+export const migrateLogToSociallyFed = (log: Log): Log => {
+    // Create a copy to avoid mutating the original
+    const migratedLog = { ...log };
+    
+    // Initialize SociallyFed fields if they don't exist
+    if (!migratedLog.virtueAlignment) {
+        migratedLog.virtueAlignment = getDefaultVirtueAlignment();
+    }
+    
+    if (!migratedLog.mediaConsumption) {
+        migratedLog.mediaConsumption = getDefaultMediaConsumption();
+    }
+    
+    if (!migratedLog.patterns) {
+        migratedLog.patterns = getDefaultPatterns();
+    }
+    
+    if (!migratedLog.cybernetics) {
+        migratedLog.cybernetics = getDefaultCybernetics();
+    }
+    
+    if (!migratedLog.promptMetadata) {
+        migratedLog.promptMetadata = getDefaultPromptMetadata();
+    }
+    
+    return migratedLog;
+};
+
+export const validateAndMigrateLog = (log: any): Log | null => {
+    // Basic log validation
+    if (!log || typeof log !== 'object') return null;
+    
+    // Required fields validation
+    const requiredFields = ['timestamp', 'year', 'month', 'day', 'time', 'zone', 'mood', 'average'];
+    for (const field of requiredFields) {
+        if (!(field in log)) return null;
+    }
+    
+    // Mood validation
+    const mood = Number(log.mood);
+    if (typeof mood !== 'number' || isNaN(mood) || mood < -5 || mood > 5 || mood !== parseInt(mood.toString())) {
+        return null;
+    }
+    
+    // Average validation
+    const validAverages = ['below', 'average', 'above'];
+    if (!validAverages.includes(log.average)) return null;
+    
+    // Validate SociallyFed fields if present
+    if (log.virtueAlignment && !validateVirtueAlignment(log.virtueAlignment)) {
+        log.virtueAlignment = getDefaultVirtueAlignment();
+    }
+    
+    if (log.mediaConsumption && !validateMediaConsumption(log.mediaConsumption)) {
+        log.mediaConsumption = getDefaultMediaConsumption();
+    }
+    
+    if (log.patterns && !validatePatterns(log.patterns)) {
+        log.patterns = getDefaultPatterns();
+    }
+    
+    if (log.cybernetics && !validateCybernetics(log.cybernetics)) {
+        log.cybernetics = getDefaultCybernetics();
+    }
+    
+    if (log.promptMetadata && !validatePromptMetadata(log.promptMetadata)) {
+        log.promptMetadata = getDefaultPromptMetadata();
+    }
+    
+    // Migrate to ensure all SociallyFed fields are present
+    return migrateLogToSociallyFed(log as Log);
+};
+
+export const migrateAllLogs = async (): Promise<void> => {
+    try {
+        const logs = await ldb.logs.toArray();
+        const migratedLogs: Log[] = [];
+        
+        for (const log of logs) {
+            const migratedLog = migrateLogToSociallyFed(log);
+            migratedLogs.push(migratedLog);
+        }
+        
+        // Bulk update all logs
+        await ldb.logs.bulkPut(migratedLogs);
+        console.log(`Successfully migrated ${migratedLogs.length} logs to SociallyFed format`);
+    } catch (error) {
+        console.error('Error migrating logs:', error);
+        Sentry.captureException(error);
+    }
+};
+
+// Enhanced migration with user preferences
+export const migrateSociallyFedData = async (): Promise<{
+    total: number;
+    migrated: number;
+    errors: number;
+    features: {
+        virtues: number;
+        media: number;
+        patterns: number;
+        cybernetics: number;
+        prompts: number;
+    };
+}> => {
+    const stats = {
+        total: 0,
+        migrated: 0,
+        errors: 0,
+        features: {
+            virtues: 0,
+            media: 0,
+            patterns: 0,
+            cybernetics: 0,
+            prompts: 0
+        }
+    };
+
+    try {
+        // Get user preferences (default to all enabled if not set)
+        const userPreferences = await getUserMigrationPreferences();
+        
+        const logs = await ldb.logs.toArray();
+        stats.total = logs.length;
+        
+        const migratedLogs: Log[] = [];
+        
+        for (const log of logs) {
+            try {
+                const migratedLog = { ...log };
+                
+                // Only migrate features user wants to enable
+                if (userPreferences.enableVirtueTracking && !migratedLog.virtueAlignment) {
+                    migratedLog.virtueAlignment = getDefaultVirtueAlignment();
+                    stats.features.virtues++;
+                }
+                
+                if (userPreferences.enableMediaTracking && !migratedLog.mediaConsumption) {
+                    migratedLog.mediaConsumption = getDefaultMediaConsumption();
+                    stats.features.media++;
+                }
+                
+                if (userPreferences.enablePatternTracking && !migratedLog.patterns) {
+                    migratedLog.patterns = getDefaultPatterns();
+                    stats.features.patterns++;
+                }
+                
+                if (userPreferences.enableCybernetics && !migratedLog.cybernetics) {
+                    migratedLog.cybernetics = getDefaultCybernetics();
+                    stats.features.cybernetics++;
+                }
+                
+                if (userPreferences.enableAIAnalysis && !migratedLog.promptMetadata) {
+                    migratedLog.promptMetadata = getDefaultPromptMetadata();
+                    stats.features.prompts++;
+                }
+                
+                migratedLogs.push(migratedLog);
+                stats.migrated++;
+                
+            } catch (error) {
+                console.error('Error migrating log:', error);
+                stats.errors++;
+                Sentry.captureException(error);
+            }
+        }
+        
+        // Bulk update all logs
+        await ldb.logs.bulkPut(migratedLogs);
+        console.log(`Migration completed: ${stats.migrated}/${stats.total} logs migrated, ${stats.errors} errors`);
+        
+    } catch (error) {
+        console.error('Error in bulk migration:', error);
+        Sentry.captureException(error);
+    }
+    
+    return stats;
+};
+
+// Get user migration preferences
+export const getUserMigrationPreferences = async (): Promise<SociallyFedPreferences> => {
+    try {
+        const preferences = await ldb.sociallyFedPreferences.get('default');
+        if (preferences) {
+            return preferences;
+        }
+        
+        // Create default preferences if none exist
+        const defaultPreferences = getDefaultSociallyFedPreferences();
+        await ldb.sociallyFedPreferences.put(defaultPreferences, 'default');
+        return defaultPreferences;
+        
+    } catch (error) {
+        console.error('Error getting user preferences:', error);
+        return getDefaultSociallyFedPreferences();
+    }
+};
+
+// Update user migration preferences
+export const updateUserMigrationPreferences = async (preferences: Partial<SociallyFedPreferences>): Promise<void> => {
+    try {
+        const currentPreferences = await getUserMigrationPreferences();
+        const updatedPreferences = { ...currentPreferences, ...preferences };
+        
+        // Validate the updated preferences
+        if (!validateSociallyFedPreferences(updatedPreferences)) {
+            throw new Error('Invalid preferences data');
+        }
+        
+        await ldb.sociallyFedPreferences.put(updatedPreferences, 'default');
+        console.log('User preferences updated successfully');
+        
+    } catch (error) {
+        console.error('Error updating user preferences:', error);
+        Sentry.captureException(error);
+        throw error;
+    }
+};
+
+export const getSociallyFedStats = async (): Promise<{
+    totalLogs: number;
+    logsWithVirtues: number;
+    logsWithMedia: number;
+    logsWithPatterns: number;
+    logsWithCybernetics: number;
+    logsWithPrompts: number;
+    userPreferences: SociallyFedPreferences | null;
+}> => {
+    const logs = await ldb.logs.toArray();
+    const userPreferences = await getUserMigrationPreferences();
+    
+    return {
+        totalLogs: logs.length,
+        logsWithVirtues: logs.filter(log => log.virtueAlignment).length,
+        logsWithMedia: logs.filter(log => log.mediaConsumption).length,
+        logsWithPatterns: logs.filter(log => log.patterns).length,
+        logsWithCybernetics: logs.filter(log => log.cybernetics).length,
+        logsWithPrompts: logs.filter(log => log.promptMetadata).length,
+        userPreferences
+    };
+};

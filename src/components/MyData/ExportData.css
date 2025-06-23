@@ -5,3 +5,228 @@
 ion-checkbox::part(container) {
     border-radius: 6px;
 }
+
+/* Export Data Container */
+.export-data {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.export-data h2 {
+    color: var(--ion-color-primary);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Category Sections */
+.export-categories {
+    margin-bottom: 30px;
+}
+
+.category-section {
+    border: 1px solid var(--ion-color-medium);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+.category-header {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: var(--ion-color-light);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.category-header:hover {
+    background-color: var(--ion-color-light-shade);
+}
+
+.category-header input[type="checkbox"] {
+    margin-right: 12px;
+    transform: scale(1.2);
+}
+
+.category-title {
+    font-weight: 600;
+    color: var(--ion-color-dark);
+    margin: 0;
+    cursor: pointer;
+    flex: 1;
+}
+
+/* Category Options */
+.category-options {
+    padding: 0 15px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.category-options.expanded {
+    max-height: 500px;
+    padding: 15px;
+    border-top: 1px solid var(--ion-color-medium);
+}
+
+.category-options.collapsed {
+    max-height: 0;
+    padding: 0 15px;
+}
+
+.option-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ion-color-light);
+}
+
+.option-item:last-child {
+    border-bottom: none;
+}
+
+.option-item input[type="checkbox"] {
+    margin-right: 10px;
+    transform: scale(1.1);
+}
+
+.option-item label {
+    font-size: 14px;
+    color: var(--ion-color-dark);
+    cursor: pointer;
+    flex: 1;
+    margin: 0;
+}
+
+/* Export Presets */
+.export-presets {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.export-presets h3 {
+    color: var(--ion-color-primary);
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.export-presets button {
+    background-color: var(--ion-color-secondary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.export-presets button:hover {
+    background-color: var(--ion-color-secondary-shade);
+}
+
+.export-presets button:active {
+    transform: translateY(1px);
+}
+
+/* Export Actions */
+.export-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.export-actions button {
+    background-color: var(--ion-color-primary);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    min-width: 250px;
+    text-align: center;
+}
+
+.export-actions button:hover:not(:disabled) {
+    background-color: var(--ion-color-primary-shade);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.export-actions button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.export-actions button:disabled {
+    background-color: var(--ion-color-medium);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* LLM Analysis Button (Special Styling) */
+.export-actions button.llm-analysis {
+    background-color: var(--ion-color-success);
+    border: 2px solid var(--ion-color-success);
+}
+
+.export-actions button.llm-analysis:hover:not(:disabled) {
+    background-color: var(--ion-color-success-shade);
+    border-color: var(--ion-color-success-shade);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .export-data {
+        padding: 15px;
+    }
+    
+    .category-header {
+        padding: 12px;
+    }
+    
+    .category-options.expanded {
+        padding: 12px;
+    }
+    
+    .export-actions button {
+        min-width: 200px;
+        font-size: 14px;
+        padding: 10px 20px;
+    }
+    
+    .export-presets button {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .category-section {
+        border-color: var(--ion-color-medium-shade);
+    }
+    
+    .category-header {
+        background-color: var(--ion-color-dark);
+        color: var(--ion-color-light);
+    }
+    
+    .category-title {
+        color: var(--ion-color-light);
+    }
+    
+    .option-item label {
+        color: var(--ion-color-light);
+    }
+    
+    .option-item {
+        border-bottom-color: var(--ion-color-medium-shade);
+    }
+}
