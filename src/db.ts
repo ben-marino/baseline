@@ -97,14 +97,14 @@ export const validateVirtueAlignment = (data: any): VirtueAlignment | null => {
     if (!data || typeof data !== 'object') return null;
     
     const virtues = ['stoicism', 'courage', 'wisdom', 'justice', 'temperance'];
-    const result: Partial<VirtueAlignment> = {};
+    const result: any = {};
     
     for (const virtue of virtues) {
         const value = Number(data[virtue]);
         if (typeof value !== 'number' || isNaN(value) || value < 1 || value > 10 || value !== parseInt(value.toString())) {
             return null;
         }
-        result[virtue as keyof VirtueAlignment] = value;
+        result[virtue] = value;
     }
     
     // Validate optional context fields
@@ -129,14 +129,14 @@ export const validateMediaConsumption = (data: any): MediaConsumption | null => 
     if (!data || typeof data !== 'object') return null;
     
     const categories = ['servedContent', 'casualBrowsing', 'intentionalContent', 'creation', 'deepFocus'];
-    const result: Partial<MediaConsumption> = {};
+    const result: any = {};
     
     for (const category of categories) {
         const value = Number(data[category]);
         if (typeof value !== 'number' || isNaN(value) || value < 0 || value > 1440 || value !== parseInt(value.toString())) {
             return null;
         }
-        result[category as keyof MediaConsumption] = value;
+        result[category] = value;
     }
     
     // Validate optional temporal and mood fields
@@ -178,7 +178,7 @@ export const validatePatterns = (data: any): Patterns | null => {
     if (!data || typeof data !== 'object') return null;
     
     const categories = ['emotionalTriggers', 'copingStrategies', 'socialContexts', 'aiGenerated', 'userNoted'];
-    const result: Partial<Patterns> = {};
+    const result: any = {};
     
     for (const category of categories) {
         const value = data[category];
@@ -189,7 +189,7 @@ export const validatePatterns = (data: any): Patterns | null => {
             if (typeof item !== 'string' || item.length > 500) return null;
         }
         
-        result[category as keyof Patterns] = value;
+        result[category] = value;
     }
     
     // Validate confidence
