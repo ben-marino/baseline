@@ -43,6 +43,7 @@ import GetHelp from "./pages/GetHelp";
 import WeekInReview from "./pages/WeekInReview";
 import SurveyResults from "./pages/SurveyResults";
 import MyData from "./pages/MyData";
+import SociallyFedDashboard from "./pages/SociallyFedDashboard";
 import { CSSTransition } from "react-transition-group";
 import LastWeekInReview from "./pages/LastWeekInReview";
 import Onboarding from "./pages/Onboarding";
@@ -129,7 +130,8 @@ const App = () => {
         { path: "/rsummary", Component: RSummary },
         { path: "/surveys", Component: SurveyResults },
         { path: "/onboarding", Component: Onboarding },
-        { path: "/mydata", Component: MyData }
+        { path: "/mydata", Component: MyData },
+        { path: "/sociallyfed", Component: SociallyFedDashboard }
     ];
 
     return (

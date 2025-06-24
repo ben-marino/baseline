@@ -4,7 +4,7 @@ import ldb from "../db";
 import { ref, get, query, startAfter, orderByKey, onValue, off } from "firebase/database";
 import { auth, db, signOutAndCleanUp } from "../firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { analytics, bookOutline, cashOutline, cogOutline, fileTrayFull, heartCircleOutline, helpBuoyOutline, menuOutline, notifications, pencil } from "ionicons/icons";
+import { analytics, bookOutline, cashOutline, cogOutline, fileTrayFull, heartCircleOutline, helpBuoyOutline, menuOutline, notifications, pencil, trendingUpOutline } from "ionicons/icons";
 import Media from "react-media";
 import WeekSummary from "../components/Summary/Week/WeekSummary";
 import MonthSummary from "../components/Summary/Month/MonthSummary";
@@ -267,6 +267,10 @@ const Summary = () => {
                             <IonItem onClick={() => history.push("/surveys")} mode="ios">
                                 <IonIcon icon={analytics} slot="start" />
                                 <IonLabel>Week In Review</IonLabel>
+                            </IonItem>
+                            <IonItem onClick={() => history.push("/sociallyfed")} mode="ios">
+                                <IonIcon icon={trendingUpOutline} slot="start" />
+                                <IonLabel>SociallyFed Dashboard</IonLabel>
                             </IonItem>
                             <IonItem onClick={() => history.push("/gethelp")} mode="ios">
                                 <IonIcon icon={helpBuoyOutline} slot="start" />
