@@ -8,14 +8,12 @@ import { refreshOutline, wifiOutline, closeCircleOutline } from "ionicons/icons"
 const EnhancedPatternInsights = () => {
     const [patterns, setPatterns] = useState<Patterns | null>(null);
     const [recentPatterns, setRecentPatterns] = useState<Patterns[]>([]);
-    const [showLLMInsights, setShowLLMInsights] = useState(false);
     
     const {
         insights: llmInsights,
         loading: llmLoading,
         error: llmError,
         connected: llmConnected,
-        getInsights,
         refreshInsights,
         checkHealth
     } = usePatternInsights();
@@ -97,7 +95,6 @@ const EnhancedPatternInsights = () => {
         const trends = [];
         const allTriggers = recentPatterns.flatMap(p => p.emotionalTriggers || []);
         const allStrategies = recentPatterns.flatMap(p => p.copingStrategies || []);
-        const allContexts = recentPatterns.flatMap(p => p.socialContexts || []);
 
         // Find most common patterns
         const triggerCounts = allTriggers.reduce((acc, trigger) => {
@@ -107,11 +104,6 @@ const EnhancedPatternInsights = () => {
 
         const strategyCounts = allStrategies.reduce((acc, strategy) => {
             acc[strategy] = (acc[strategy] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-
-        const contextCounts = allContexts.reduce((acc, context) => {
-            acc[context] = (acc[context] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
 

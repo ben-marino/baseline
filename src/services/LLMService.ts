@@ -371,7 +371,7 @@ class LLMService {
         this.processingQueue = true;
 
         while (this.requestQueue.length > 0) {
-            const { request, resolve, reject } = this.requestQueue.shift()!;
+            const { resolve, reject } = this.requestQueue.shift()!;
             
             try {
                 // Note: We need to re-encrypt the data since we only stored the request metadata

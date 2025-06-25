@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { llmService, LLMInsights } from '../services/LLMService';
-import { Log } from '../db';
 import ldb from '../db';
 
 interface UseLLMInsightsOptions {
@@ -32,18 +31,6 @@ export const useLLMInsights = (options: UseLLMInsightsOptions = {}) => {
         lastUpdated: null
     });
 
-    // Initialize LLM service
-    useEffect(() => {
-        if (autoInitialize) {
-            initializeLLM();
-        }
-
-        return () => {
-            // Cleanup on unmount
-            llmService.destroy();
-        };
-    }, [autoInitialize]);
-
     const initializeLLM = useCallback(async () => {
         setState(prev => ({ ...prev, loading: true, error: null }));
         
@@ -63,6 +50,18 @@ export const useLLMInsights = (options: UseLLMInsightsOptions = {}) => {
             }));
         }
     }, []);
+
+    // Initialize LLM service
+    useEffect(() => {
+        if (autoInitialize) {
+            initializeLLM();
+        }
+
+        return () => {
+            // Cleanup on unmount
+            llmService.destroy();
+        };
+    }, [autoInitialize, initializeLLM]);
 
     // Get insights for specific data type
     const getInsights = useCallback(async (customDataType?: 'journal' | 'patterns' | 'virtues' | 'media') => {
