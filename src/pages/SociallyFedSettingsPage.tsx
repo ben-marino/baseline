@@ -1,16 +1,12 @@
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonBackButton, IonButtons } from "@ionic/react";
+import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from "@ionic/react";
 import SociallyFedSettings from "../components/Settings/SociallyFedSettings";
-import "./SociallyFedSettingsPage.css";
 
 const SociallyFedSettingsPage = () => {
     return (
         <IonPage>
             <IonHeader>
                 <IonToolbar>
-                    <IonButtons slot="start">
-                        <IonBackButton defaultHref="/settings" />
-                    </IonButtons>
-                    <IonTitle>SociallyFed Configuration</IonTitle>
+                    <IonTitle>SociallyFed Settings</IonTitle>
                 </IonToolbar>
             </IonHeader>
             <IonContent>

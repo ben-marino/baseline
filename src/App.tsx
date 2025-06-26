@@ -45,6 +45,7 @@ import SurveyResults from "./pages/SurveyResults";
 import MyData from "./pages/MyData";
 import SociallyFedDashboard from "./pages/SociallyFedDashboard";
 import SociallyFedSettingsPage from "./pages/SociallyFedSettingsPage";
+import SociallyFedOnboardingPage from "./pages/SociallyFedOnboardingPage";
 import { CSSTransition } from "react-transition-group";
 import LastWeekInReview from "./pages/LastWeekInReview";
 import Onboarding from "./pages/Onboarding";
@@ -133,7 +134,8 @@ const App = () => {
         { path: "/surveys", Component: SurveyResults },
         { path: "/onboarding", Component: Onboarding },
         { path: "/mydata", Component: MyData },
-        { path: "/sociallyfed", Component: SociallyFedDashboard }
+        { path: "/sociallyfed", Component: SociallyFedDashboard },
+        { path: "/sociallyfed-onboarding", Component: SociallyFedOnboardingPage }
     ];
 
     return (

@@ -1,5 +1,5 @@
 import { IonAlert, IonIcon, IonSpinner, IonButton, IonItem, IonLabel } from "@ionic/react";
-import { closeOutline, settings, server, chevronForward } from "ionicons/icons";
+import { closeOutline, settings, server, chevronForward, school } from "ionicons/icons";
 import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import EndSpacer from "../components/EndSpacer";
@@ -87,6 +87,16 @@ const Settings = () => {
                         <IonLabel>
                             <h2>SociallyFed Configuration</h2>
                             <p>Configure local LLM server and philosophical frameworks</p>
+                        </IonLabel>
+                        <IonIcon icon={chevronForward} slot="end" />
+                    </IonItem>
+
+                    {/* SociallyFed Onboarding */}
+                    <IonItem button onClick={() => history.push('/sociallyfed-onboarding')}>
+                        <IonIcon icon={school} slot="start" />
+                        <IonLabel>
+                            <h2>SociallyFed Setup Guide</h2>
+                            <p>Complete guided setup for philosophical frameworks</p>
                         </IonLabel>
                         <IonIcon icon={chevronForward} slot="end" />
                     </IonItem>

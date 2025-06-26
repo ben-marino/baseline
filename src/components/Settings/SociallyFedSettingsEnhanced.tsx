@@ -100,7 +100,7 @@ const SociallyFedSettingsEnhanced = () => {
                             <LLMServerSettings 
                                 config={config.llmServer}
                                 validation={llmValidation}
-                                onUpdate={(llmConfig) => updateConfig({ llmServer: llmConfig })}
+                                onUpdate={(llmConfig: LLMServerConfig) => updateConfig({ llmServer: llmConfig })}
                                 onValidate={validateLLMConfig}
                             />
                         </div>
@@ -115,7 +115,7 @@ const SociallyFedSettingsEnhanced = () => {
                         <div slot="content">
                             <PrivacySettings 
                                 config={config.privacy}
-                                onUpdate={(privacyConfig) => updateConfig({ privacy: privacyConfig })}
+                                onUpdate={(privacyConfig: PrivacyConfig) => updateConfig({ privacy: privacyConfig })}
                             />
                         </div>
                     </IonAccordion>
@@ -129,7 +129,7 @@ const SociallyFedSettingsEnhanced = () => {
                         <div slot="content">
                             <MediaConsumptionSettings 
                                 config={config.mediaConsumption}
-                                onUpdate={(mediaConfig) => updateConfig({ mediaConsumption: mediaConfig })}
+                                onUpdate={(mediaConfig: MediaConsumptionConfig) => updateConfig({ mediaConsumption: mediaConfig })}
                             />
                         </div>
                     </IonAccordion>
@@ -143,7 +143,7 @@ const SociallyFedSettingsEnhanced = () => {
                         <div slot="content">
                             <StoicVirtuesSettings 
                                 config={config.stoicVirtues}
-                                onUpdate={(stoicConfig) => updateConfig({ stoicVirtues: stoicConfig })}
+                                onUpdate={(stoicConfig: StoicVirtueConfig) => updateConfig({ stoicVirtues: stoicConfig })}
                             />
                         </div>
                     </IonAccordion>
@@ -157,7 +157,7 @@ const SociallyFedSettingsEnhanced = () => {
                         <div slot="content">
                             <CyberneticSettings 
                                 config={config.cybernetics}
-                                onUpdate={(cyberneticConfig) => updateConfig({ cybernetics: cyberneticConfig })}
+                                onUpdate={(cyberneticConfig: CyberneticConfig) => updateConfig({ cybernetics: cyberneticConfig })}
                             />
                         </div>
                     </IonAccordion>
@@ -171,7 +171,7 @@ const SociallyFedSettingsEnhanced = () => {
                         <div slot="content">
                             <FeatureTogglesSettings 
                                 config={config.features}
-                                onUpdate={(featureToggles) => updateConfig({ features: featureToggles })}
+                                onUpdate={(featureToggles: FeatureToggles) => updateConfig({ features: featureToggles })}
                             />
                         </div>
                     </IonAccordion>
@@ -185,7 +185,7 @@ const SociallyFedSettingsEnhanced = () => {
                         <div slot="content">
                             <AnalysisFrequencySettings 
                                 config={config.analysis}
-                                onUpdate={(analysisConfig) => updateConfig({ analysis: analysisConfig })}
+                                onUpdate={(analysisConfig: AnalysisFrequency) => updateConfig({ analysis: analysisConfig })}
                             />
                         </div>
                     </IonAccordion>
@@ -199,7 +199,7 @@ const SociallyFedSettingsEnhanced = () => {
                         <div slot="content">
                             <VirtueDefinitionsSettings 
                                 virtues={config.virtues}
-                                onUpdate={(virtues) => updateConfig({ virtues })}
+                                onUpdate={(virtues: VirtueDefinition[]) => updateConfig({ virtues })}
                             />
                         </div>
                     </IonAccordion>
@@ -221,6 +221,230 @@ const SociallyFedSettingsEnhanced = () => {
     );
 };
 
+// LLM Server Settings Component
+const LLMServerSettings = ({ 
+    config, 
+    validation, 
+    onUpdate, 
+    onValidate 
+}: { 
+    config: LLMServerConfig; 
+    validation: { valid: boolean; error?: string } | null;
+    onUpdate: (config: LLMServerConfig) => void;
+    onValidate: () => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<LLMServerConfig>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>LLM Server Configuration</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel position="stacked">Server Endpoint</IonLabel>
+                        <IonInput
+                            value={localConfig.endpoint}
+                            onIonInput={(e) => handleUpdate({ endpoint: e.detail.value || 'localhost' })}
+                            placeholder="localhost"
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Port</IonLabel>
+                        <IonInput
+                            type="number"
+                            value={localConfig.port}
+                            onIonInput={(e) => handleUpdate({ port: parseInt(e.detail.value || '8000') })}
+                            placeholder="8000"
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Protocol</IonLabel>
+                        <IonSelect
+                            value={localConfig.protocol}
+                            onIonChange={(e) => handleUpdate({ protocol: e.detail.value })}
+                        >
+                            <IonSelectOption value="http">HTTP</IonSelectOption>
+                            <IonSelectOption value="https">HTTPS</IonSelectOption>
+                        </IonSelect>
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Timeout (ms)</IonLabel>
+                        <IonInput
+                            type="number"
+                            value={localConfig.timeout}
+                            onIonInput={(e) => handleUpdate({ timeout: parseInt(e.detail.value || '5000') })}
+                            placeholder="5000"
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Retry Attempts</IonLabel>
+                        <IonInput
+                            type="number"
+                            value={localConfig.retryAttempts}
+                            onIonInput={(e) => handleUpdate({ retryAttempts: parseInt(e.detail.value || '3') })}
+                            placeholder="3"
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Health Check Interval (ms)</IonLabel>
+                        <IonInput
+                            type="number"
+                            value={localConfig.healthCheckInterval}
+                            onIonInput={(e) => handleUpdate({ healthCheckInterval: parseInt(e.detail.value || '30000') })}
+                            placeholder="30000"
+                        />
+                    </IonItem>
+
+                    {localConfig.authenticationToken && (
+                        <IonItem>
+                            <IonLabel position="stacked">Authentication Token</IonLabel>
+                            <IonInput
+                                type="password"
+                                value={localConfig.authenticationToken}
+                                onIonInput={(e) => handleUpdate({ authenticationToken: e.detail.value ?? undefined })}
+                                placeholder="Optional authentication token"
+                            />
+                        </IonItem>
+                    )}
+
+                    {localConfig.encryptionKey && (
+                        <IonItem>
+                            <IonLabel position="stacked">Encryption Key</IonLabel>
+                            <IonInput
+                                type="password"
+                                value={localConfig.encryptionKey}
+                                onIonInput={(e) => handleUpdate({ encryptionKey: e.detail.value ?? undefined })}
+                                placeholder="Optional encryption key"
+                            />
+                        </IonItem>
+                    )}
+
+                    <IonItem>
+                        <IonButton 
+                            expand="block" 
+                            onClick={onValidate}
+                            disabled={validation?.error === 'Validating...'}
+                        >
+                            {validation?.error === 'Validating...' ? <IonSpinner name="crescent" /> : 'Test Connection'}
+                        </IonButton>
+                    </IonItem>
+
+                    {validation && (
+                        <IonItem>
+                            <IonText color={validation.valid ? 'success' : 'danger'}>
+                                {validation.valid ? '✓ Connection successful' : `✗ ${validation.error}`}
+                            </IonText>
+                        </IonItem>
+                    )}
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
+// Privacy Settings Component
+const PrivacySettings = ({ 
+    config, 
+    onUpdate 
+}: { 
+    config: PrivacyConfig; 
+    onUpdate: (config: PrivacyConfig) => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<PrivacyConfig>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Privacy & Data Sharing</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel position="stacked">Data Sharing Level</IonLabel>
+                        <IonSelect
+                            value={localConfig.dataSharingLevel}
+                            onIonChange={(e) => handleUpdate({ dataSharingLevel: e.detail.value })}
+                        >
+                            <IonSelectOption value="minimal">Minimal - Local only</IonSelectOption>
+                            <IonSelectOption value="standard">Standard - Basic analytics</IonSelectOption>
+                            <IonSelectOption value="comprehensive">Comprehensive - Full insights</IonSelectOption>
+                        </IonSelect>
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Allow Anonymous Analytics</IonLabel>
+                        <IonToggle
+                            checked={localConfig.allowAnonymousAnalytics}
+                            onIonChange={(e) => handleUpdate({ allowAnonymousAnalytics: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Allow Pattern Sharing</IonLabel>
+                        <IonToggle
+                            checked={localConfig.allowPatternSharing}
+                            onIonChange={(e) => handleUpdate({ allowPatternSharing: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Allow Virtue Sharing</IonLabel>
+                        <IonToggle
+                            checked={localConfig.allowVirtueSharing}
+                            onIonChange={(e) => handleUpdate({ allowVirtueSharing: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Allow Media Sharing</IonLabel>
+                        <IonToggle
+                            checked={localConfig.allowMediaSharing}
+                            onIonChange={(e) => handleUpdate({ allowMediaSharing: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Data Retention (days)</IonLabel>
+                        <IonInput
+                            type="number"
+                            value={localConfig.dataRetentionDays}
+                            onIonInput={(e) => handleUpdate({ dataRetentionDays: parseInt(e.detail.value || '30') })}
+                            placeholder="30"
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Auto Delete Old Data</IonLabel>
+                        <IonToggle
+                            checked={localConfig.autoDeleteOldData}
+                            onIonChange={(e) => handleUpdate({ autoDeleteOldData: e.detail.checked })}
+                        />
+                    </IonItem>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
 // Media Consumption Settings Component
 const MediaConsumptionSettings = ({ 
     config, 
@@ -237,13 +461,6 @@ const MediaConsumptionSettings = ({
         onUpdate(newConfig);
     };
 
-    const updatePyramidLevel = (level: keyof MediaConsumptionConfig['pyramidLevels'], updates: any) => {
-        const newConfig = { ...localConfig };
-        newConfig.pyramidLevels[level] = { ...newConfig.pyramidLevels[level], ...updates };
-        setLocalConfig(newConfig);
-        onUpdate(newConfig);
-    };
-
     return (
         <IonCard>
             <IonCardHeader>
@@ -251,7 +468,6 @@ const MediaConsumptionSettings = ({
             </IonCardHeader>
             <IonCardContent>
                 <IonList>
-                    {/* Tracking Mode */}
                     <IonItem>
                         <IonLabel position="stacked">Tracking Mode</IonLabel>
                         <IonSelect
@@ -264,164 +480,8 @@ const MediaConsumptionSettings = ({
                         </IonSelect>
                     </IonItem>
 
-                    {/* SociallyFed Pyramid Levels */}
-                    <div className="pyramid-section">
-                        <h4>SociallyFed Pyramid Levels</h4>
-                        
-                        {/* Served Content */}
-                        <IonItem>
-                            <div className="pyramid-level">
-                                <div className="level-header">
-                                    <IonCheckbox
-                                        checked={localConfig.pyramidLevels.servedContent.enabled}
-                                        onIonChange={(e) => updatePyramidLevel('servedContent', { enabled: e.detail.checked })}
-                                    />
-                                    <IonLabel>Served Content (Level 1)</IonLabel>
-                                </div>
-                                <div className="level-settings">
-                                    <IonInput
-                                        type="number"
-                                        value={localConfig.pyramidLevels.servedContent.dailyLimit}
-                                        onIonInput={(e) => updatePyramidLevel('servedContent', { dailyLimit: parseInt(e.detail.value || '60') })}
-                                        placeholder="Daily limit (minutes)"
-                                    />
-                                    <IonInput
-                                        type="time"
-                                        value={localConfig.pyramidLevels.servedContent.preferredTime}
-                                        onIonInput={(e) => updatePyramidLevel('servedContent', { preferredTime: e.detail.value || '20:00' })}
-                                    />
-                                    <IonToggle
-                                        checked={localConfig.pyramidLevels.servedContent.autoBlock}
-                                        onIonChange={(e) => updatePyramidLevel('servedContent', { autoBlock: e.detail.checked })}
-                                    />
-                                </div>
-                            </div>
-                        </IonItem>
-
-                        {/* Casual Browsing */}
-                        <IonItem>
-                            <div className="pyramid-level">
-                                <div className="level-header">
-                                    <IonCheckbox
-                                        checked={localConfig.pyramidLevels.casualBrowsing.enabled}
-                                        onIonChange={(e) => updatePyramidLevel('casualBrowsing', { enabled: e.detail.checked })}
-                                    />
-                                    <IonLabel>Casual Browsing (Level 2)</IonLabel>
-                                </div>
-                                <div className="level-settings">
-                                    <IonInput
-                                        type="number"
-                                        value={localConfig.pyramidLevels.casualBrowsing.dailyLimit}
-                                        onIonInput={(e) => updatePyramidLevel('casualBrowsing', { dailyLimit: parseInt(e.detail.value || '30') })}
-                                        placeholder="Daily limit (minutes)"
-                                    />
-                                    <IonInput
-                                        type="time"
-                                        value={localConfig.pyramidLevels.casualBrowsing.preferredTime}
-                                        onIonInput={(e) => updatePyramidLevel('casualBrowsing', { preferredTime: e.detail.value || '20:00' })}
-                                    />
-                                    <IonToggle
-                                        checked={localConfig.pyramidLevels.casualBrowsing.autoBlock}
-                                        onIonChange={(e) => updatePyramidLevel('casualBrowsing', { autoBlock: e.detail.checked })}
-                                    />
-                                </div>
-                            </div>
-                        </IonItem>
-
-                        {/* Intentional Content */}
-                        <IonItem>
-                            <div className="pyramid-level">
-                                <div className="level-header">
-                                    <IonCheckbox
-                                        checked={localConfig.pyramidLevels.intentionalContent.enabled}
-                                        onIonChange={(e) => updatePyramidLevel('intentionalContent', { enabled: e.detail.checked })}
-                                    />
-                                    <IonLabel>Intentional Content (Level 3)</IonLabel>
-                                </div>
-                                <div className="level-settings">
-                                    <IonInput
-                                        type="number"
-                                        value={localConfig.pyramidLevels.intentionalContent.dailyLimit}
-                                        onIonInput={(e) => updatePyramidLevel('intentionalContent', { dailyLimit: parseInt(e.detail.value || '30') })}
-                                        placeholder="Daily limit (minutes)"
-                                    />
-                                    <IonInput
-                                        type="time"
-                                        value={localConfig.pyramidLevels.intentionalContent.preferredTime}
-                                        onIonInput={(e) => updatePyramidLevel('intentionalContent', { preferredTime: e.detail.value || '20:00' })}
-                                    />
-                                    <IonToggle
-                                        checked={localConfig.pyramidLevels.intentionalContent.autoBlock}
-                                        onIonChange={(e) => updatePyramidLevel('intentionalContent', { autoBlock: e.detail.checked })}
-                                    />
-                                </div>
-                            </div>
-                        </IonItem>
-
-                        {/* Creation */}
-                        <IonItem>
-                            <div className="pyramid-level">
-                                <div className="level-header">
-                                    <IonCheckbox
-                                        checked={localConfig.pyramidLevels.creation.enabled}
-                                        onIonChange={(e) => updatePyramidLevel('creation', { enabled: e.detail.checked })}
-                                    />
-                                    <IonLabel>Creation (Level 4)</IonLabel>
-                                </div>
-                                <div className="level-settings">
-                                    <IonInput
-                                        type="number"
-                                        value={localConfig.pyramidLevels.creation.dailyGoal}
-                                        onIonInput={(e) => updatePyramidLevel('creation', { dailyGoal: parseInt(e.detail.value || '30') })}
-                                        placeholder="Daily goal (minutes)"
-                                    />
-                                    <IonInput
-                                        type="time"
-                                        value={localConfig.pyramidLevels.creation.preferredTime}
-                                        onIonInput={(e) => updatePyramidLevel('creation', { preferredTime: e.detail.value || '20:00' })}
-                                    />
-                                    <IonToggle
-                                        checked={localConfig.pyramidLevels.creation.reminders}
-                                        onIonChange={(e) => updatePyramidLevel('creation', { reminders: e.detail.checked })}
-                                    />
-                                </div>
-                            </div>
-                        </IonItem>
-
-                        {/* Deep Focus */}
-                        <IonItem>
-                            <div className="pyramid-level">
-                                <div className="level-header">
-                                    <IonCheckbox
-                                        checked={localConfig.pyramidLevels.deepFocus.enabled}
-                                        onIonChange={(e) => updatePyramidLevel('deepFocus', { enabled: e.detail.checked })}
-                                    />
-                                    <IonLabel>Deep Focus (Level 5)</IonLabel>
-                                </div>
-                                <div className="level-settings">
-                                    <IonInput
-                                        type="number"
-                                        value={localConfig.pyramidLevels.deepFocus.dailyGoal}
-                                        onIonInput={(e) => updatePyramidLevel('deepFocus', { dailyGoal: parseInt(e.detail.value || '30') })}
-                                        placeholder="Daily goal (minutes)"
-                                    />
-                                    <IonInput
-                                        type="time"
-                                        value={localConfig.pyramidLevels.deepFocus.preferredTime}
-                                        onIonInput={(e) => updatePyramidLevel('deepFocus', { preferredTime: e.detail.value || '20:00' })}
-                                    />
-                                    <IonToggle
-                                        checked={localConfig.pyramidLevels.deepFocus.reminders}
-                                        onIonChange={(e) => updatePyramidLevel('deepFocus', { reminders: e.detail.checked })}
-                                    />
-                                </div>
-                            </div>
-                        </IonItem>
-                    </div>
-
-                    {/* General Settings */}
                     <IonItem>
-                        <IonLabel>Mood Correlation Tracking</IonLabel>
+                        <IonLabel>Mood Correlation</IonLabel>
                         <IonToggle
                             checked={localConfig.moodCorrelation}
                             onIonChange={(e) => handleUpdate({ moodCorrelation: e.detail.checked })}
@@ -429,7 +489,7 @@ const MediaConsumptionSettings = ({
                     </IonItem>
 
                     <IonItem>
-                        <IonLabel>Productivity Impact Tracking</IonLabel>
+                        <IonLabel>Productivity Impact</IonLabel>
                         <IonToggle
                             checked={localConfig.productivityImpact}
                             onIonChange={(e) => handleUpdate({ productivityImpact: e.detail.checked })}
@@ -465,13 +525,6 @@ const StoicVirtuesSettings = ({
         onUpdate(newConfig);
     };
 
-    const updateVirtue = (virtueName: keyof StoicVirtueConfig['virtues'], updates: any) => {
-        const newConfig = { ...localConfig };
-        newConfig.virtues[virtueName] = { ...newConfig.virtues[virtueName], ...updates };
-        setLocalConfig(newConfig);
-        onUpdate(newConfig);
-    };
-
     return (
         <IonCard>
             <IonCardHeader>
@@ -479,218 +532,53 @@ const StoicVirtuesSettings = ({
             </IonCardHeader>
             <IonCardContent>
                 <IonList>
-                    {/* Courage */}
                     <IonItem>
-                        <div className="virtue-section">
-                            <div className="virtue-header">
-                                <IonCheckbox
-                                    checked={localConfig.virtues.courage.enabled}
-                                    onIonChange={(e) => updateVirtue('courage', { enabled: e.detail.checked })}
-                                />
-                                <IonLabel>Courage</IonLabel>
-                                <IonRange
-                                    value={localConfig.virtues.courage.weight}
-                                    min={1}
-                                    max={10}
-                                    step={1}
-                                    onIonChange={(e) => updateVirtue('courage', { weight: e.detail.value as number })}
-                                />
-                            </div>
-                            <IonTextarea
-                                value={localConfig.virtues.courage.dailyPrompt}
-                                onIonInput={(e) => updateVirtue('courage', { dailyPrompt: e.detail.value || '' })}
-                                placeholder="Daily reflection prompt for courage"
-                                rows={2}
-                            />
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.courage.weeklyReflection}
-                                    onIonChange={(e) => updateVirtue('courage', { weeklyReflection: e.detail.checked })}
-                                />
-                                <IonLabel>Weekly Reflection</IonLabel>
-                            </div>
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.courage.challengeTracking}
-                                    onIonChange={(e) => updateVirtue('courage', { challengeTracking: e.detail.checked })}
-                                />
-                                <IonLabel>Challenge Tracking</IonLabel>
-                            </div>
-                        </div>
+                        <IonLabel>Morning Reflection</IonLabel>
+                        <IonToggle
+                            checked={localConfig.morningReflection}
+                            onIonChange={(e) => handleUpdate({ morningReflection: e.detail.checked })}
+                        />
                     </IonItem>
 
-                    {/* Wisdom */}
                     <IonItem>
-                        <div className="virtue-section">
-                            <div className="virtue-header">
-                                <IonCheckbox
-                                    checked={localConfig.virtues.wisdom.enabled}
-                                    onIonChange={(e) => updateVirtue('wisdom', { enabled: e.detail.checked })}
-                                />
-                                <IonLabel>Wisdom</IonLabel>
-                                <IonRange
-                                    value={localConfig.virtues.wisdom.weight}
-                                    min={1}
-                                    max={10}
-                                    step={1}
-                                    onIonChange={(e) => updateVirtue('wisdom', { weight: e.detail.value as number })}
-                                />
-                            </div>
-                            <IonTextarea
-                                value={localConfig.virtues.wisdom.dailyPrompt}
-                                onIonInput={(e) => updateVirtue('wisdom', { dailyPrompt: e.detail.value || '' })}
-                                placeholder="Daily reflection prompt for wisdom"
-                                rows={2}
-                            />
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.wisdom.weeklyReflection}
-                                    onIonChange={(e) => updateVirtue('wisdom', { weeklyReflection: e.detail.checked })}
-                                />
-                                <IonLabel>Weekly Reflection</IonLabel>
-                            </div>
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.wisdom.learningTracking}
-                                    onIonChange={(e) => updateVirtue('wisdom', { learningTracking: e.detail.checked })}
-                                />
-                                <IonLabel>Learning Tracking</IonLabel>
-                            </div>
-                        </div>
+                        <IonLabel>Evening Review</IonLabel>
+                        <IonToggle
+                            checked={localConfig.eveningReview}
+                            onIonChange={(e) => handleUpdate({ eveningReview: e.detail.checked })}
+                        />
                     </IonItem>
 
-                    {/* Justice */}
                     <IonItem>
-                        <div className="virtue-section">
-                            <div className="virtue-header">
-                                <IonCheckbox
-                                    checked={localConfig.virtues.justice.enabled}
-                                    onIonChange={(e) => updateVirtue('justice', { enabled: e.detail.checked })}
-                                />
-                                <IonLabel>Justice</IonLabel>
-                                <IonRange
-                                    value={localConfig.virtues.justice.weight}
-                                    min={1}
-                                    max={10}
-                                    step={1}
-                                    onIonChange={(e) => updateVirtue('justice', { weight: e.detail.value as number })}
-                                />
-                            </div>
-                            <IonTextarea
-                                value={localConfig.virtues.justice.dailyPrompt}
-                                onIonInput={(e) => updateVirtue('justice', { dailyPrompt: e.detail.value || '' })}
-                                placeholder="Daily reflection prompt for justice"
-                                rows={2}
-                            />
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.justice.weeklyReflection}
-                                    onIonChange={(e) => updateVirtue('justice', { weeklyReflection: e.detail.checked })}
-                                />
-                                <IonLabel>Weekly Reflection</IonLabel>
-                            </div>
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.justice.relationshipTracking}
-                                    onIonChange={(e) => updateVirtue('justice', { relationshipTracking: e.detail.checked })}
-                                />
-                                <IonLabel>Relationship Tracking</IonLabel>
-                            </div>
-                        </div>
+                        <IonLabel>Obstacle Journaling</IonLabel>
+                        <IonToggle
+                            checked={localConfig.obstacleJournaling}
+                            onIonChange={(e) => handleUpdate({ obstacleJournaling: e.detail.checked })}
+                        />
                     </IonItem>
 
-                    {/* Temperance */}
                     <IonItem>
-                        <div className="virtue-section">
-                            <div className="virtue-header">
-                                <IonCheckbox
-                                    checked={localConfig.virtues.temperance.enabled}
-                                    onIonChange={(e) => updateVirtue('temperance', { enabled: e.detail.checked })}
-                                />
-                                <IonLabel>Temperance</IonLabel>
-                                <IonRange
-                                    value={localConfig.virtues.temperance.weight}
-                                    min={1}
-                                    max={10}
-                                    step={1}
-                                    onIonChange={(e) => updateVirtue('temperance', { weight: e.detail.value as number })}
-                                />
-                            </div>
-                            <IonTextarea
-                                value={localConfig.virtues.temperance.dailyPrompt}
-                                onIonInput={(e) => updateVirtue('temperance', { dailyPrompt: e.detail.value || '' })}
-                                placeholder="Daily reflection prompt for temperance"
-                                rows={2}
-                            />
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.temperance.weeklyReflection}
-                                    onIonChange={(e) => updateVirtue('temperance', { weeklyReflection: e.detail.checked })}
-                                />
-                                <IonLabel>Weekly Reflection</IonLabel>
-                            </div>
-                            <div className="virtue-options">
-                                <IonToggle
-                                    checked={localConfig.virtues.temperance.moderationTracking}
-                                    onIonChange={(e) => updateVirtue('temperance', { moderationTracking: e.detail.checked })}
-                                />
-                                <IonLabel>Moderation Tracking</IonLabel>
-                            </div>
-                        </div>
+                        <IonLabel>Gratitude Practice</IonLabel>
+                        <IonToggle
+                            checked={localConfig.gratitudePractice}
+                            onIonChange={(e) => handleUpdate({ gratitudePractice: e.detail.checked })}
+                        />
                     </IonItem>
 
-                    {/* Stoic Practices */}
-                    <div className="stoic-practices">
-                        <h4>Stoic Practices</h4>
-                        
-                        <IonItem>
-                            <IonLabel>Morning Reflection</IonLabel>
-                            <IonToggle
-                                checked={localConfig.morningReflection}
-                                onIonChange={(e) => handleUpdate({ morningReflection: e.detail.checked })}
-                            />
-                        </IonItem>
+                    <IonItem>
+                        <IonLabel>Memento Mori</IonLabel>
+                        <IonToggle
+                            checked={localConfig.mementoMori}
+                            onIonChange={(e) => handleUpdate({ mementoMori: e.detail.checked })}
+                        />
+                    </IonItem>
 
-                        <IonItem>
-                            <IonLabel>Evening Review</IonLabel>
-                            <IonToggle
-                                checked={localConfig.eveningReview}
-                                onIonChange={(e) => handleUpdate({ eveningReview: e.detail.checked })}
-                            />
-                        </IonItem>
-
-                        <IonItem>
-                            <IonLabel>Obstacle Journaling</IonLabel>
-                            <IonToggle
-                                checked={localConfig.obstacleJournaling}
-                                onIonChange={(e) => handleUpdate({ obstacleJournaling: e.detail.checked })}
-                            />
-                        </IonItem>
-
-                        <IonItem>
-                            <IonLabel>Gratitude Practice</IonLabel>
-                            <IonToggle
-                                checked={localConfig.gratitudePractice}
-                                onIonChange={(e) => handleUpdate({ gratitudePractice: e.detail.checked })}
-                            />
-                        </IonItem>
-
-                        <IonItem>
-                            <IonLabel>Memento Mori</IonLabel>
-                            <IonToggle
-                                checked={localConfig.mementoMori}
-                                onIonChange={(e) => handleUpdate({ mementoMori: e.detail.checked })}
-                            />
-                        </IonItem>
-
-                        <IonItem>
-                            <IonLabel>Amor Fati</IonLabel>
-                            <IonToggle
-                                checked={localConfig.amorFati}
-                                onIonChange={(e) => handleUpdate({ amorFati: e.detail.checked })}
-                            />
-                        </IonItem>
-                    </div>
+                    <IonItem>
+                        <IonLabel>Amor Fati</IonLabel>
+                        <IonToggle
+                            checked={localConfig.amorFati}
+                            onIonChange={(e) => handleUpdate({ amorFati: e.detail.checked })}
+                        />
+                    </IonItem>
                 </IonList>
             </IonCardContent>
         </IonCard>
@@ -713,13 +601,6 @@ const CyberneticSettings = ({
         onUpdate(newConfig);
     };
 
-    const updateFeedbackLoop = (loopType: keyof CyberneticConfig['feedbackLoops'], updates: any) => {
-        const newConfig = { ...localConfig };
-        newConfig.feedbackLoops[loopType] = { ...newConfig.feedbackLoops[loopType], ...updates };
-        setLocalConfig(newConfig);
-        onUpdate(newConfig);
-    };
-
     return (
         <IonCard>
             <IonCardHeader>
@@ -727,208 +608,306 @@ const CyberneticSettings = ({
             </IonCardHeader>
             <IonCardContent>
                 <IonList>
-                    {/* Daily Feedback Loop */}
                     <IonItem>
-                        <div className="feedback-loop">
-                            <div className="loop-header">
-                                <IonCheckbox
-                                    checked={localConfig.feedbackLoops.daily.enabled}
-                                    onIonChange={(e) => updateFeedbackLoop('daily', { enabled: e.detail.checked })}
-                                />
-                                <IonLabel>Daily Feedback Loop</IonLabel>
-                            </div>
-                            <div className="loop-settings">
-                                <IonInput
-                                    type="time"
-                                    value={localConfig.feedbackLoops.daily.time}
-                                    onIonInput={(e) => updateFeedbackLoop('daily', { time: e.detail.value || '08:00' })}
-                                />
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.daily.moodTracking}
-                                        onIonChange={(e) => updateFeedbackLoop('daily', { moodTracking: e.detail.checked })}
-                                    />
-                                    <IonLabel>Mood Tracking</IonLabel>
-                                </div>
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.daily.goalProgress}
-                                        onIonChange={(e) => updateFeedbackLoop('daily', { goalProgress: e.detail.checked })}
-                                    />
-                                    <IonLabel>Goal Progress</IonLabel>
-                                </div>
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.daily.habitTracking}
-                                        onIonChange={(e) => updateFeedbackLoop('daily', { habitTracking: e.detail.checked })}
-                                    />
-                                    <IonLabel>Habit Tracking</IonLabel>
-                                </div>
-                            </div>
-                        </div>
+                        <IonLabel>Auto Adjustment</IonLabel>
+                        <IonToggle
+                            checked={localConfig.autoAdjustment}
+                            onIonChange={(e) => handleUpdate({ autoAdjustment: e.detail.checked })}
+                        />
                     </IonItem>
 
-                    {/* Weekly Feedback Loop */}
                     <IonItem>
-                        <div className="feedback-loop">
-                            <div className="loop-header">
-                                <IonCheckbox
-                                    checked={localConfig.feedbackLoops.weekly.enabled}
-                                    onIonChange={(e) => updateFeedbackLoop('weekly', { enabled: e.detail.checked })}
-                                />
-                                <IonLabel>Weekly Feedback Loop</IonLabel>
-                            </div>
-                            <div className="loop-settings">
-                                <IonSelect
-                                    value={localConfig.feedbackLoops.weekly.day}
-                                    onIonChange={(e) => updateFeedbackLoop('weekly', { day: e.detail.value })}
-                                >
-                                    <IonSelectOption value="monday">Monday</IonSelectOption>
-                                    <IonSelectOption value="tuesday">Tuesday</IonSelectOption>
-                                    <IonSelectOption value="wednesday">Wednesday</IonSelectOption>
-                                    <IonSelectOption value="thursday">Thursday</IonSelectOption>
-                                    <IonSelectOption value="friday">Friday</IonSelectOption>
-                                    <IonSelectOption value="saturday">Saturday</IonSelectOption>
-                                    <IonSelectOption value="sunday">Sunday</IonSelectOption>
-                                </IonSelect>
-                                <IonInput
-                                    type="time"
-                                    value={localConfig.feedbackLoops.weekly.time}
-                                    onIonInput={(e) => updateFeedbackLoop('weekly', { time: e.detail.value || '18:00' })}
-                                />
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.weekly.patternAnalysis}
-                                        onIonChange={(e) => updateFeedbackLoop('weekly', { patternAnalysis: e.detail.checked })}
-                                    />
-                                    <IonLabel>Pattern Analysis</IonLabel>
-                                </div>
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.weekly.goalReview}
-                                        onIonChange={(e) => updateFeedbackLoop('weekly', { goalReview: e.detail.checked })}
-                                    />
-                                    <IonLabel>Goal Review</IonLabel>
-                                </div>
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.weekly.habitReview}
-                                        onIonChange={(e) => updateFeedbackLoop('weekly', { habitReview: e.detail.checked })}
-                                    />
-                                    <IonLabel>Habit Review</IonLabel>
-                                </div>
-                            </div>
-                        </div>
+                        <IonLabel position="stacked">Learning Rate</IonLabel>
+                        <IonRange
+                            value={localConfig.learningRate}
+                            min={0.1}
+                            max={1.0}
+                            step={0.1}
+                            onIonChange={(e) => handleUpdate({ learningRate: e.detail.value as number })}
+                        />
+                        <IonText>{localConfig.learningRate}</IonText>
                     </IonItem>
 
-                    {/* Monthly Feedback Loop */}
                     <IonItem>
-                        <div className="feedback-loop">
-                            <div className="loop-header">
-                                <IonCheckbox
-                                    checked={localConfig.feedbackLoops.monthly.enabled}
-                                    onIonChange={(e) => updateFeedbackLoop('monthly', { enabled: e.detail.checked })}
-                                />
-                                <IonLabel>Monthly Feedback Loop</IonLabel>
-                            </div>
-                            <div className="loop-settings">
-                                <IonInput
-                                    type="number"
-                                    value={localConfig.feedbackLoops.monthly.day}
-                                    onIonInput={(e) => updateFeedbackLoop('monthly', { day: parseInt(e.detail.value || '15') })}
-                                    placeholder="Day of month (1-31)"
-                                />
-                                <IonInput
-                                    type="time"
-                                    value={localConfig.feedbackLoops.monthly.time}
-                                    onIonInput={(e) => updateFeedbackLoop('monthly', { time: e.detail.value || '12:00' })}
-                                />
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.monthly.trendAnalysis}
-                                        onIonChange={(e) => updateFeedbackLoop('monthly', { trendAnalysis: e.detail.checked })}
-                                    />
-                                    <IonLabel>Trend Analysis</IonLabel>
-                                </div>
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.monthly.goalAdjustment}
-                                        onIonChange={(e) => updateFeedbackLoop('monthly', { goalAdjustment: e.detail.checked })}
-                                    />
-                                    <IonLabel>Goal Adjustment</IonLabel>
-                                </div>
-                                <div className="loop-options">
-                                    <IonToggle
-                                        checked={localConfig.feedbackLoops.monthly.systemOptimization}
-                                        onIonChange={(e) => updateFeedbackLoop('monthly', { systemOptimization: e.detail.checked })}
-                                    />
-                                    <IonLabel>System Optimization</IonLabel>
-                                </div>
-                            </div>
-                        </div>
+                        <IonLabel position="stacked">Adaptation Threshold</IonLabel>
+                        <IonRange
+                            value={localConfig.adaptationThreshold}
+                            min={0.1}
+                            max={1.0}
+                            step={0.1}
+                            onIonChange={(e) => handleUpdate({ adaptationThreshold: e.detail.value as number })}
+                        />
+                        <IonText>{localConfig.adaptationThreshold}</IonText>
                     </IonItem>
 
-                    {/* System Optimization */}
-                    <div className="system-optimization">
-                        <h4>System Optimization</h4>
-                        
-                        <IonItem>
-                            <IonLabel>Auto Adjustment</IonLabel>
-                            <IonToggle
-                                checked={localConfig.autoAdjustment}
-                                onIonChange={(e) => handleUpdate({ autoAdjustment: e.detail.checked })}
-                            />
-                        </IonItem>
-
-                        <IonItem>
-                            <IonLabel position="stacked">Learning Rate</IonLabel>
-                            <IonRange
-                                value={localConfig.learningRate}
-                                min={0.1}
-                                max={1.0}
-                                step={0.1}
-                                onIonChange={(e) => handleUpdate({ learningRate: e.detail.value as number })}
-                            />
-                            <IonText>{localConfig.learningRate}</IonText>
-                        </IonItem>
-
-                        <IonItem>
-                            <IonLabel position="stacked">Adaptation Threshold</IonLabel>
-                            <IonRange
-                                value={localConfig.adaptationThreshold}
-                                min={0.1}
-                                max={1.0}
-                                step={0.1}
-                                onIonChange={(e) => handleUpdate({ adaptationThreshold: e.detail.value as number })}
-                            />
-                            <IonText>{localConfig.adaptationThreshold}</IonText>
-                        </IonItem>
-
-                        <IonItem>
-                            <IonLabel position="stacked">Feedback Sensitivity</IonLabel>
-                            <IonSelect
-                                value={localConfig.feedbackSensitivity}
-                                onIonChange={(e) => handleUpdate({ feedbackSensitivity: e.detail.value })}
-                            >
-                                <IonSelectOption value="low">Low</IonSelectOption>
-                                <IonSelectOption value="medium">Medium</IonSelectOption>
-                                <IonSelectOption value="high">High</IonSelectOption>
-                            </IonSelect>
-                        </IonItem>
-                    </div>
+                    <IonItem>
+                        <IonLabel position="stacked">Feedback Sensitivity</IonLabel>
+                        <IonSelect
+                            value={localConfig.feedbackSensitivity}
+                            onIonChange={(e) => handleUpdate({ feedbackSensitivity: e.detail.value })}
+                        >
+                            <IonSelectOption value="low">Low</IonSelectOption>
+                            <IonSelectOption value="medium">Medium</IonSelectOption>
+                            <IonSelectOption value="high">High</IonSelectOption>
+                        </IonSelect>
+                    </IonItem>
                 </IonList>
             </IonCardContent>
         </IonCard>
     );
 };
 
-// Import existing components from the original file
-import { 
-    LLMServerSettings, 
-    PrivacySettings, 
-    FeatureTogglesSettings, 
-    AnalysisFrequencySettings, 
-    VirtueDefinitionsSettings 
-} from './SociallyFedSettings';
+// Feature Toggles Settings Component
+const FeatureTogglesSettings = ({ 
+    config, 
+    onUpdate 
+}: { 
+    config: FeatureToggles; 
+    onUpdate: (config: FeatureToggles) => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<FeatureToggles>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Feature Toggles</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel>Enable Virtue Tracking</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableVirtueTracking}
+                            onIonChange={(e) => handleUpdate({ enableVirtueTracking: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable Media Tracking</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableMediaTracking}
+                            onIonChange={(e) => handleUpdate({ enableMediaTracking: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable Pattern Tracking</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enablePatternTracking}
+                            onIonChange={(e) => handleUpdate({ enablePatternTracking: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable Cybernetics</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableCybernetics}
+                            onIonChange={(e) => handleUpdate({ enableCybernetics: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable AI Analysis</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableAIAnalysis}
+                            onIonChange={(e) => handleUpdate({ enableAIAnalysis: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable Local LLM</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableLocalLLM}
+                            onIonChange={(e) => handleUpdate({ enableLocalLLM: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable Insights</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableInsights}
+                            onIonChange={(e) => handleUpdate({ enableInsights: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable Trend Analysis</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableTrendAnalysis}
+                            onIonChange={(e) => handleUpdate({ enableTrendAnalysis: e.detail.checked })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Enable Correlation Detection</IonLabel>
+                        <IonToggle
+                            checked={localConfig.enableCorrelationDetection}
+                            onIonChange={(e) => handleUpdate({ enableCorrelationDetection: e.detail.checked })}
+                        />
+                    </IonItem>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
+// Analysis Frequency Settings Component
+const AnalysisFrequencySettings = ({ 
+    config, 
+    onUpdate 
+}: { 
+    config: AnalysisFrequency; 
+    onUpdate: (config: AnalysisFrequency) => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<AnalysisFrequency>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Analysis Schedule</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel position="stacked">Analysis Frequency</IonLabel>
+                        <IonSelect
+                            value={localConfig.mode}
+                            onIonChange={(e) => handleUpdate({ mode: e.detail.value })}
+                        >
+                            <IonSelectOption value="daily">Daily</IonSelectOption>
+                            <IonSelectOption value="weekly">Weekly</IonSelectOption>
+                            <IonSelectOption value="manual">Manual Only</IonSelectOption>
+                            <IonSelectOption value="custom">Custom Interval</IonSelectOption>
+                        </IonSelect>
+                    </IonItem>
+
+                    {localConfig.mode === 'custom' && (
+                        <IonItem>
+                            <IonLabel position="stacked">Custom Interval (hours)</IonLabel>
+                            <IonInput
+                                type="number"
+                                value={localConfig.customInterval || 24}
+                                onIonInput={(e) => handleUpdate({ customInterval: parseInt(e.detail.value || '24') })}
+                                placeholder="24"
+                            />
+                        </IonItem>
+                    )}
+
+                    <IonItem>
+                        <IonLabel position="stacked">Preferred Time</IonLabel>
+                        <IonInput
+                            type="time"
+                            value={localConfig.preferredTime || '20:00'}
+                            onIonInput={(e) => handleUpdate({ preferredTime: e.detail.value || '20:00' })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Timezone</IonLabel>
+                        <IonInput
+                            value={localConfig.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                            onIonInput={(e) => handleUpdate({ timezone: e.detail.value || Intl.DateTimeFormat().resolvedOptions().timeZone })}
+                            readonly
+                        />
+                    </IonItem>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
+// Virtue Definitions Settings Component
+const VirtueDefinitionsSettings = ({ 
+    virtues, 
+    onUpdate 
+}: { 
+    virtues: VirtueDefinition[]; 
+    onUpdate: (virtues: VirtueDefinition[]) => void;
+}) => {
+    const [localVirtues, setLocalVirtues] = useState(virtues);
+
+    const handleUpdate = (updatedVirtues: VirtueDefinition[]) => {
+        setLocalVirtues(updatedVirtues);
+        onUpdate(updatedVirtues);
+    };
+
+    const addVirtue = () => {
+        const newVirtue: VirtueDefinition = {
+            name: '',
+            description: '',
+            weight: 5,
+            enabled: true
+        };
+        handleUpdate([...localVirtues, newVirtue]);
+    };
+
+    const removeVirtue = (index: number) => {
+        const updatedVirtues = localVirtues.filter((_, i) => i !== index);
+        handleUpdate(updatedVirtues);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Virtue Definitions</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    {localVirtues.map((virtue, index) => (
+                        <IonItem key={index}>
+                            <div className="virtue-item">
+                                <IonCheckbox
+                                    checked={virtue.enabled}
+                                    onIonChange={(e) => {
+                                        const updatedVirtues = [...localVirtues];
+                                        updatedVirtues[index] = { ...virtue, enabled: e.detail.checked };
+                                        handleUpdate(updatedVirtues);
+                                    }}
+                                />
+                                <IonInput
+                                    value={virtue.name}
+                                    onIonInput={(e) => {
+                                        const updatedVirtues = [...localVirtues];
+                                        updatedVirtues[index] = { ...virtue, name: e.detail.value || '' };
+                                        handleUpdate(updatedVirtues);
+                                    }}
+                                    placeholder="Virtue name"
+                                />
+                                <IonButton
+                                    fill="clear"
+                                    size="small"
+                                    onClick={() => removeVirtue(index)}
+                                >
+                                    <IonIcon icon={remove} />
+                                </IonButton>
+                            </div>
+                        </IonItem>
+                    ))}
+                    
+                    <IonButton
+                        expand="block"
+                        fill="outline"
+                        onClick={addVirtue}
+                    >
+                        <IonIcon icon={add} slot="start" />
+                        Add Custom Virtue
+                    </IonButton>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
 
 export default SociallyFedSettingsEnhanced; 

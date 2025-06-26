@@ -1,0 +1,121 @@
+/* SociallyFed Onboarding Page Styles */
+
+.onboarding-completed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.completed-content {
+    background: white;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+}
+
+.completed-content h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--ion-color-dark);
+}
+
+.completed-content p {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ion-color-medium);
+    margin-bottom: 32px;
+}
+
+.settings-button {
+    display: block;
+    width: 100%;
+    padding: 16px 24px;
+    background: var(--ion-color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.settings-button:hover {
+    background: var(--ion-color-primary-shade);
+}
+
+.skip-button {
+    display: block;
+    width: 100%;
+    padding: 12px 24px;
+    background: transparent;
+    color: var(--ion-color-medium);
+    border: 2px solid var(--ion-color-light);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.skip-button:hover {
+    background: var(--ion-color-light);
+    color: var(--ion-color-dark);
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .onboarding-completed {
+        background: linear-gradient(135deg, #4c63d2 0%, #6a4c93 100%);
+    }
+    
+    .completed-content {
+        background: var(--ion-color-dark);
+        color: var(--ion-color-light);
+    }
+    
+    .completed-content h2 {
+        color: var(--ion-color-light);
+    }
+    
+    .completed-content p {
+        color: var(--ion-color-medium);
+    }
+    
+    .skip-button {
+        border-color: var(--ion-color-medium);
+        color: var(--ion-color-medium);
+    }
+    
+    .skip-button:hover {
+        background: var(--ion-color-medium);
+        color: var(--ion-color-dark);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .onboarding-completed {
+        padding: 16px;
+    }
+    
+    .completed-content {
+        padding: 24px;
+    }
+    
+    .completed-content h2 {
+        font-size: 24px;
+    }
+    
+    .completed-content p {
+        font-size: 14px;
+    }
+} 
