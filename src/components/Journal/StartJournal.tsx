@@ -7,6 +7,9 @@ import { encrypt } from "../../helpers";
 import WriteJournal from "./WriteJournal";
 import RecordJournal from "./RecordJournal";
 import { getInfoBadge } from "./InfoBadge";
+import SociallyFedJournalExtensions from "./SociallyFedJournalExtensions";
+import { VirtueAlignment, MediaConsumption } from "../../db";
+import { EmotionalRegulation, GoalProgress } from "../../pages/Journal";
 
 interface Props {
     setMoodRead: (mood: number) => void;
@@ -20,9 +23,41 @@ interface Props {
     audioView: boolean;
     setAudioView: (view: boolean) => void;
     addFlag: string | null;
+    // SociallyFed props
+    sociallyFedEnabled: boolean;
+    virtueAlignment: VirtueAlignment;
+    setVirtueAlignment: (alignment: VirtueAlignment) => void;
+    mediaConsumption: MediaConsumption;
+    setMediaConsumption: (consumption: MediaConsumption) => void;
+    emotionalRegulation: EmotionalRegulation;
+    setEmotionalRegulation: (regulation: EmotionalRegulation) => void;
+    goalProgress: GoalProgress;
+    setGoalProgress: (progress: GoalProgress) => void;
 }
 
-const StartJournal = ({ setMoodRead, moodWrite, text, setText, editTimestamp, audioChunks, elapsedTime, setElapsedTime, audioView, setAudioView, addFlag } : Props) => {
+const StartJournal = ({ 
+    setMoodRead, 
+    moodWrite, 
+    text, 
+    setText, 
+    editTimestamp, 
+    audioChunks, 
+    elapsedTime, 
+    setElapsedTime, 
+    audioView, 
+    setAudioView, 
+    addFlag,
+    // SociallyFed props
+    sociallyFedEnabled,
+    virtueAlignment,
+    setVirtueAlignment,
+    mediaConsumption,
+    setMediaConsumption,
+    emotionalRegulation,
+    setEmotionalRegulation,
+    goalProgress,
+    setGoalProgress
+} : Props) => {
     const next = useCallback(() => {
         history.push("/journal/finish");
     }, []);
@@ -70,6 +105,17 @@ const StartJournal = ({ setMoodRead, moodWrite, text, setText, editTimestamp, au
                     next={next}
                     setAudioView={setAudioView}
                 /> }
+                
+                {/* SociallyFed Extensions */}
+                <SociallyFedJournalExtensions
+                    onVirtueAlignmentChange={setVirtueAlignment}
+                    onMediaConsumptionChange={setMediaConsumption}
+                    onEmotionalRegulationChange={setEmotionalRegulation}
+                    onGoalProgressChange={setGoalProgress}
+                    initialVirtueAlignment={virtueAlignment}
+                    initialMediaConsumption={mediaConsumption}
+                    isEnabled={sociallyFedEnabled}
+                />
             </div>
         </div>
     );

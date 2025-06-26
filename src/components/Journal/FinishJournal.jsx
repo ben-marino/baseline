@@ -152,6 +152,22 @@ const FinishJournal = props => {
         if (props.editTimestamp) data.append("editTimestamp", props.editTimestamp);
         if (props.addFlag) data.append("addFlag", props.addFlag);
 
+        // Add SociallyFed data if enabled
+        if (props.sociallyFedEnabled) {
+            if (props.virtueAlignment) {
+                data.append("virtueAlignment", JSON.stringify(props.virtueAlignment));
+            }
+            if (props.mediaConsumption) {
+                data.append("mediaConsumption", JSON.stringify(props.mediaConsumption));
+            }
+            if (props.emotionalRegulation) {
+                data.append("emotionalRegulation", JSON.stringify(props.emotionalRegulation));
+            }
+            if (props.goalProgress) {
+                data.append("goalProgress", JSON.stringify(props.goalProgress));
+            }
+        }
+
         if (props.audioChunks.current.length > 0) {
             const audioBlob = new Blob(props.audioChunks.current, { type: props.audioChunks.current[0].type });
             if (audioBlob.size === 0) {

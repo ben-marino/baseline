@@ -1,0 +1,330 @@
+.sociallyfed-journal-extensions {
+    margin: 20px 0;
+    padding: 0 10px;
+}
+
+.sociallyfed-journal-extensions ion-card {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin: 0;
+}
+
+.sociallyfed-journal-extensions ion-card-header {
+    padding: 16px 20px 8px;
+}
+
+.sociallyfed-journal-extensions ion-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ion-color-primary);
+}
+
+.sociallyfed-journal-extensions ion-card-content {
+    padding: 0 20px 20px;
+}
+
+.section-description {
+    color: var(--ion-color-medium);
+    font-size: 14px;
+    margin: 8px 0 16px;
+    line-height: 1.4;
+}
+
+/* Virtue Alignment Section */
+.virtue-alignment-section h3,
+.media-consumption-section h3,
+.emotional-regulation-section h3,
+.goal-progress-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ion-color-dark);
+}
+
+.virtue-item {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+}
+
+.virtue-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.virtue-name {
+    flex: 1;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.virtue-context {
+    margin-top: 16px;
+}
+
+.virtue-context ion-textarea {
+    --padding-start: 12px;
+    --padding-end: 12px;
+    --padding-top: 8px;
+    --padding-bottom: 8px;
+    border: 1px solid var(--ion-color-light-shade);
+    border-radius: 6px;
+    background: var(--ion-color-light);
+}
+
+/* Media Consumption Section */
+.media-item {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+}
+
+.media-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.media-category {
+    flex: 1;
+    font-weight: 500;
+}
+
+.media-mood-tracking {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+}
+
+.media-mood-tracking h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mood-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mood-inputs > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mood-inputs label {
+    font-size: 12px;
+    color: var(--ion-color-medium);
+    font-weight: 500;
+}
+
+/* Emotional Regulation Section */
+.effectiveness-rating {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+}
+
+.effectiveness-rating label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.rating-label {
+    display: block;
+    text-align: center;
+    margin-top: 4px;
+    font-weight: 600;
+    color: var(--ion-color-primary);
+}
+
+.techniques-section,
+.triggers-section,
+.coping-section {
+    margin: 20px 0;
+}
+
+.techniques-section h4,
+.triggers-section h4,
+.coping-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.input-group {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 12px;
+}
+
+.input-group ion-textarea {
+    flex: 1;
+    --padding-start: 12px;
+    --padding-end: 12px;
+    --padding-top: 8px;
+    --padding-bottom: 8px;
+    border: 1px solid var(--ion-color-light-shade);
+    border-radius: 6px;
+    background: var(--ion-color-light);
+}
+
+.input-group ion-button {
+    margin: 0;
+    --padding-start: 16px;
+    --padding-end: 16px;
+    height: 40px;
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tags-container ion-chip {
+    margin: 0;
+}
+
+/* Goal Progress Section */
+.overall-progress {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+}
+
+.overall-progress h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.progress-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.progress-display ion-range {
+    flex: 1;
+}
+
+.add-goal {
+    margin: 20px 0;
+}
+
+.add-goal h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.goals-list {
+    margin-top: 20px;
+}
+
+.goals-list h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.goal-item {
+    margin: 12px 0;
+    padding: 12px;
+    background: var(--ion-color-light);
+    border-radius: 8px;
+}
+
+.goal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.goal-name {
+    font-weight: 500;
+    flex: 1;
+}
+
+.goal-header ion-icon {
+    color: var(--ion-color-danger);
+    cursor: pointer;
+}
+
+.goal-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.goal-progress ion-range {
+    flex: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    .sociallyfed-journal-extensions {
+        padding: 0 5px;
+    }
+    
+    .sociallyfed-journal-extensions ion-card-content {
+        padding: 0 15px 15px;
+    }
+    
+    .input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .input-group ion-button {
+        align-self: flex-end;
+        width: fit-content;
+    }
+    
+    .progress-display {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .goal-progress {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .virtue-item,
+    .media-item,
+    .media-mood-tracking,
+    .effectiveness-rating,
+    .goal-item {
+        background: var(--ion-color-dark-shade);
+    }
+    
+    .virtue-context ion-textarea,
+    .input-group ion-textarea {
+        background: var(--ion-color-dark-shade);
+        border-color: var(--ion-color-dark-tint);
+    }
+} 

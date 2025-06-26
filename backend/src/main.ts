@@ -430,6 +430,128 @@ export const moodLog = async (req: UserRequest, res: Response) => {
         }
     }
 
+    // Emotional regulation validation
+    if (data.emotionalRegulation) {
+        if (typeof data.emotionalRegulation !== "object") {
+            res.send(400);
+            return;
+        }
+        
+        // Validate techniques array
+        if (data.emotionalRegulation.techniques !== undefined) {
+            if (!Array.isArray(data.emotionalRegulation.techniques)) {
+                res.send(400);
+                return;
+            }
+            
+            for (const technique of data.emotionalRegulation.techniques) {
+                if (typeof technique !== "string" || technique.length > 200) {
+                    res.send(400);
+                    return;
+                }
+            }
+        }
+        
+        // Validate effectiveness
+        if (data.emotionalRegulation.effectiveness !== undefined) {
+            const effectiveness = Number(data.emotionalRegulation.effectiveness);
+            if (typeof effectiveness !== "number" || isNaN(effectiveness) || effectiveness < 1 || effectiveness > 10) {
+                res.send(400);
+                return;
+            }
+        }
+        
+        // Validate triggers array
+        if (data.emotionalRegulation.triggers !== undefined) {
+            if (!Array.isArray(data.emotionalRegulation.triggers)) {
+                res.send(400);
+                return;
+            }
+            
+            for (const trigger of data.emotionalRegulation.triggers) {
+                if (typeof trigger !== "string" || trigger.length > 200) {
+                    res.send(400);
+                    return;
+                }
+            }
+        }
+        
+        // Validate coping strategies array
+        if (data.emotionalRegulation.copingStrategies !== undefined) {
+            if (!Array.isArray(data.emotionalRegulation.copingStrategies)) {
+                res.send(400);
+                return;
+            }
+            
+            for (const strategy of data.emotionalRegulation.copingStrategies) {
+                if (typeof strategy !== "string" || strategy.length > 200) {
+                    res.send(400);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Goal progress validation
+    if (data.goalProgress) {
+        if (typeof data.goalProgress !== "object") {
+            res.send(400);
+            return;
+        }
+        
+        // Validate goals array
+        if (data.goalProgress.goals !== undefined) {
+            if (!Array.isArray(data.goalProgress.goals)) {
+                res.send(400);
+                return;
+            }
+            
+            for (const goal of data.goalProgress.goals) {
+                if (typeof goal !== "object") {
+                    res.send(400);
+                    return;
+                }
+                
+                if (typeof goal.id !== "string" || goal.id.length > 50) {
+                    res.send(400);
+                    return;
+                }
+                
+                if (typeof goal.name !== "string" || goal.name.length > 200) {
+                    res.send(400);
+                    return;
+                }
+                
+                if (goal.progress !== undefined) {
+                    const progress = Number(goal.progress);
+                    if (typeof progress !== "number" || isNaN(progress) || progress < 0 || progress > 100) {
+                        res.send(400);
+                        return;
+                    }
+                }
+                
+                if (typeof goal.category !== "string" || goal.category.length > 50) {
+                    res.send(400);
+                    return;
+                }
+                
+                if (goal.notes !== undefined && (typeof goal.notes !== "string" || goal.notes.length > 500)) {
+                    res.send(400);
+                    return;
+                }
+            }
+        }
+        
+        // Validate overall progress
+        if (data.goalProgress.overallProgress !== undefined) {
+            const overallProgress = Number(data.goalProgress.overallProgress);
+            if (typeof overallProgress !== "number" || isNaN(overallProgress) || overallProgress < 0 || overallProgress > 100) {
+                res.send(400);
+                return;
+            }
+        }
+    }
+
     let filePaths: string[] = [];
     let images = files["file"];
     // If user has screenshots:
@@ -586,6 +708,14 @@ export const moodLog = async (req: UserRequest, res: Response) => {
     
     if (data.promptMetadata) {
         logData.promptMetadata = data.promptMetadata;
+    }
+    
+    if (data.emotionalRegulation) {
+        logData.emotionalRegulation = data.emotionalRegulation;
+    }
+    
+    if (data.goalProgress) {
+        logData.goalProgress = data.goalProgress;
     }
 
     const p1 = db.ref(`/${req.user!.user_id}/logs/${globalNow.toMillis()}`).set({
