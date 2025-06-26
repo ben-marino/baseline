@@ -208,6 +208,226 @@ export interface CyberneticConfig {
     feedbackSensitivity: 'low' | 'medium' | 'high';
 }
 
+// New interfaces for additional philosophical frameworks
+export interface StoicPracticesConfig {
+    // Daily reflection practices
+    morningReflection: {
+        enabled: boolean;
+        time: string; // HH:MM
+        duration: number; // minutes
+        prompts: string[];
+        gratitudePractice: boolean;
+        intentionSetting: boolean;
+        obstaclePreparation: boolean;
+    };
+    
+    eveningReview: {
+        enabled: boolean;
+        time: string; // HH:MM
+        duration: number; // minutes
+        prompts: string[];
+        dayReview: boolean;
+        virtueAssessment: boolean;
+        tomorrowPreparation: boolean;
+    };
+    
+    // Virtue focus settings
+    virtueFocus: {
+        rotationEnabled: boolean;
+        rotationPeriod: 'daily' | 'weekly' | 'monthly';
+        currentVirtue: 'courage' | 'wisdom' | 'justice' | 'temperance';
+        customVirtues: string[];
+        focusReminders: boolean;
+        challengeTracking: boolean;
+    };
+    
+    // Stoic exercises
+    exercises: {
+        mementoMori: {
+            enabled: boolean;
+            frequency: 'daily' | 'weekly' | 'monthly';
+            reminderTime: string; // HH:MM
+        };
+        amorFati: {
+            enabled: boolean;
+            triggerEvents: string[];
+            reflectionPrompts: string[];
+        };
+        premeditatioMalorum: {
+            enabled: boolean;
+            scenarios: string[];
+            preparationTime: number; // minutes
+        };
+        voluntaryDiscomfort: {
+            enabled: boolean;
+            types: ('cold' | 'hunger' | 'simplicity' | 'silence')[];
+            frequency: 'daily' | 'weekly' | 'monthly';
+        };
+    };
+}
+
+export interface CyberneticLoopsConfig {
+    // Goal setting and tracking
+    goalSetting: {
+        enabled: boolean;
+        maxActiveGoals: number;
+        goalCategories: ('health' | 'learning' | 'relationships' | 'career' | 'spiritual' | 'financial')[];
+        smartGoalFramework: boolean;
+        goalReviewFrequency: 'weekly' | 'biweekly' | 'monthly';
+    };
+    
+    progressTracking: {
+        enabled: boolean;
+        metrics: ('quantitative' | 'qualitative' | 'behavioral' | 'emotional')[];
+        trackingFrequency: 'daily' | 'weekly' | 'monthly';
+        visualizationEnabled: boolean;
+        trendAnalysis: boolean;
+    };
+    
+    feedbackFrequency: {
+        microFeedback: {
+            enabled: boolean;
+            triggers: ('completion' | 'milestone' | 'failure' | 'success')[];
+            immediate: boolean;
+            delayed: boolean;
+        };
+        macroFeedback: {
+            enabled: boolean;
+            frequency: 'weekly' | 'monthly' | 'quarterly';
+            comprehensiveReview: boolean;
+            systemAdjustment: boolean;
+        };
+    };
+    
+    // Adaptive systems
+    adaptation: {
+        autoAdjustment: boolean;
+        learningRate: number; // 0.1-1.0
+        adaptationThreshold: number; // 0.1-1.0
+        feedbackSensitivity: 'low' | 'medium' | 'high';
+        goalModification: boolean;
+        strategyEvolution: boolean;
+    };
+}
+
+export interface MediaDietTrackingConfig {
+    // Platform usage tracking
+    platforms: {
+        [platform: string]: {
+            enabled: boolean;
+            category: 'social' | 'entertainment' | 'news' | 'educational' | 'productive';
+            dailyLimit: number; // minutes
+            weeklyLimit: number; // minutes
+            tracking: boolean;
+            notifications: boolean;
+            blockAfterLimit: boolean;
+        };
+    };
+    
+    // Content type categorization
+    contentTypes: {
+        [contentType: string]: {
+            enabled: boolean;
+            category: 'mindless' | 'informative' | 'entertaining' | 'educational' | 'productive';
+            moodImpact: 'positive' | 'negative' | 'neutral';
+            timeOfDay: 'morning' | 'afternoon' | 'evening' | 'anytime';
+            duration: 'short' | 'medium' | 'long';
+        };
+    };
+    
+    // Tracking settings
+    tracking: {
+        passiveTracking: boolean;
+        activeLogging: boolean;
+        moodCorrelation: boolean;
+        productivityImpact: boolean;
+        socialComparisonTracking: boolean;
+        timeOfDayAnalysis: boolean;
+        weeklyReports: boolean;
+    };
+    
+    // Intervention settings
+    interventions: {
+        gentleReminders: boolean;
+        hardBlocks: boolean;
+        alternativeSuggestions: boolean;
+        moodBasedInterventions: boolean;
+        productivityBasedInterventions: boolean;
+    };
+}
+
+export interface PatternRecognitionConfig {
+    // Pattern types to highlight
+    patternTypes: {
+        mood: {
+            enabled: boolean;
+            triggers: boolean;
+            cycles: boolean;
+            correlations: boolean;
+            seasonalPatterns: boolean;
+        };
+        behavior: {
+            enabled: boolean;
+            habits: boolean;
+            routines: boolean;
+            triggers: boolean;
+            consequences: boolean;
+        };
+        media: {
+            enabled: boolean;
+            consumptionPatterns: boolean;
+            platformPreferences: boolean;
+            contentTypeCorrelations: boolean;
+            timeOfDayPatterns: boolean;
+        };
+        social: {
+            enabled: boolean;
+            interactionPatterns: boolean;
+            relationshipDynamics: boolean;
+            communicationStyles: boolean;
+            socialComparison: boolean;
+        };
+        productivity: {
+            enabled: boolean;
+            focusPatterns: boolean;
+            energyCycles: boolean;
+            taskCompletion: boolean;
+            procrastinationTriggers: boolean;
+        };
+    };
+    
+    // Analysis preferences
+    analysis: {
+        frequency: 'daily' | 'weekly' | 'monthly';
+        depth: 'surface' | 'moderate' | 'deep';
+        visualization: boolean;
+        insights: boolean;
+        recommendations: boolean;
+        trendAnalysis: boolean;
+        anomalyDetection: boolean;
+    };
+    
+    // Notification preferences
+    notifications: {
+        patternDiscovered: boolean;
+        trendAlert: boolean;
+        anomalyWarning: boolean;
+        weeklySummary: boolean;
+        monthlyReport: boolean;
+    };
+    
+    // Custom patterns
+    customPatterns: {
+        enabled: boolean;
+        patterns: Array<{
+            name: string;
+            description: string;
+            criteria: string;
+            enabled: boolean;
+        }>;
+    };
+}
+
 export interface SociallyFedConfig {
     llmServer: LLMServerConfig;
     privacy: PrivacyConfig;
@@ -218,6 +438,10 @@ export interface SociallyFedConfig {
     mediaConsumption: MediaConsumptionConfig;
     stoicVirtues: StoicVirtueConfig;
     cybernetics: CyberneticConfig;
+    stoicPractices: StoicPracticesConfig;
+    cyberneticLoops: CyberneticLoopsConfig;
+    mediaDietTracking: MediaDietTrackingConfig;
+    patternRecognition: PatternRecognitionConfig;
     lastUpdated: number;
     version: string;
 }
@@ -432,6 +656,173 @@ const DEFAULT_CONFIG: SociallyFedConfig = {
         learningRate: 0.5,
         adaptationThreshold: 0.7,
         feedbackSensitivity: 'medium'
+    },
+    stoicPractices: {
+        morningReflection: {
+            enabled: true,
+            time: '08:00',
+            duration: 30,
+            prompts: ["What are you grateful for today?", "What was a positive experience today?", "What was a negative experience today?"],
+            gratitudePractice: true,
+            intentionSetting: true,
+            obstaclePreparation: true
+        },
+        eveningReview: {
+            enabled: true,
+            time: '18:00',
+            duration: 30,
+            prompts: ["What was a moment today when you made a thoughtful decision or learned something new?", "What was a moment today when you practiced self-control or moderation?"],
+            dayReview: true,
+            virtueAssessment: true,
+            tomorrowPreparation: true
+        },
+        virtueFocus: {
+            rotationEnabled: true,
+            rotationPeriod: 'daily',
+            currentVirtue: 'courage',
+            customVirtues: ['wisdom', 'justice', 'temperance'],
+            focusReminders: true,
+            challengeTracking: true
+        },
+        exercises: {
+            mementoMori: {
+                enabled: true,
+                frequency: 'daily',
+                reminderTime: '12:00'
+            },
+            amorFati: {
+                enabled: true,
+                triggerEvents: ['new opportunities', 'challenges', 'growth'],
+                reflectionPrompts: ["What was a moment today when you felt amor fati?", "What was a moment today when you felt a sense of purpose?"]
+            },
+            premeditatioMalorum: {
+                enabled: true,
+                scenarios: ['a difficult decision', 'a conflict with a loved one', 'a significant loss'],
+                preparationTime: 15
+            },
+            voluntaryDiscomfort: {
+                enabled: true,
+                types: ['cold', 'hunger', 'simplicity', 'silence'],
+                frequency: 'daily'
+            }
+        }
+    },
+    cyberneticLoops: {
+        goalSetting: {
+            enabled: true,
+            maxActiveGoals: 5,
+            goalCategories: ['health', 'learning', 'relationships', 'career', 'spiritual', 'financial'],
+            smartGoalFramework: true,
+            goalReviewFrequency: 'weekly'
+        },
+        progressTracking: {
+            enabled: true,
+            metrics: ['quantitative', 'qualitative', 'behavioral', 'emotional'],
+            trackingFrequency: 'daily',
+            visualizationEnabled: true,
+            trendAnalysis: true
+        },
+        feedbackFrequency: {
+            microFeedback: {
+                enabled: true,
+                triggers: ['completion', 'milestone', 'failure', 'success'],
+                immediate: true,
+                delayed: true
+            },
+            macroFeedback: {
+                enabled: true,
+                frequency: 'weekly',
+                comprehensiveReview: true,
+                systemAdjustment: true
+            }
+        },
+        adaptation: {
+            autoAdjustment: true,
+            learningRate: 0.7,
+            adaptationThreshold: 0.8,
+            feedbackSensitivity: 'high',
+            goalModification: true,
+            strategyEvolution: true
+        }
+    },
+    mediaDietTracking: {
+        platforms: {},
+        contentTypes: {},
+        tracking: {
+            passiveTracking: true,
+            activeLogging: true,
+            moodCorrelation: true,
+            productivityImpact: true,
+            socialComparisonTracking: true,
+            timeOfDayAnalysis: true,
+            weeklyReports: true
+        },
+        interventions: {
+            gentleReminders: true,
+            hardBlocks: true,
+            alternativeSuggestions: true,
+            moodBasedInterventions: true,
+            productivityBasedInterventions: true
+        }
+    },
+    patternRecognition: {
+        patternTypes: {
+            mood: {
+                enabled: true,
+                triggers: true,
+                cycles: true,
+                correlations: true,
+                seasonalPatterns: true
+            },
+            behavior: {
+                enabled: true,
+                habits: true,
+                routines: true,
+                triggers: true,
+                consequences: true
+            },
+            media: {
+                enabled: true,
+                consumptionPatterns: true,
+                platformPreferences: true,
+                contentTypeCorrelations: true,
+                timeOfDayPatterns: true
+            },
+            social: {
+                enabled: true,
+                interactionPatterns: true,
+                relationshipDynamics: true,
+                communicationStyles: true,
+                socialComparison: true
+            },
+            productivity: {
+                enabled: true,
+                focusPatterns: true,
+                energyCycles: true,
+                taskCompletion: true,
+                procrastinationTriggers: true
+            }
+        },
+        analysis: {
+            frequency: 'daily',
+            depth: 'surface',
+            visualization: true,
+            insights: true,
+            recommendations: true,
+            trendAnalysis: true,
+            anomalyDetection: true
+        },
+        notifications: {
+            patternDiscovered: true,
+            trendAlert: true,
+            anomalyWarning: true,
+            weeklySummary: true,
+            monthlyReport: true
+        },
+        customPatterns: {
+            enabled: true,
+            patterns: []
+        }
     },
     lastUpdated: Date.now(),
     version: '1.0.0'
@@ -950,6 +1341,42 @@ class SociallyFedConfigService {
             default:
                 return false;
         }
+    }
+
+    async updateStoicPractices(config: Partial<StoicPracticesConfig>): Promise<void> {
+        this.config.stoicPractices = { ...this.config.stoicPractices, ...config };
+        await this.saveConfiguration();
+    }
+
+    async updateCyberneticLoops(config: Partial<CyberneticLoopsConfig>): Promise<void> {
+        this.config.cyberneticLoops = { ...this.config.cyberneticLoops, ...config };
+        await this.saveConfiguration();
+    }
+
+    async updateMediaDietTracking(config: Partial<MediaDietTrackingConfig>): Promise<void> {
+        this.config.mediaDietTracking = { ...this.config.mediaDietTracking, ...config };
+        await this.saveConfiguration();
+    }
+
+    async updatePatternRecognition(config: Partial<PatternRecognitionConfig>): Promise<void> {
+        this.config.patternRecognition = { ...this.config.patternRecognition, ...config };
+        await this.saveConfiguration();
+    }
+
+    getStoicPracticesConfig(): StoicPracticesConfig {
+        return this.config.stoicPractices;
+    }
+
+    getCyberneticLoopsConfig(): CyberneticLoopsConfig {
+        return this.config.cyberneticLoops;
+    }
+
+    getMediaDietTrackingConfig(): MediaDietTrackingConfig {
+        return this.config.mediaDietTracking;
+    }
+
+    getPatternRecognitionConfig(): PatternRecognitionConfig {
+        return this.config.patternRecognition;
     }
 }
 

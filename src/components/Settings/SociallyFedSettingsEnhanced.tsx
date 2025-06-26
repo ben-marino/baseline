@@ -1,7 +1,7 @@
 import { IonAccordion, IonAccordionGroup, IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonCheckbox, IonCol, IonContent, IonGrid, IonIcon, IonInput, IonItem, IonLabel, IonList, IonRadio, IonRadioGroup, IonRange, IonRow, IonSelect, IonSelectOption, IonSpinner, IonText, IonTextarea, IonToggle } from "@ionic/react";
-import { add, remove, settings, shield, analytics, time, heart, server, phonePortrait, school, refresh } from "ionicons/icons";
+import { add, remove, settings, shield, analytics, time, heart, server, phonePortrait, school, refresh, calendar, trendingUp, eye } from "ionicons/icons";
 import { useEffect, useState } from "react";
-import { sociallyFedConfig, LLMServerConfig, PrivacyConfig, FeatureToggles, AnalysisFrequency, VirtueDefinition, MediaConsumptionConfig, StoicVirtueConfig, CyberneticConfig } from "../../services/SociallyFedConfigService";
+import { sociallyFedConfig, LLMServerConfig, PrivacyConfig, FeatureToggles, AnalysisFrequency, VirtueDefinition, MediaConsumptionConfig, StoicVirtueConfig, CyberneticConfig, StoicPracticesConfig, CyberneticLoopsConfig, MediaDietTrackingConfig, PatternRecognitionConfig } from "../../services/SociallyFedConfigService";
 import { toast } from "../../helpers";
 import "./SociallyFedSettings.css";
 
@@ -158,6 +158,62 @@ const SociallyFedSettingsEnhanced = () => {
                             <CyberneticSettings 
                                 config={config.cybernetics}
                                 onUpdate={(cyberneticConfig: CyberneticConfig) => updateConfig({ cybernetics: cyberneticConfig })}
+                            />
+                        </div>
+                    </IonAccordion>
+
+                    {/* Stoic Practices */}
+                    <IonAccordion value="stoic-practices">
+                        <IonItem slot="header" color="light">
+                            <IonIcon icon={calendar} slot="start" />
+                            <IonLabel>Stoic Practices</IonLabel>
+                        </IonItem>
+                        <div slot="content">
+                            <StoicPracticesSettings 
+                                config={config.stoicPractices}
+                                onUpdate={(stoicPracticesConfig: StoicPracticesConfig) => updateConfig({ stoicPractices: stoicPracticesConfig })}
+                            />
+                        </div>
+                    </IonAccordion>
+
+                    {/* Cybernetic Loops */}
+                    <IonAccordion value="cybernetic-loops">
+                        <IonItem slot="header" color="light">
+                            <IonIcon icon={trendingUp} slot="start" />
+                            <IonLabel>Cybernetic Loops</IonLabel>
+                        </IonItem>
+                        <div slot="content">
+                            <CyberneticLoopsSettings 
+                                config={config.cyberneticLoops}
+                                onUpdate={(cyberneticLoopsConfig: CyberneticLoopsConfig) => updateConfig({ cyberneticLoops: cyberneticLoopsConfig })}
+                            />
+                        </div>
+                    </IonAccordion>
+
+                    {/* Media Diet Tracking */}
+                    <IonAccordion value="media-diet">
+                        <IonItem slot="header" color="light">
+                            <IonIcon icon={phonePortrait} slot="start" />
+                            <IonLabel>Media Diet Tracking</IonLabel>
+                        </IonItem>
+                        <div slot="content">
+                            <MediaDietTrackingSettings 
+                                config={config.mediaDietTracking}
+                                onUpdate={(mediaDietConfig: MediaDietTrackingConfig) => updateConfig({ mediaDietTracking: mediaDietConfig })}
+                            />
+                        </div>
+                    </IonAccordion>
+
+                    {/* Pattern Recognition */}
+                    <IonAccordion value="pattern-recognition">
+                        <IonItem slot="header" color="light">
+                            <IonIcon icon={eye} slot="start" />
+                            <IonLabel>Pattern Recognition</IonLabel>
+                        </IonItem>
+                        <div slot="content">
+                            <PatternRecognitionSettings 
+                                config={config.patternRecognition}
+                                onUpdate={(patternConfig: PatternRecognitionConfig) => updateConfig({ patternRecognition: patternConfig })}
                             />
                         </div>
                     </IonAccordion>
@@ -650,6 +706,469 @@ const CyberneticSettings = ({
                             <IonSelectOption value="medium">Medium</IonSelectOption>
                             <IonSelectOption value="high">High</IonSelectOption>
                         </IonSelect>
+                    </IonItem>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
+// Stoic Practices Settings Component
+const StoicPracticesSettings = ({ 
+    config, 
+    onUpdate 
+}: { 
+    config: StoicPracticesConfig; 
+    onUpdate: (config: StoicPracticesConfig) => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<StoicPracticesConfig>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Stoic Practices</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel>Morning Reflection</IonLabel>
+                        <IonToggle
+                            checked={localConfig.morningReflection.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                morningReflection: { 
+                                    ...localConfig.morningReflection, 
+                                    enabled: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Evening Review</IonLabel>
+                        <IonToggle
+                            checked={localConfig.eveningReview.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                eveningReview: { 
+                                    ...localConfig.eveningReview, 
+                                    enabled: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Virtue Focus Reminders</IonLabel>
+                        <IonToggle
+                            checked={localConfig.virtueFocus.focusReminders}
+                            onIonChange={(e) => handleUpdate({ 
+                                virtueFocus: { 
+                                    ...localConfig.virtueFocus, 
+                                    focusReminders: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Challenge Tracking</IonLabel>
+                        <IonToggle
+                            checked={localConfig.virtueFocus.challengeTracking}
+                            onIonChange={(e) => handleUpdate({ 
+                                virtueFocus: { 
+                                    ...localConfig.virtueFocus, 
+                                    challengeTracking: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Memento Mori</IonLabel>
+                        <IonToggle
+                            checked={localConfig.exercises.mementoMori.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                exercises: { 
+                                    ...localConfig.exercises,
+                                    mementoMori: { 
+                                        ...localConfig.exercises.mementoMori, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Amor Fati</IonLabel>
+                        <IonToggle
+                            checked={localConfig.exercises.amorFati.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                exercises: { 
+                                    ...localConfig.exercises,
+                                    amorFati: { 
+                                        ...localConfig.exercises.amorFati, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
+// Cybernetic Loops Settings Component
+const CyberneticLoopsSettings = ({ 
+    config, 
+    onUpdate 
+}: { 
+    config: CyberneticLoopsConfig; 
+    onUpdate: (config: CyberneticLoopsConfig) => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<CyberneticLoopsConfig>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Cybernetic Loops</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel>Goal Setting</IonLabel>
+                        <IonToggle
+                            checked={localConfig.goalSetting.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                goalSetting: { 
+                                    ...localConfig.goalSetting, 
+                                    enabled: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Progress Tracking</IonLabel>
+                        <IonToggle
+                            checked={localConfig.progressTracking.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                progressTracking: { 
+                                    ...localConfig.progressTracking, 
+                                    enabled: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Micro Feedback</IonLabel>
+                        <IonToggle
+                            checked={localConfig.feedbackFrequency.microFeedback.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                feedbackFrequency: { 
+                                    ...localConfig.feedbackFrequency,
+                                    microFeedback: { 
+                                        ...localConfig.feedbackFrequency.microFeedback, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Macro Feedback</IonLabel>
+                        <IonToggle
+                            checked={localConfig.feedbackFrequency.macroFeedback.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                feedbackFrequency: { 
+                                    ...localConfig.feedbackFrequency,
+                                    macroFeedback: { 
+                                        ...localConfig.feedbackFrequency.macroFeedback, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Auto Adjustment</IonLabel>
+                        <IonToggle
+                            checked={localConfig.adaptation.autoAdjustment}
+                            onIonChange={(e) => handleUpdate({ 
+                                adaptation: { 
+                                    ...localConfig.adaptation, 
+                                    autoAdjustment: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Learning Rate</IonLabel>
+                        <IonRange
+                            value={localConfig.adaptation.learningRate}
+                            min={0.1}
+                            max={1.0}
+                            step={0.1}
+                            onIonChange={(e) => handleUpdate({ 
+                                adaptation: { 
+                                    ...localConfig.adaptation, 
+                                    learningRate: e.detail.value as number 
+                                } 
+                            })}
+                        />
+                        <IonText>{localConfig.adaptation.learningRate}</IonText>
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Adaptation Threshold</IonLabel>
+                        <IonRange
+                            value={localConfig.adaptation.adaptationThreshold}
+                            min={0.1}
+                            max={1.0}
+                            step={0.1}
+                            onIonChange={(e) => handleUpdate({ 
+                                adaptation: { 
+                                    ...localConfig.adaptation, 
+                                    adaptationThreshold: e.detail.value as number 
+                                } 
+                            })}
+                        />
+                        <IonText>{localConfig.adaptation.adaptationThreshold}</IonText>
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel position="stacked">Feedback Sensitivity</IonLabel>
+                        <IonSelect
+                            value={localConfig.adaptation.feedbackSensitivity}
+                            onIonChange={(e) => handleUpdate({ 
+                                adaptation: { 
+                                    ...localConfig.adaptation, 
+                                    feedbackSensitivity: e.detail.value 
+                                } 
+                            })}
+                        >
+                            <IonSelectOption value="low">Low</IonSelectOption>
+                            <IonSelectOption value="medium">Medium</IonSelectOption>
+                            <IonSelectOption value="high">High</IonSelectOption>
+                        </IonSelect>
+                    </IonItem>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
+// Media Diet Tracking Settings Component
+const MediaDietTrackingSettings = ({ 
+    config, 
+    onUpdate 
+}: { 
+    config: MediaDietTrackingConfig; 
+    onUpdate: (config: MediaDietTrackingConfig) => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<MediaDietTrackingConfig>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Media Diet Tracking</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel>Passive Tracking</IonLabel>
+                        <IonToggle
+                            checked={localConfig.tracking.passiveTracking}
+                            onIonChange={(e) => handleUpdate({ 
+                                tracking: { 
+                                    ...localConfig.tracking, 
+                                    passiveTracking: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Active Logging</IonLabel>
+                        <IonToggle
+                            checked={localConfig.tracking.activeLogging}
+                            onIonChange={(e) => handleUpdate({ 
+                                tracking: { 
+                                    ...localConfig.tracking, 
+                                    activeLogging: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Mood Correlation</IonLabel>
+                        <IonToggle
+                            checked={localConfig.tracking.moodCorrelation}
+                            onIonChange={(e) => handleUpdate({ 
+                                tracking: { 
+                                    ...localConfig.tracking, 
+                                    moodCorrelation: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Productivity Impact</IonLabel>
+                        <IonToggle
+                            checked={localConfig.tracking.productivityImpact}
+                            onIonChange={(e) => handleUpdate({ 
+                                tracking: { 
+                                    ...localConfig.tracking, 
+                                    productivityImpact: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Social Comparison Tracking</IonLabel>
+                        <IonToggle
+                            checked={localConfig.tracking.socialComparisonTracking}
+                            onIonChange={(e) => handleUpdate({ 
+                                tracking: { 
+                                    ...localConfig.tracking, 
+                                    socialComparisonTracking: e.detail.checked 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+                </IonList>
+            </IonCardContent>
+        </IonCard>
+    );
+};
+
+// Pattern Recognition Settings Component
+const PatternRecognitionSettings = ({ 
+    config, 
+    onUpdate 
+}: { 
+    config: PatternRecognitionConfig; 
+    onUpdate: (config: PatternRecognitionConfig) => void;
+}) => {
+    const [localConfig, setLocalConfig] = useState(config);
+
+    const handleUpdate = (updates: Partial<PatternRecognitionConfig>) => {
+        const newConfig = { ...localConfig, ...updates };
+        setLocalConfig(newConfig);
+        onUpdate(newConfig);
+    };
+
+    return (
+        <IonCard>
+            <IonCardHeader>
+                <IonCardTitle>Pattern Recognition</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+                <IonList>
+                    <IonItem>
+                        <IonLabel>Mood Patterns</IonLabel>
+                        <IonToggle
+                            checked={localConfig.patternTypes.mood.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                patternTypes: { 
+                                    ...localConfig.patternTypes,
+                                    mood: { 
+                                        ...localConfig.patternTypes.mood, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Behavior Patterns</IonLabel>
+                        <IonToggle
+                            checked={localConfig.patternTypes.behavior.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                patternTypes: { 
+                                    ...localConfig.patternTypes,
+                                    behavior: { 
+                                        ...localConfig.patternTypes.behavior, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Media Patterns</IonLabel>
+                        <IonToggle
+                            checked={localConfig.patternTypes.media.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                patternTypes: { 
+                                    ...localConfig.patternTypes,
+                                    media: { 
+                                        ...localConfig.patternTypes.media, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Social Patterns</IonLabel>
+                        <IonToggle
+                            checked={localConfig.patternTypes.social.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                patternTypes: { 
+                                    ...localConfig.patternTypes,
+                                    social: { 
+                                        ...localConfig.patternTypes.social, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
+                    </IonItem>
+
+                    <IonItem>
+                        <IonLabel>Productivity Patterns</IonLabel>
+                        <IonToggle
+                            checked={localConfig.patternTypes.productivity.enabled}
+                            onIonChange={(e) => handleUpdate({ 
+                                patternTypes: { 
+                                    ...localConfig.patternTypes,
+                                    productivity: { 
+                                        ...localConfig.patternTypes.productivity, 
+                                        enabled: e.detail.checked 
+                                    } 
+                                } 
+                            })}
+                        />
                     </IonItem>
                 </IonList>
             </IonCardContent>
