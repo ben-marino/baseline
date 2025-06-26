@@ -1,11 +1,12 @@
-import { IonAlert, IonIcon, IonSpinner } from "@ionic/react";
-import { closeOutline } from "ionicons/icons";
+import { IonAlert, IonIcon, IonSpinner, IonButton, IonItem, IonLabel } from "@ionic/react";
+import { closeOutline, settings, server, chevronForward } from "ionicons/icons";
 import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import EndSpacer from "../components/EndSpacer";
 import KeyboardSpacer from "../components/KeyboardSpacer";
 import PDP from "../components/Settings/PDP";
 import SettingsBox from "../components/Settings/SettingsBox";
+import SociallyFedSettingsBox from "../components/Settings/SociallyFedSettingsBox";
 import { auth, signOutAndCleanUp } from "../firebase";
 import { goBackSafely, toast } from "../helpers";
 import history from "../history";
@@ -42,6 +43,55 @@ const Settings = () => {
                     attr="skipWIR"
                     description="Turn this on to get the option to skip Week In Review each week. (We don't recommend turning this on — Week In Review is quite useful, and only takes a few minutes each week.)"
                 />
+                
+                {/* SociallyFed Settings Section */}
+                <div className="br"></div>
+                <div className="sociallyfed-settings-section">
+                    <h3 style={{ margin: "16px 0 8px 0", color: "var(--ion-color-primary)" }}>
+                        <IonIcon icon={settings} style={{ marginRight: "8px" }} />
+                        SociallyFed Features
+                    </h3>
+                    <p style={{ margin: "0 0 16px 0", fontSize: "14px", color: "var(--ion-color-medium)" }}>
+                        Configure local LLM server, privacy preferences, and SociallyFed feature toggles.
+                    </p>
+                    
+                    {/* Quick SociallyFed Toggles */}
+                    <SociallyFedSettingsBox
+                        title="Virtue Tracking"
+                        feature="virtue-tracking"
+                        configKey="enableVirtueTracking"
+                        description="Track daily virtue alignment and stoic practices."
+                    />
+                    <SociallyFedSettingsBox
+                        title="Media Consumption Tracking"
+                        feature="media-tracking"
+                        configKey="enableMediaTracking"
+                        description="Monitor media usage patterns and their impact on mood."
+                    />
+                    <SociallyFedSettingsBox
+                        title="Pattern Recognition"
+                        feature="pattern-tracking"
+                        configKey="enablePatternTracking"
+                        description="Identify behavioral patterns and correlations."
+                    />
+                    <SociallyFedSettingsBox
+                        title="AI Analysis"
+                        feature="ai-analysis"
+                        configKey="enableAIAnalysis"
+                        description="Enable AI-powered insights and recommendations."
+                    />
+                    
+                    {/* SociallyFed Settings */}
+                    <IonItem button onClick={() => history.push('/sociallyfed-settings')}>
+                        <IonIcon icon={server} slot="start" />
+                        <IonLabel>
+                            <h2>SociallyFed Configuration</h2>
+                            <p>Configure local LLM server and philosophical frameworks</p>
+                        </IonLabel>
+                        <IonIcon icon={chevronForward} slot="end" />
+                    </IonItem>
+                </div>
+                
                 <PDP taskBlock={setDoingAsyncTask} />
                 <div className="br"></div>
                 <p className="margin-bottom-0" style={{"alignSelf": "flex-start"}}>Need help? Email us at <a href="mailto:hello@getbaseline.app">hello@getbaseline.app</a>.</p>

@@ -44,6 +44,7 @@ import WeekInReview from "./pages/WeekInReview";
 import SurveyResults from "./pages/SurveyResults";
 import MyData from "./pages/MyData";
 import SociallyFedDashboard from "./pages/SociallyFedDashboard";
+import SociallyFedSettingsPage from "./pages/SociallyFedSettingsPage";
 import { CSSTransition } from "react-transition-group";
 import LastWeekInReview from "./pages/LastWeekInReview";
 import Onboarding from "./pages/Onboarding";
@@ -126,6 +127,7 @@ const App = () => {
         { path: "/review", Component: WeekInReview },
         { path: "/lastreview", Component: LastWeekInReview },
         { path: "/settings", Component: Settings },
+        { path: "/sociallyfed-settings", Component: SociallyFedSettingsPage },
         { path: "/gethelp", Component: GetHelp },
         { path: "/rsummary", Component: RSummary },
         { path: "/surveys", Component: SurveyResults },

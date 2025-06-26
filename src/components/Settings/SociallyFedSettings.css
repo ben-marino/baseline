@@ -1,0 +1,237 @@
+.sociallyfed-settings {
+    padding: 16px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.settings-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 20px 0;
+}
+
+.settings-header h2 {
+    margin: 8px 0;
+    color: var(--ion-color-primary);
+    font-weight: 600;
+}
+
+.settings-header p {
+    margin: 0;
+    color: var(--ion-color-medium);
+    font-size: 14px;
+}
+
+.header-icon {
+    font-size: 48px;
+    color: var(--ion-color-primary);
+    margin-bottom: 8px;
+}
+
+.settings-actions {
+    margin-top: 24px;
+    padding: 16px 0;
+}
+
+/* Feature Toggle Styles */
+.feature-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 0;
+}
+
+.feature-info {
+    flex: 1;
+    margin-right: 16px;
+}
+
+.feature-label {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.feature-description {
+    font-size: 12px;
+    margin: 0;
+    line-height: 1.3;
+}
+
+/* Virtue Definition Styles */
+.virtue-item {
+    --padding-start: 0;
+    --padding-end: 0;
+    --inner-padding-end: 0;
+    margin-bottom: 16px;
+    border: 1px solid var(--ion-color-light);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.virtue-content {
+    width: 100%;
+}
+
+.virtue-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 8px;
+}
+
+.virtue-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.virtue-weight {
+    margin: 12px 0;
+    padding: 8px 0;
+}
+
+.virtue-weight ion-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--ion-color-medium);
+}
+
+/* Accordion Styles */
+ion-accordion {
+    margin-bottom: 8px;
+}
+
+ion-accordion ion-item[slot="header"] {
+    --background: var(--ion-color-light);
+    --color: var(--ion-color-dark);
+    font-weight: 500;
+}
+
+ion-accordion ion-item[slot="header"] ion-icon {
+    margin-right: 8px;
+    color: var(--ion-color-primary);
+}
+
+/* Card Styles */
+ion-card {
+    margin: 8px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+ion-card-header {
+    padding: 16px 16px 8px 16px;
+}
+
+ion-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ion-color-primary);
+}
+
+ion-card-content {
+    padding: 8px 16px 16px 16px;
+}
+
+/* Form Styles */
+ion-item {
+    --padding-start: 0;
+    --padding-end: 0;
+    --inner-padding-end: 0;
+    margin-bottom: 8px;
+}
+
+ion-item ion-label[position="stacked"] {
+    font-weight: 500;
+    color: var(--ion-color-dark);
+    margin-bottom: 4px;
+}
+
+ion-input, ion-textarea, ion-select {
+    --padding-start: 12px;
+    --padding-end: 12px;
+    border: 1px solid var(--ion-color-light);
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+/* Button Styles */
+ion-button {
+    margin: 8px 0;
+    --border-radius: 8px;
+}
+
+ion-button[color="success"] {
+    --background: var(--ion-color-success);
+    --color: white;
+}
+
+/* Validation Styles */
+.validation-error {
+    color: var(--ion-color-danger);
+    font-size: 12px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: var(--ion-color-danger-tint);
+    border-radius: 4px;
+}
+
+.validation-success {
+    color: var(--ion-color-success);
+    font-size: 12px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: var(--ion-color-success-tint);
+    border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .sociallyfed-settings {
+        padding: 8px;
+    }
+    
+    .settings-header {
+        padding: 16px 0;
+    }
+    
+    .settings-header h2 {
+        font-size: 20px;
+    }
+    
+    ion-card-header {
+        padding: 12px 12px 6px 12px;
+    }
+    
+    ion-card-content {
+        padding: 6px 12px 12px 12px;
+    }
+    
+    .virtue-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .virtue-name {
+        width: 100%;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .virtue-item {
+        border-color: var(--ion-color-medium);
+        background: var(--ion-color-dark);
+    }
+    
+    ion-input, ion-textarea, ion-select {
+        border-color: var(--ion-color-medium);
+        background: var(--ion-color-dark);
+    }
+    
+    ion-card {
+        background: var(--ion-color-dark);
+        border: 1px solid var(--ion-color-medium);
+    }
+} 
