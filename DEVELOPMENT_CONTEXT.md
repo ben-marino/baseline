@@ -175,730 +175,529 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Tue 29 Jul 2025 15:47:42 AEST
+## Session Started: Thu 31 Jul 2025 06:00:44 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# SociallyFed Mobile Team Daily Brief
+# SociallyFed Server Team Daily Brief
 **Date**: Tuesday, July 30, 2025  
 **Sprint Phase**: Unified Architecture Integration Completion  
-**Team Focus**: Mobile-Server Integration & Professional Services Testing  
-**Current Integration Status**: Mobile 98% Ready - Waiting for Server Integration
+**Team Focus**: API Gateway Professional Services & Mobile-Server Integration  
+**Current Integration Status**: 87% Complete - Critical Path Execution
 
 ---
 
 ## 🚨 **CRITICAL PATH PRIORITIES - TODAY**
 
-### **🔴 IMMEDIATE ACTION REQUIRED (Next 1-2 Hours)**
+### **🔴 IMMEDIATE ACTION REQUIRED (Next 2-3 Hours)**
 
-#### **1. Fix Mobile Sync 404 Errors - Hybrid Architecture Implementation**
-**Status**: 🔴 **CRITICAL** - Mobile app failing on `/accounts/sync` requests to server  
-**Root Cause**: Mobile sync operations targeting server API instead of client-side processing  
-**Solution**: Implement hybrid sync architecture with intelligent routing
+#### **1. Complete Professional Services Database Integration**
+**Status**: 🔴 **BLOCKING** - Database connection required for mobile-server integration testing  
+**Impact**: Prevents end-to-end professional workflow validation  
+**Timeline**: Must complete by 12:00 PM for integration testing start
+
+**Actions Required**:
+```sql
+-- Execute AddTenantIdToEntities migration
+dotnet ef migrations add AddTenantIdToEntities
+dotnet ef database update
+
+-- Apply professional services RLS policies
+\i scripts/professional-services-rls.sql
+
+-- Create materialized views for analytics
+\i scripts/professional-analytics-views.sql
+
+-- Validate multi-tenant data isolation
+SELECT verify_tenant_isolation('test-tenant-123', 'counselor_clients');
+```
+
+#### **2. Resolve API Routing for Mobile Sync Operations**
+**Status**: 🔴 **URGENT** - Mobile app getting 404 errors on `/accounts/sync`  
+**Root Cause**: Mobile trying to reach server API for client-side sync operations  
+**Solution**: Implement hybrid sync architecture
 
 **Implementation**:
-```typescript
-// Update ApiService.ts - implement intelligent routing
-class HybridApiService {
-  private mobileApiUrl: string;
-  private serverApiUrl: string;
-  
-  constructor() {
-    this.mobileApiUrl = window.location.origin;
-    this.serverApiUrl = process.env.REACT_APP_API_GATEWAY_URL || 'https://api.sociallyfed.com';
-  }
-  
-  private getApiUrl(endpoint: string): string {
-    // Client-side sync operations stay on mobile
-    const localEndpoints = [
-      '/accounts/sync',
-      '/accounts/signInWithIdp', 
-      '/accounts/lookup',
-      '/data/cache',
-      '/offline/queue'
-    ];
-    
-    if (localEndpoints.some(local => endpoint.includes(local))) {
-      return `${this.mobileApiUrl}${endpoint}`;
+```csharp
+// Add to API Gateway - DataIntegrationController.cs
+[ApiController]
+[Route("api/v1/tenants/{tenantId}/data")]
+public class DataIntegrationController : ControllerBase
+{
+    [HttpPost("export")]
+    public async Task<ActionResult<DataExportResult>> ExportUserData(
+        Guid tenantId, 
+        [FromBody] DataExportRequest request)
+    {
+        // Export server-side data for mobile sync
+        var userData = await _userDataService.ExportAsync(
+            request.UserId, 
+            tenantId, 
+            request.DataTypes,
+            request.Since);
+            
+        return Ok(new DataExportResult 
+        { 
+            Data = userData,
+            Timestamp = DateTime.UtcNow,
+            Source = "server"
+        });
     }
     
-    // Professional and server features go to API Gateway
-    if (endpoint.includes('/professional/') || endpoint.includes('/tenants/')) {
-      return `${this.serverApiUrl}/api/v1${endpoint}`;
+    [HttpPost("import")]
+    public async Task<ActionResult> ImportMobileData(
+        Guid tenantId,
+        [FromBody] MobileDataImport data)
+    {
+        await _userDataService.ImportMobileDataAsync(tenantId, data);
+        return Ok();
     }
     
-    return `${this.serverApiUrl}${endpoint}`;
-  }
-  
-  async post(endpoint: string, data: any): Promise<any> {
-    const url = this.getApiUrl(endpoint);
-    
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: this.getHeaders(endpoint),
-        body: JSON.stringify(data)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
-      
-      // Graceful degradation for sync operations
-      if (endpoint.includes('/accounts/sync')) {
-        return await this.fallbackToLocalSync(data);
-      }
-      
-      throw error;
+    [HttpGet("sync/status")]
+    public async Task<ActionResult<SyncStatusResult>> GetSyncStatus(
+        Guid tenantId,
+        [FromQuery] string userId)
+    {
+        var status = await _syncService.GetUserSyncStatusAsync(tenantId, userId);
+        return Ok(status);
     }
-  }
-  
-  private async fallbackToLocalSync(data: any): Promise<any> {
-    // Implement local sync fallback
-    console.log('Falling back to local sync operations');
-    
-    // Use existing mobile sync infrastructure
-    const localSyncResult = await this.executeLocalSync(data);
-    
-    // Queue for server sync when available
-    await this.queueForServerSync(data);
-    
-    return localSyncResult;
-  }
 }
 ```
 
-#### **2. Prepare Professional Services Integration Testing**
-**Status**: 🟡 **READY** - Professional UI complete, waiting for server APIs  
-**Dependency**: Server team database integration completion  
-**Timeline**: Begin testing at 1:00 PM when server APIs available
+### **🟡 HIGH PRIORITY (Hours 3-5)**
 
-**Test Suite Preparation**:
-```typescript
-// Create ProfessionalIntegrationTests.ts
-export class ProfessionalIntegrationTests {
-  private apiService: HybridApiService;
-  private testTenantId: string = 'integration-test-tenant';
-  
-  constructor() {
-    this.apiService = new HybridApiService();
-  }
-  
-  async validateProfessionalAuthentication(): Promise<TestResult> {
-    try {
-      // Test professional user authentication
-      const authResult = await this.apiService.post('/auth/professional', {
-        tenantId: this.testTenantId,
-        role: 'counselor'
-      });
-      
-      return {
-        test: 'Professional Authentication',
-        success: authResult.token && authResult.isProfessional,
-        responseTime: Date.now() - startTime,
-        details: authResult
-      };
-    } catch (error) {
-      return {
-        test: 'Professional Authentication',
-        success: false,
-        error: error.message
-      };
-    }
-  }
-  
-  async validateCounselorDashboard(): Promise<TestResult> {
-    // Test counselor dashboard API integration
-    const dashboard = await this.apiService.get('/api/v1/professional/analytics/dashboard');
-    
-    return {
-      test: 'Counselor Dashboard',
-      success: dashboard && dashboard.totalClients !== undefined,
-      data: dashboard
-    };
-  }
-  
-  async validateClientManagement(): Promise<TestResult> {
-    // Test client management workflow
-    const clients = await this.apiService.get('/api/v1/professional/clients');
-    
-    return {
-      test: 'Client Management',
-      success: Array.isArray(clients),
-      clientCount: clients?.length || 0
-    };
-  }
-  
-  async validateWebSocketCollaboration(): Promise<TestResult> {
-    // Test real-time collaboration features
-    try {
-      const connection = new signalR.HubConnectionBuilder()
-        .withUrl(`${this.apiService.serverApiUrl}/professionalhub`)
-        .build();
+#### **3. Complete WebSocket Professional Hub Integration**
+**Status**: 🟡 **75% COMPLETE** - SignalR foundation ready, needs session management  
+**Dependency**: Professional services database integration  
+**Timeline**: Complete by 3:00 PM for real-time collaboration testing
+
+**Implementation Tasks**:
+```csharp
+// Complete ProfessionalSessionHub.cs
+[Hub]
+public class ProfessionalSessionHub : Hub
+{
+    // Add missing methods for complete integration
+    public async Task JoinProfessionalSession(string sessionId, string tenantId)
+    {
+        // Set tenant context and validate access
+        _tenantContext.SetTenantId(tenantId);
+        await ValidateSessionAccessAsync(sessionId, Context.UserIdentifier);
         
-      await connection.start();
-      
-      return {
-        test: 'WebSocket Collaboration',
-        success: connection.state === signalR.HubConnectionState.Connected,
-        connectionState: connection.state
-      };
-    } catch (error) {
-      return {
-        test: 'WebSocket Collaboration',
-        success: false,
-        error: error.message
-      };
+        // Add to session group for real-time collaboration
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"professional_session_{sessionId}");
+        
+        // Notify participants
+        await Clients.OthersInGroup($"professional_session_{sessionId}")
+            .SendAsync("ParticipantJoined", new { 
+                UserId = Context.UserIdentifier,
+                JoinedAt = DateTime.UtcNow 
+            });
     }
-  }
+    
+    public async Task ShareInsightInSession(string sessionId, string insightId, object permissions)
+    {
+        var result = await _professionalService.ShareInsightAsync(
+            sessionId, insightId, Context.UserIdentifier, permissions);
+            
+        if (result.Success)
+        {
+            await Clients.Group($"professional_session_{sessionId}")
+                .SendAsync("InsightShared", result);
+        }
+    }
 }
 ```
 
-### **🟡 HIGH PRIORITY (Hours 2-4)**
+#### **4. Professional Services API Completion**
+**Status**: 🟡 **90% COMPLETE** - 13 API methods designed, need database connection  
+**Focus**: Connect to live database and replace mock data  
+**Timeline**: Complete by 4:00 PM for mobile integration testing
 
-#### **3. Enhance Professional UI for Live API Integration**
-**Status**: 🟡 **READY** - UI components complete, need API connection  
-**Focus**: Connect professional dashboard to live server APIs  
-**Timeline**: Begin integration at 1:00 PM when server APIs available
-
-**Professional Dashboard Integration**:
-```typescript
-// Update ProfessionalDashboard.tsx
-export const ProfessionalDashboard: React.FC = () => {
-  const [dashboardData, setDashboardData] = useState<CounselorDashboard | null>(null);
-  const [clients, setClients] = useState<ClientSummary[]>([]);
-  const [activeSessions, setActiveSessions] = useState<ProfessionalSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const professionalApi = useMemo(() => new ProfessionalApiService(), []);
-  
-  useEffect(() => {
-    loadProfessionalData();
-  }, []);
-  
-  const loadProfessionalData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Load all professional data in parallel
-      const [dashboard, clientList, sessions] = await Promise.all([
-        professionalApi.getCounselorDashboard(),
-        professionalApi.getCounselorClients(),
-        professionalApi.getActiveSessions()
-      ]);
-      
-      setDashboardData(dashboard);
-      setClients(clientList);
-      setActiveSessions(sessions);
-      
-    } catch (error) {
-      console.error('Failed to load professional data:', error);
-      setError('Failed to load professional data. Please check your connection.');
-      
-      // Fallback to cached/mock data for development
-      await loadMockProfessionalData();
-      
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const loadMockProfessionalData = async () => {
-    // Use existing mock data as fallback
-    setDashboardData(getMockCounselorDashboard());
-    setClients(getMockClients());
-    setActiveSessions(getMockActiveSessions());
-  };
-  
-  if (loading) {
-    return <LoadingSpinner message="Loading professional dashboard..." />;
-  }
-  
-  if (error) {
-    return (
-      <ErrorDisplay 
-        message={error}
-        onRetry={loadProfessionalData}
-        fallbackData={dashboardData}
-      />
-    );
-  }
-  
-  return (
-    <div className="professional-dashboard">
-      <DashboardHeader data={dashboardData} />
-      <DashboardTabs>
-        <OverviewTab 
-          dashboard={dashboardData}
-          clients={clients}
-          sessions={activeSessions}
-        />
-        <ClientsTab 
-          clients={clients}
-          onClientUpdate={loadProfessionalData}
-        />
-        <ActivityTab 
-          sessions={activeSessions}
-          onSessionUpdate={loadProfessionalData}
-        />
-      </DashboardTabs>
-    </div>
-  );
-};
-```
-
-#### **4. Implement Real-time Collaboration Testing**
-**Status**: 🟡 **READY** - WebSocket client prepared, waiting for server hub  
-**Dependency**: Server WebSocket hub completion  
-**Timeline**: Test at 3:00 PM when server WebSocket hub ready
-
-**WebSocket Integration**:
-```typescript
-// Update ProfessionalSessionManager.ts
-export class ProfessionalSessionManager {
-  private hubConnection: signalR.HubConnection | null = null;
-  private currentSessionId: string | null = null;
-  private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 3;
-  
-  async joinSession(sessionId: string, tenantId: string): Promise<void> {
-    try {
-      this.currentSessionId = sessionId;
-      
-      // Initialize SignalR connection
-      this.hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(`${process.env.REACT_APP_API_GATEWAY_URL}/professionalhub`, {
-          accessTokenFactory: () => this.getAuthToken()
-        })
-        .withAutomaticReconnect([0, 2000, 10000, 30000])
-        .build();
-      
-      // Set up event handlers
-      this.setupEventHandlers();
-      
-      // Start connection
-      await this.hubConnection.start();
-      
-      // Join the professional session
-      await this.hubConnection.invoke('JoinProfessionalSession', sessionId, tenantId);
-      
-      console.log(`Joined professional session ${sessionId}`);
-      
-    } catch (error) {
-      console.error('Failed to join professional session:', error);
-      await this.handleConnectionError(error);
-    }
-  }
-  
-  private setupEventHandlers(): void {
-    if (!this.hubConnection) return;
+**Priority Endpoints**:
+```csharp
+// Update ProfessionalService.cs - replace mock data with database queries
+public class ProfessionalService : IProfessionalService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly ITenantContext _tenantContext;
     
-    this.hubConnection.on('ParticipantJoined', (participant) => {
-      this.onParticipantJoined(participant);
-    });
-    
-    this.hubConnection.on('InsightShared', (insight) => {
-      this.onInsightShared(insight);
-    });
-    
-    this.hubConnection.on('SessionStatusUpdated', (update) => {
-      this.onSessionStatusUpdated(update);
-    });
-    
-    this.hubConnection.on('ConnectionError', (error) => {
-      console.error('WebSocket connection error:', error);
-      this.handleConnectionError(error);
-    });
-    
-    this.hubConnection.onreconnecting(() => {
-      console.log('Reconnecting to professional session...');
-    });
-    
-    this.hubConnection.onreconnected(() => {
-      console.log('Reconnected to professional session');
-      this.reconnectAttempts = 0;
-    });
-  }
-  
-  async shareInsight(insightId: string, permissions: SharingPermissions): Promise<void> {
-    if (!this.hubConnection || !this.currentSessionId) {
-      throw new Error('Not connected to professional session');
+    public async Task<List<ClientSummary>> GetClientsAsync(string counselorId)
+    {
+        var tenantId = _tenantContext.TenantId;
+        
+        return await _context.CounselorClients
+            .Where(cc => cc.CounselorId == counselorId && cc.TenantId == tenantId)
+            .Select(cc => new ClientSummary
+            {
+                ClientId = cc.ClientId,
+                Name = cc.Client.Name,
+                LastSession = cc.LastSessionDate,
+                Status = cc.Status,
+                ProgressScore = cc.ProgressMetrics
+            })
+            .ToListAsync();
     }
     
-    try {
-      await this.hubConnection.invoke('ShareInsightInSession', 
-        this.currentSessionId, 
-        insightId, 
-        permissions
-      );
-    } catch (error) {
-      console.error('Failed to share insight:', error);
-      throw error;
+    public async Task<ProfessionalSession> CreateSessionAsync(
+        string counselorId, 
+        string clientId, 
+        CreateSessionRequest request)
+    {
+        var session = new ProfessionalSession
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantContext.TenantId,
+            CounselorId = counselorId,
+            ClientId = clientId,
+            SessionType = request.SessionType,
+            Status = "active",
+            StartedAt = DateTime.UtcNow
+        };
+        
+        _context.ProfessionalSessions.Add(session);
+        await _context.SaveChangesAsync();
+        
+        return session;
     }
-  }
-  
-  private async handleConnectionError(error: any): Promise<void> {
-    this.reconnectAttempts++;
-    
-    if (this.reconnectAttempts <= this.maxReconnectAttempts) {
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      
-      setTimeout(() => {
-        if (this.currentSessionId) {
-          this.joinSession(this.currentSessionId, this.getCurrentTenantId());
-        }
-      }, 2000 * this.reconnectAttempts);
-    } else {
-      console.error('Max reconnection attempts reached. Falling back to HTTP polling.');
-      await this.fallbackToHttpPolling();
-    }
-  }
 }
 ```
 
 ## 🔗 **INTEGRATION PRIORITIES**
 
-### **Mobile-Server Communication Features**
+### **API Gateway Development Tasks**
 
 #### **✅ COMPLETED Foundation**
-- [x] **Production Build**: 762.46 kB bundle with professional features
-- [x] **Professional UI**: Complete counselor dashboard, client management, session interface
-- [x] **Authentication Flow**: JWT with tenant context propagation
-- [x] **Offline Capabilities**: Background sync, offline functionality, PWA features
-- [x] **Performance**: 94/100 performance score maintained
+- [x] Tenant-aware routing with `/api/v1/tenants/{tenantId}/` pattern
+- [x] JWT authentication with automatic token refresh
+- [x] Rate limiting operational with tier-based controls
+- [x] Error handling with comprehensive user notifications
 
-#### **🔴 CRITICAL INTEGRATION TASKS**
-
-1. **Hybrid Sync Architecture Implementation** (2 hours)
-   ```typescript
-   // Implement intelligent API routing
-   interface ApiRoutingConfig {
-     localEndpoints: string[];      // Stay on mobile
-     serverEndpoints: string[];     // Route to API Gateway
-     fallbackEnabled: boolean;      // Enable graceful degradation
+#### **🔴 CRITICAL COMPLETION TASKS**
+1. **Professional Routes Integration** (2 hours)
+   ```csharp
+   [Route("api/v1/gateway/professional")]
+   [Authorize(Roles = "counselor,admin")]
+   public class GatewayProfessionalController : TenantGatewayBase
+   {
+       [HttpGet("clients")]
+       public async Task<ActionResult<List<ClientSummary>>> GetCounselorClients(
+           [FromHeader("X-Tenant-ID")] string tenantId,
+           [FromQuery] string counselorId = null)
+       
+       [HttpPost("sessions")]
+       public async Task<ActionResult<ProfessionalSession>> CreateProfessionalSession(
+           [FromHeader("X-Tenant-ID")] string tenantId,
+           [FromBody] CreateSessionRequest request)
+       
+       [HttpGet("analytics/dashboard")]
+       public async Task<ActionResult<CounselorDashboard>> GetCounselorDashboard(
+           [FromHeader("X-Tenant-ID")] string tenantId)
    }
+   ```
+
+2. **Data Integration Routes** (1.5 hours)
+   - Export endpoint for mobile sync integration
+   - Import endpoint for mobile data synchronization
+   - Sync status tracking for hybrid architecture
+
+3. **WebSocket Bridge Configuration** (1 hour)
+   - SignalR hub routing through API Gateway
+   - Tenant context propagation for real-time sessions
+   - Connection management and scaling preparation
+
+### **Multi-tenant Database Implementation**
+
+#### **✅ PREPARED Schema & Policies**
+- [x] Professional tables designed (counselor_clients, professional_sessions, shared_insights)
+- [x] Row-Level Security policies written for complete tenant isolation
+- [x] Materialized views prepared for counselor analytics optimization
+- [x] Migration scripts ready for execution
+
+#### **🔴 CRITICAL DEPLOYMENT TASKS**
+1. **Execute Database Migration** (30 minutes)
+   ```bash
+   # Execute in production database
+   dotnet ef migrations add AddTenantIdToEntities
+   dotnet ef database update
+   ```
+
+2. **Apply RLS Policies** (45 minutes)
+   ```sql
+   -- Enable row-level security
+   ALTER TABLE counselor_clients ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE professional_sessions ENABLE ROW LEVEL SECURITY;
    
-   class IntelligentApiRouter {
-     route(endpoint: string): ApiTarget {
-       // Route sync operations to mobile
-       // Route professional services to server
-       // Enable fallback for all operations
-     }
-   }
-   ```
-
-2. **Professional Services Live Integration** (3 hours)
-   ```typescript
-   // Connect professional UI to live server APIs
-   interface ProfessionalIntegrationPoints {
-     authentication: '/auth/professional';
-     counselorDashboard: '/api/v1/professional/analytics/dashboard';
-     clientManagement: '/api/v1/professional/clients';
-     sessionManagement: '/api/v1/professional/sessions';
-     realTimeCollaboration: '/professionalhub';
-   }
-   ```
-
-3. **Real-time Collaboration Integration** (2 hours)
-   ```typescript
-   // WebSocket professional session management
-   class RealTimeCollaborationManager {
-     async establishConnection(sessionId: string): Promise<void>;
-     async shareInsight(insightId: string, permissions: any): Promise<void>;
-     async updateSessionStatus(status: string, notes?: string): Promise<void>;
-     async handleParticipantEvents(): Promise<void>;
-   }
-   ```
-
-### **Professional Services Testing**
-
-#### **🔴 CRITICAL TEST SCENARIOS**
-1. **End-to-End Professional Workflow** (2 hours)
-   ```typescript
-   describe('Professional Workflow Integration', () => {
-     test('Complete Counselor-Client Lifecycle', async () => {
-       // 1. Authenticate as counselor
-       const auth = await authenticateAsCounselor();
-       expect(auth.isProfessional).toBe(true);
-       
-       // 2. Load counselor dashboard
-       const dashboard = await loadCounselorDashboard();
-       expect(dashboard.totalClients).toBeGreaterThan(0);
-       
-       // 3. Create professional session
-       const session = await createProfessionalSession(clientId);
-       expect(session.status).toBe('active');
-       
-       // 4. Join WebSocket session
-       const wsConnection = await joinWebSocketSession(session.id);
-       expect(wsConnection.state).toBe('Connected');
-       
-       // 5. Share insight in real-time
-       const shareResult = await shareInsightInSession(insightId);
-       expect(shareResult.success).toBe(true);
-     });
-   });
-   ```
-
-2. **Multi-tenant Context Validation** (1 hour)
-   ```typescript
-   test('Tenant Context Switching', async () => {
-     // Test professional features maintain context across tenant switching
-     const tenantA = await switchTenant('tenant-a-123');
-     const clientsA = await getProfessionalClients();
+   -- Create tenant isolation policies
+   CREATE POLICY tenant_isolation_counselor_clients ON counselor_clients 
+     USING (tenant_id = current_setting('app.current_tenant')::UUID);
      
-     const tenantB = await switchTenant('tenant-b-456');
-     const clientsB = await getProfessionalClients();
-     
-     // Verify tenant isolation
-     expect(clientsA).not.toEqual(clientsB);
-   });
+   CREATE POLICY tenant_isolation_professional_sessions ON professional_sessions 
+     USING (tenant_id = current_setting('app.current_tenant')::UUID);
    ```
 
-3. **Performance and Reliability Testing** (1 hour)
-   ```typescript
-   test('Professional Features Performance', async () => {
-     const startTime = Date.now();
-     
-     // Test all professional features under load
-     await Promise.all([
-       loadCounselorDashboard(),
-       getProfessionalClients(),
-       getActiveSessions(),
-       loadSessionAnalytics()
-     ]);
-     
-     const responseTime = Date.now() - startTime;
-     expect(responseTime).toBeLessThan(2000); // 2 second max for parallel load
-   });
-   ```
-
-### **Deployment Configuration Integration**
-
-#### **🔴 CRITICAL CONFIGURATION UPDATES**
-1. **Environment Configuration** (30 minutes)
-   ```typescript
-   // Update .env.production
-   REACT_APP_API_GATEWAY_URL=https://api.sociallyfed.com
-   REACT_APP_WEBSOCKET_URL=https://api.sociallyfed.com/professionalhub
-   REACT_APP_PROFESSIONAL_FEATURES_ENABLED=true
-   REACT_APP_HYBRID_SYNC_ENABLED=true
-   REACT_APP_FALLBACK_MODE_ENABLED=true
-   ```
-
-2. **Service Worker Updates** (45 minutes)
-   ```typescript
-   // Update service worker for hybrid sync
-   self.addEventListener('sync', (event) => {
-     if (event.tag === 'professional-data-sync') {
-       event.waitUntil(syncProfessionalData());
-     }
-     
-     if (event.tag === 'accounts-sync') {
-       event.waitUntil(syncAccountData());
-     }
-   });
+3. **Create Analytics Views** (30 minutes)
+   ```sql
+   -- Materialized view for counselor dashboard
+   CREATE MATERIALIZED VIEW counselor_dashboard_analytics AS
+   SELECT 
+       cc.counselor_id,
+       cc.tenant_id,
+       COUNT(DISTINCT cc.client_id) as total_clients,
+       COUNT(DISTINCT ps.id) as total_sessions,
+       AVG(cc.progress_metrics) as avg_client_progress
+   FROM counselor_clients cc
+   LEFT JOIN professional_sessions ps ON cc.client_id = ps.client_id
+   GROUP BY cc.counselor_id, cc.tenant_id;
    
-   async function syncProfessionalData() {
-     // Sync professional data with server when online
-     const professionalData = await getQueuedProfessionalData();
-     await sendToServerAPI('/api/v1/data/import', professionalData);
+   CREATE UNIQUE INDEX ON counselor_dashboard_analytics (counselor_id, tenant_id);
+   ```
+
+### **Professional Services APIs**
+
+#### **🔴 CRITICAL API METHODS (Complete Today)**
+1. **Counselor Management APIs** (3 hours)
+   - `GET /api/v1/professional/clients` - Get counselor's client list
+   - `POST /api/v1/professional/clients/invite` - Invite new client
+   - `PUT /api/v1/professional/clients/{id}/permissions` - Update sharing permissions
+   - `GET /api/v1/professional/clients/{id}/progress` - Get client progress report
+
+2. **Session Management APIs** (2 hours)
+   - `POST /api/v1/professional/sessions` - Create professional session
+   - `GET /api/v1/professional/sessions/active` - Get active sessions
+   - `PUT /api/v1/professional/sessions/{id}/status` - Update session status
+   - `POST /api/v1/professional/sessions/{id}/notes` - Add session notes
+
+3. **Real-time Collaboration APIs** (2 hours)
+   - `POST /api/v1/professional/collaboration/share-insight` - Share insight in session
+   - `GET /api/v1/professional/collaboration/session/{id}` - Get session participants
+   - `POST /api/v1/professional/collaboration/typing` - Send typing indicators
+   - `POST /api/v1/professional/collaboration/presence` - Update presence status
+
+#### **🟡 PERFORMANCE OPTIMIZATION**
+- **Response Time Target**: <200ms for all professional service routes
+- **Database Query Optimization**: Use materialized views for complex analytics
+- **Caching Strategy**: Redis caching for frequently accessed counselor data
+- **Connection Pooling**: Optimize database connections for concurrent sessions
+
+### **Deployment Configuration Needs**
+
+#### **🔴 IMMEDIATE DEPLOYMENT TASKS**
+1. **Database Optional Configuration** (COMPLETED ✅)
+   - Graceful degradation when database unavailable
+   - In-memory database fallback for Cloud Run deployment
+   - Professional services mock data when database offline
+
+2. **Environment Configuration** (1 hour)
+   ```csharp
+   // appsettings.Production.json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "${DATABASE_CONNECTION_STRING}"
+     },
+     "Professional": {
+       "EnableRealTimeCollaboration": true,
+       "MaxConcurrentSessions": 100,
+       "SessionTimeoutMinutes": 60
+     },
+     "ApiGateway": {
+       "ProfessionalRoutesEnabled": true,
+       "TenantValidationRequired": true,
+       "RateLimiting": {
+         "Professional": "100-per-minute"
+       }
+     }
    }
    ```
 
-3. **Error Handling and Fallbacks** (1 hour)
-   ```typescript
-   // Comprehensive error handling for integration
-   export class IntegrationErrorHandler {
-     async handleApiError(error: ApiError, endpoint: string): Promise<any> {
-       if (error.status === 404 && endpoint.includes('/accounts/sync')) {
-         return await this.fallbackToLocalSync();
-       }
-       
-       if (error.status >= 500) {
-         return await this.fallbackToCachedData();
-       }
-       
-       if (error.name === 'NetworkError') {
-         return await this.enableOfflineMode();
-       }
-       
-       throw error; // Re-throw unhandled errors
-     }
-   }
+3. **Docker Configuration Updates** (30 minutes)
+   ```dockerfile
+   # Update Dockerfile for professional services
+   FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+   WORKDIR /app
+   EXPOSE 8080
+   
+   # Add health check for professional services
+   HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+     CMD curl -f http://localhost:8080/health/professional || exit 1
    ```
 
 ## 🤝 **COORDINATION REQUIREMENTS**
 
-### **Dependencies on Server Work**
+### **Dependencies Between Mobile and Server Work**
 
-#### **🔴 BLOCKING DEPENDENCIES**
-1. **Server Database Integration** → **Professional UI Testing**
-   - **Server Team Delivery**: Database migration and professional services APIs operational
-   - **Mobile Team Need**: Live professional data for UI validation
-   - **Timeline**: Server completion by 12:00 PM → Mobile testing starts 1:00 PM
-   - **Fallback**: Continue with mock data if server delayed beyond 2:00 PM
+#### **🔴 CRITICAL DEPENDENCIES**
+1. **Mobile Sync Architecture** → **Server Data Integration APIs**
+   - **Mobile Team Need**: Server endpoints for data export/import
+   - **Server Team Delivery**: DataIntegrationController with export/import methods
+   - **Timeline**: Must complete by 1:00 PM for mobile integration testing
+   - **Coordination**: Daily sync at 11:00 AM on API contract validation
 
-2. **WebSocket Hub Completion** → **Real-time Collaboration Testing**
-   - **Server Team Delivery**: ProfessionalSessionHub with tenant context
-   - **Mobile Team Need**: SignalR professional session functionality
-   - **Timeline**: Server completion by 3:00 PM → Mobile testing starts 3:30 PM
-   - **Fallback**: HTTP polling for real-time features if WebSocket delayed
+2. **Professional UI Integration** → **Live Professional APIs**
+   - **Mobile Team Need**: All 13 professional service methods operational
+   - **Server Team Delivery**: Complete ProfessionalService with database integration
+   - **Timeline**: Must complete by 2:00 PM for mobile professional UI testing
+   - **Coordination**: Real-time status updates on API endpoint completion
 
-3. **API Gateway Professional Routes** → **End-to-End Integration**
-   - **Server Team Delivery**: All 13 professional service methods through gateway
-   - **Mobile Team Need**: Complete professional workflow validation
-   - **Timeline**: Server completion by 2:00 PM → Mobile validation starts 2:30 PM
-   - **Fallback**: Mock server responses for demonstration if APIs delayed
+3. **Real-time Collaboration** → **WebSocket Hub Completion**
+   - **Mobile Team Need**: SignalR professional session hub functional
+   - **Server Team Delivery**: Complete ProfessionalSessionHub with tenant context
+   - **Timeline**: Must complete by 3:00 PM for WebSocket integration testing
+   - **Coordination**: Joint testing session for real-time features at 3:30 PM
 
 #### **🟡 COORDINATION CHECKPOINTS**
-- **11:00 AM**: Server database status → Mobile team test preparation
-- **1:00 PM**: Professional APIs ready → Mobile team begins live integration testing
+- **11:00 AM**: Server database integration status → Mobile team integration prep
+- **1:00 PM**: Professional APIs completion → Mobile team live testing start
 - **3:00 PM**: WebSocket hub ready → Mobile team real-time collaboration testing
-- **5:00 PM**: Complete integration → Joint production deployment
+- **5:00 PM**: End-to-end workflow validation → Joint team production deployment
 
 ### **Integration Testing Requirements**
 
-#### **🔴 JOINT TESTING SESSIONS**
-1. **Professional API Integration** (1:00-2:30 PM)
-   - **Participants**: Mobile team + Server team + QA
-   - **Focus**: Validate all 13 professional service methods
-   - **Tools**: Automated test suite + manual verification
-   - **Success Criteria**: 100% API methods functional with <200ms response time
+#### **🔴 IMMEDIATE TESTING NEEDS**
+1. **Professional API Testing** (2 hours)
+   ```csharp
+   // Test all 13 professional service methods
+   [Test]
+   public async Task TestProfessionalWorkflow()
+   {
+       // 1. Authenticate as counselor
+       var auth = await AuthenticateAsCounselor("test-tenant-123");
+       
+       // 2. Get counselor clients
+       var clients = await professionalApi.GetCounselorClients();
+       Assert.IsNotEmpty(clients);
+       
+       // 3. Create professional session
+       var session = await professionalApi.CreateSession(clients.First().Id);
+       Assert.AreEqual("active", session.Status);
+       
+       // 4. Test real-time collaboration
+       var hubConnection = await professionalApi.JoinSessionWebSocket(session.Id);
+       Assert.IsTrue(hubConnection.State == HubConnectionState.Connected);
+   }
+   ```
 
-2. **Real-time Collaboration** (3:30-4:30 PM)
-   - **Participants**: Mobile team + Server team
-   - **Focus**: WebSocket professional sessions and real-time features
-   - **Tools**: Multi-user session simulation
-   - **Success Criteria**: Stable connections with <100ms message latency
+2. **Multi-tenant Security Testing** (1.5 hours)
+   ```csharp
+   [Test]
+   public async Task TestTenantIsolation()
+   {
+       // Create data in tenant A
+       var tenantA = "tenant-a-123";
+       var clientA = await CreateClientInTenant(tenantA);
+       
+       // Switch to tenant B
+       var tenantB = "tenant-b-456";
+       var clientsB = await GetClientsInTenant(tenantB);
+       
+       // Verify tenant A data not visible in tenant B
+       Assert.IsFalse(clientsB.Any(c => c.Id == clientA.Id));
+   }
+   ```
 
-3. **End-to-End Workflow Validation** (4:30-5:30 PM)
-   - **Participants**: Full integration team
-   - **Focus**: Complete counselor-client professional workflow
-   - **Tools**: Production-like environment testing
-   - **Success Criteria**: Complete workflow demonstrable to customers
-
-#### **📊 TESTING METRICS**
-- **API Response Time**: <200ms for professional routes
-- **WebSocket Latency**: <100ms for real-time collaboration
-- **UI Performance**: Maintain 94/100 performance score
-- **Error Recovery**: 100% graceful handling of failure scenarios
-- **Offline Functionality**: Complete professional workflow available offline
+3. **Performance Load Testing** (1 hour)
+   ```csharp
+   [Test]
+   public async Task TestConcurrentProfessionalUsers()
+   {
+       var tasks = new List<Task>();
+       
+       // Simulate 25 concurrent counselors
+       for (int i = 0; i < 25; i++)
+       {
+           tasks.Add(SimulateCounselorWorkflow($"counselor-{i}"));
+       }
+       
+       var stopwatch = Stopwatch.StartNew();
+       await Task.WhenAll(tasks);
+       stopwatch.Stop();
+       
+       // Verify response time < 200ms average
+       Assert.Less(stopwatch.ElapsedMilliseconds / 25.0, 200);
+   }
+   ```
 
 ### **Unified Architecture Validation Steps**
 
-#### **🔴 MOBILE VALIDATION SEQUENCE**
-1. **Hybrid Sync Architecture** (30 minutes)
-   - Validate intelligent routing between mobile and server APIs
-   - Test graceful degradation when server unavailable
-   - Verify offline sync queue and background processing
+#### **🔴 CRITICAL VALIDATION SEQUENCE**
+1. **Database Integration Validation** (30 minutes)
+   - Execute migrations and verify schema
+   - Test RLS policies with multi-tenant data
+   - Validate materialized views performance
 
-2. **Professional UI Integration** (60 minutes)
-   - Connect all professional components to live server APIs
-   - Validate real-time data updates and synchronization
-   - Test professional workflow across tenant switching
+2. **API Gateway Professional Routes** (45 minutes)
+   - Test all professional endpoints through gateway
+   - Verify tenant context propagation
+   - Validate rate limiting and authentication
 
-3. **Performance Validation** (30 minutes)
-   - Confirm 94/100 performance score maintained
-   - Validate Core Web Vitals with server integration
-   - Test mobile responsiveness under server load
+3. **Mobile-Server Communication** (60 minutes)
+   - Test hybrid sync architecture
+   - Validate professional UI with live APIs
+   - Verify real-time collaboration features
 
-4. **Real-time Collaboration** (45 minutes)
-   - Validate WebSocket connection stability
-   - Test multi-user professional sessions
-   - Verify real-time insight sharing and notifications
+4. **End-to-End Professional Workflow** (45 minutes)
+   - Complete counselor authentication and client management
+   - Create and manage professional sessions
+   - Test real-time insight sharing and collaboration
 
-5. **Offline and Error Handling** (30 minutes)
-   - Test complete offline professional functionality
-   - Validate error recovery and user notifications
-   - Confirm graceful degradation scenarios
+5. **Performance and Security Validation** (30 minutes)
+   - Load test with 25+ concurrent professional users
+   - Security test multi-tenant data isolation
+   - Validate error handling and graceful degradation
 
-## ✅ **DEFINITION OF DONE - MOBILE INTEGRATION**
+## ✅ **DEFINITION OF DONE - SERVER INTEGRATION**
 
 ### **🔴 MUST COMPLETE TODAY**
-- [ ] **Hybrid Sync Fixed**: Mobile sync 404 errors resolved with intelligent routing
-- [ ] **Professional UI Connected**: All professional components using live server APIs
-- [ ] **Real-time Collaboration**: WebSocket professional sessions functional
-- [ ] **Integration Testing**: 100% pass rate for professional workflow tests
-- [ ] **Performance Maintained**: 94/100 score with server integration
+- [ ] **Database Migration**: Professional services schema deployed with RLS policies
+- [ ] **API Endpoints**: All 13 professional service methods operational with live database
+- [ ] **WebSocket Hub**: ProfessionalSessionHub complete with real-time collaboration
+- [ ] **Data Integration**: Export/import endpoints for mobile sync architecture
+- [ ] **Tenant Security**: 100% verification of multi-tenant data isolation
 
 ### **🟡 HIGH PRIORITY**
-- [ ] **Error Handling**: Comprehensive error recovery and user notifications
-- [ ] **Offline Functionality**: Professional features available offline with sync
-- [ ] **Multi-tenant Context**: Professional features maintain context across tenants
-- [ ] **Demo Readiness**: Complete professional workflow demonstrable live
-- [ ] **Performance Optimization**: Core Web Vitals maintained under server load
+- [ ] **Performance**: <200ms response time for all professional routes under load
+- [ ] **Error Handling**: Graceful degradation and comprehensive error recovery
+- [ ] **Monitoring**: Production-ready logging and metrics collection
+- [ ] **Documentation**: API documentation and integration guides complete
+- [ ] **Testing**: 100% pass rate for professional workflow integration tests
 
 ### **🟢 VALIDATION CRITERIA**
-- [ ] **Zero Integration Errors**: Clean mobile-server communication
-- [ ] **Professional Workflow Complete**: End-to-end counselor-client lifecycle
-- [ ] **Real-time Features**: Stable WebSocket collaboration under load
-- [ ] **Production Deployment**: Mobile app deployed with professional services
-- [ ] **Business Demonstration**: Customer-ready professional workflow demo
+- [ ] **Zero Compilation Errors**: Clean build across entire server solution
+- [ ] **Professional Demo Ready**: Complete counselor-client workflow demonstrable
+- [ ] **Security Compliance**: OWASP validation passed with professional features
+- [ ] **Production Deployment**: Server deployed with monitoring and scaling
+- [ ] **Mobile Integration**: Successful integration with mobile professional UI
 
 ## 📞 **COMMUNICATION PROTOCOL**
 
 ### **Status Updates**
-- **11:00 AM**: Hybrid sync architecture implementation status
-- **1:00 PM**: Professional UI live integration status
-- **3:00 PM**: Real-time collaboration testing status
-- **5:00 PM**: Complete mobile-server integration validation
+- **11:00 AM**: Database integration completion status
+- **1:00 PM**: Professional APIs deployment status  
+- **3:00 PM**: WebSocket hub integration status
+- **5:00 PM**: End-to-end workflow validation results
 
 ### **Escalation Process**
-- **Integration Blockers**: Direct coordination with Server Team Lead
-- **UI/UX Issues**: Immediate review with Product team
-- **Performance Problems**: DevOps team for optimization guidance
+- **Technical Blockers**: Immediate escalation to Senior Claude for architectural guidance
+- **Integration Issues**: Direct coordination with Mobile Team Lead
+- **Performance Problems**: DevOps team for infrastructure optimization
 
 ### **Success Metrics**
-- **API Integration**: 100% professional endpoints connected
-- **WebSocket Stability**: 99%+ uptime for real-time collaboration
-- **Performance Score**: Maintain 94/100 with server integration
-- **Error Recovery**: 100% graceful handling of failure scenarios
-
-## 🎯 **TODAY'S SUCCESS TARGETS**
-
-### **Hour 1-2 (9:00-11:00 AM): Hybrid Sync Resolution**
-- Fix mobile sync 404 errors with intelligent API routing
-- Implement graceful degradation for offline scenarios
-- Validate sync architecture with fallback mechanisms
-
-### **Hour 3-4 (11:00 AM-1:00 PM): Integration Preparation**
-- Prepare professional UI for live API connection
-- Set up automated integration test suite
-- Configure environment for server integration testing
-
-### **Hour 5-6 (1:00-3:00 PM): Live API Integration**
-- Connect professional dashboard to server APIs
-- Validate client management with live data
-- Test session creation and management workflows
-
-### **Hour 7-8 (3:00-5:00 PM): Real-time Collaboration**
-- Integrate WebSocket professional session hub
-- Test real-time insight sharing and collaboration
-- Validate multi-user professional sessions
-
-### **Hour 9-10 (5:00-7:00 PM): Final Validation**
-- Complete end-to-end professional workflow testing
-- Validate performance and security under load
-- Prepare for production deployment and demo
+- **API Response Time**: <200ms for professional routes
+- **Database Performance**: <50ms for analytics queries with RLS
+- **WebSocket Latency**: <100ms for real-time collaboration
+- **Integration Success**: 100% professional workflow operational
 
 ---
 
-**BOTTOM LINE**: Mobile team is ready for server integration with complete professional UI and robust testing infrastructure. Primary focus on resolving sync 404 errors through hybrid architecture and connecting professional features to live server APIs. Success depends on coordinated testing with server team and validation of complete professional workflow.
+**BOTTOM LINE**: Server team is the critical path for unified architecture completion. Database integration, professional APIs, and WebSocket hub completion unlock mobile-server integration testing and production deployment. Priority focus on resolving mobile sync 404 errors and completing professional services database integration to enable end-to-end validation.
 
-**🚀 SUCCESS TARGET**: Complete mobile-server integration validation by 5:00 PM to enable production deployment of unified SociallyFed platform with professional services.
+**🚀 SUCCESS TARGET**: Complete server integration by 5:00 PM to enable production deployment of unified SociallyFed platform supporting individual, professional, and enterprise business models.
 
 ---
-*Generated: July 30, 2025 - Mobile Team Daily Brief*  
-*Next Update: 11:00 AM - Hybrid Sync Implementation Status*  
-*Integration Target: 5:00 PM - Complete Mobile-Server Integration*
+*Generated: July 30, 2025 - Server Team Daily Brief*  
+*Next Update: 11:00 AM - Database Integration Status*  
+*Integration Target: 5:00 PM - Complete Server-Mobile Integration*
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -1920,722 +1719,521 @@ interface UnifiedProfessionalWorkflow {
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# SociallyFed Mobile Team Daily Brief
+# SociallyFed Server Team Daily Brief
 **Date**: Tuesday, July 30, 2025  
 **Sprint Phase**: Unified Architecture Integration Completion  
-**Team Focus**: Mobile-Server Integration & Professional Services Testing  
-**Current Integration Status**: Mobile 98% Ready - Waiting for Server Integration
+**Team Focus**: API Gateway Professional Services & Mobile-Server Integration  
+**Current Integration Status**: 87% Complete - Critical Path Execution
 
 ---
 
 ## 🚨 **CRITICAL PATH PRIORITIES - TODAY**
 
-### **🔴 IMMEDIATE ACTION REQUIRED (Next 1-2 Hours)**
+### **🔴 IMMEDIATE ACTION REQUIRED (Next 2-3 Hours)**
 
-#### **1. Fix Mobile Sync 404 Errors - Hybrid Architecture Implementation**
-**Status**: 🔴 **CRITICAL** - Mobile app failing on `/accounts/sync` requests to server  
-**Root Cause**: Mobile sync operations targeting server API instead of client-side processing  
-**Solution**: Implement hybrid sync architecture with intelligent routing
+#### **1. Complete Professional Services Database Integration**
+**Status**: 🔴 **BLOCKING** - Database connection required for mobile-server integration testing  
+**Impact**: Prevents end-to-end professional workflow validation  
+**Timeline**: Must complete by 12:00 PM for integration testing start
+
+**Actions Required**:
+```sql
+-- Execute AddTenantIdToEntities migration
+dotnet ef migrations add AddTenantIdToEntities
+dotnet ef database update
+
+-- Apply professional services RLS policies
+\i scripts/professional-services-rls.sql
+
+-- Create materialized views for analytics
+\i scripts/professional-analytics-views.sql
+
+-- Validate multi-tenant data isolation
+SELECT verify_tenant_isolation('test-tenant-123', 'counselor_clients');
+```
+
+#### **2. Resolve API Routing for Mobile Sync Operations**
+**Status**: 🔴 **URGENT** - Mobile app getting 404 errors on `/accounts/sync`  
+**Root Cause**: Mobile trying to reach server API for client-side sync operations  
+**Solution**: Implement hybrid sync architecture
 
 **Implementation**:
-```typescript
-// Update ApiService.ts - implement intelligent routing
-class HybridApiService {
-  private mobileApiUrl: string;
-  private serverApiUrl: string;
-  
-  constructor() {
-    this.mobileApiUrl = window.location.origin;
-    this.serverApiUrl = process.env.REACT_APP_API_GATEWAY_URL || 'https://api.sociallyfed.com';
-  }
-  
-  private getApiUrl(endpoint: string): string {
-    // Client-side sync operations stay on mobile
-    const localEndpoints = [
-      '/accounts/sync',
-      '/accounts/signInWithIdp', 
-      '/accounts/lookup',
-      '/data/cache',
-      '/offline/queue'
-    ];
-    
-    if (localEndpoints.some(local => endpoint.includes(local))) {
-      return `${this.mobileApiUrl}${endpoint}`;
+```csharp
+// Add to API Gateway - DataIntegrationController.cs
+[ApiController]
+[Route("api/v1/tenants/{tenantId}/data")]
+public class DataIntegrationController : ControllerBase
+{
+    [HttpPost("export")]
+    public async Task<ActionResult<DataExportResult>> ExportUserData(
+        Guid tenantId, 
+        [FromBody] DataExportRequest request)
+    {
+        // Export server-side data for mobile sync
+        var userData = await _userDataService.ExportAsync(
+            request.UserId, 
+            tenantId, 
+            request.DataTypes,
+            request.Since);
+            
+        return Ok(new DataExportResult 
+        { 
+            Data = userData,
+            Timestamp = DateTime.UtcNow,
+            Source = "server"
+        });
     }
     
-    // Professional and server features go to API Gateway
-    if (endpoint.includes('/professional/') || endpoint.includes('/tenants/')) {
-      return `${this.serverApiUrl}/api/v1${endpoint}`;
+    [HttpPost("import")]
+    public async Task<ActionResult> ImportMobileData(
+        Guid tenantId,
+        [FromBody] MobileDataImport data)
+    {
+        await _userDataService.ImportMobileDataAsync(tenantId, data);
+        return Ok();
     }
     
-    return `${this.serverApiUrl}${endpoint}`;
-  }
-  
-  async post(endpoint: string, data: any): Promise<any> {
-    const url = this.getApiUrl(endpoint);
-    
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: this.getHeaders(endpoint),
-        body: JSON.stringify(data)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
-      
-      // Graceful degradation for sync operations
-      if (endpoint.includes('/accounts/sync')) {
-        return await this.fallbackToLocalSync(data);
-      }
-      
-      throw error;
+    [HttpGet("sync/status")]
+    public async Task<ActionResult<SyncStatusResult>> GetSyncStatus(
+        Guid tenantId,
+        [FromQuery] string userId)
+    {
+        var status = await _syncService.GetUserSyncStatusAsync(tenantId, userId);
+        return Ok(status);
     }
-  }
-  
-  private async fallbackToLocalSync(data: any): Promise<any> {
-    // Implement local sync fallback
-    console.log('Falling back to local sync operations');
-    
-    // Use existing mobile sync infrastructure
-    const localSyncResult = await this.executeLocalSync(data);
-    
-    // Queue for server sync when available
-    await this.queueForServerSync(data);
-    
-    return localSyncResult;
-  }
 }
 ```
 
-#### **2. Prepare Professional Services Integration Testing**
-**Status**: 🟡 **READY** - Professional UI complete, waiting for server APIs  
-**Dependency**: Server team database integration completion  
-**Timeline**: Begin testing at 1:00 PM when server APIs available
+### **🟡 HIGH PRIORITY (Hours 3-5)**
 
-**Test Suite Preparation**:
-```typescript
-// Create ProfessionalIntegrationTests.ts
-export class ProfessionalIntegrationTests {
-  private apiService: HybridApiService;
-  private testTenantId: string = 'integration-test-tenant';
-  
-  constructor() {
-    this.apiService = new HybridApiService();
-  }
-  
-  async validateProfessionalAuthentication(): Promise<TestResult> {
-    try {
-      // Test professional user authentication
-      const authResult = await this.apiService.post('/auth/professional', {
-        tenantId: this.testTenantId,
-        role: 'counselor'
-      });
-      
-      return {
-        test: 'Professional Authentication',
-        success: authResult.token && authResult.isProfessional,
-        responseTime: Date.now() - startTime,
-        details: authResult
-      };
-    } catch (error) {
-      return {
-        test: 'Professional Authentication',
-        success: false,
-        error: error.message
-      };
-    }
-  }
-  
-  async validateCounselorDashboard(): Promise<TestResult> {
-    // Test counselor dashboard API integration
-    const dashboard = await this.apiService.get('/api/v1/professional/analytics/dashboard');
-    
-    return {
-      test: 'Counselor Dashboard',
-      success: dashboard && dashboard.totalClients !== undefined,
-      data: dashboard
-    };
-  }
-  
-  async validateClientManagement(): Promise<TestResult> {
-    // Test client management workflow
-    const clients = await this.apiService.get('/api/v1/professional/clients');
-    
-    return {
-      test: 'Client Management',
-      success: Array.isArray(clients),
-      clientCount: clients?.length || 0
-    };
-  }
-  
-  async validateWebSocketCollaboration(): Promise<TestResult> {
-    // Test real-time collaboration features
-    try {
-      const connection = new signalR.HubConnectionBuilder()
-        .withUrl(`${this.apiService.serverApiUrl}/professionalhub`)
-        .build();
+#### **3. Complete WebSocket Professional Hub Integration**
+**Status**: 🟡 **75% COMPLETE** - SignalR foundation ready, needs session management  
+**Dependency**: Professional services database integration  
+**Timeline**: Complete by 3:00 PM for real-time collaboration testing
+
+**Implementation Tasks**:
+```csharp
+// Complete ProfessionalSessionHub.cs
+[Hub]
+public class ProfessionalSessionHub : Hub
+{
+    // Add missing methods for complete integration
+    public async Task JoinProfessionalSession(string sessionId, string tenantId)
+    {
+        // Set tenant context and validate access
+        _tenantContext.SetTenantId(tenantId);
+        await ValidateSessionAccessAsync(sessionId, Context.UserIdentifier);
         
-      await connection.start();
-      
-      return {
-        test: 'WebSocket Collaboration',
-        success: connection.state === signalR.HubConnectionState.Connected,
-        connectionState: connection.state
-      };
-    } catch (error) {
-      return {
-        test: 'WebSocket Collaboration',
-        success: false,
-        error: error.message
-      };
+        // Add to session group for real-time collaboration
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"professional_session_{sessionId}");
+        
+        // Notify participants
+        await Clients.OthersInGroup($"professional_session_{sessionId}")
+            .SendAsync("ParticipantJoined", new { 
+                UserId = Context.UserIdentifier,
+                JoinedAt = DateTime.UtcNow 
+            });
     }
-  }
+    
+    public async Task ShareInsightInSession(string sessionId, string insightId, object permissions)
+    {
+        var result = await _professionalService.ShareInsightAsync(
+            sessionId, insightId, Context.UserIdentifier, permissions);
+            
+        if (result.Success)
+        {
+            await Clients.Group($"professional_session_{sessionId}")
+                .SendAsync("InsightShared", result);
+        }
+    }
 }
 ```
 
-### **🟡 HIGH PRIORITY (Hours 2-4)**
+#### **4. Professional Services API Completion**
+**Status**: 🟡 **90% COMPLETE** - 13 API methods designed, need database connection  
+**Focus**: Connect to live database and replace mock data  
+**Timeline**: Complete by 4:00 PM for mobile integration testing
 
-#### **3. Enhance Professional UI for Live API Integration**
-**Status**: 🟡 **READY** - UI components complete, need API connection  
-**Focus**: Connect professional dashboard to live server APIs  
-**Timeline**: Begin integration at 1:00 PM when server APIs available
-
-**Professional Dashboard Integration**:
-```typescript
-// Update ProfessionalDashboard.tsx
-export const ProfessionalDashboard: React.FC = () => {
-  const [dashboardData, setDashboardData] = useState<CounselorDashboard | null>(null);
-  const [clients, setClients] = useState<ClientSummary[]>([]);
-  const [activeSessions, setActiveSessions] = useState<ProfessionalSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const professionalApi = useMemo(() => new ProfessionalApiService(), []);
-  
-  useEffect(() => {
-    loadProfessionalData();
-  }, []);
-  
-  const loadProfessionalData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Load all professional data in parallel
-      const [dashboard, clientList, sessions] = await Promise.all([
-        professionalApi.getCounselorDashboard(),
-        professionalApi.getCounselorClients(),
-        professionalApi.getActiveSessions()
-      ]);
-      
-      setDashboardData(dashboard);
-      setClients(clientList);
-      setActiveSessions(sessions);
-      
-    } catch (error) {
-      console.error('Failed to load professional data:', error);
-      setError('Failed to load professional data. Please check your connection.');
-      
-      // Fallback to cached/mock data for development
-      await loadMockProfessionalData();
-      
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const loadMockProfessionalData = async () => {
-    // Use existing mock data as fallback
-    setDashboardData(getMockCounselorDashboard());
-    setClients(getMockClients());
-    setActiveSessions(getMockActiveSessions());
-  };
-  
-  if (loading) {
-    return <LoadingSpinner message="Loading professional dashboard..." />;
-  }
-  
-  if (error) {
-    return (
-      <ErrorDisplay 
-        message={error}
-        onRetry={loadProfessionalData}
-        fallbackData={dashboardData}
-      />
-    );
-  }
-  
-  return (
-    <div className="professional-dashboard">
-      <DashboardHeader data={dashboardData} />
-      <DashboardTabs>
-        <OverviewTab 
-          dashboard={dashboardData}
-          clients={clients}
-          sessions={activeSessions}
-        />
-        <ClientsTab 
-          clients={clients}
-          onClientUpdate={loadProfessionalData}
-        />
-        <ActivityTab 
-          sessions={activeSessions}
-          onSessionUpdate={loadProfessionalData}
-        />
-      </DashboardTabs>
-    </div>
-  );
-};
-```
-
-#### **4. Implement Real-time Collaboration Testing**
-**Status**: 🟡 **READY** - WebSocket client prepared, waiting for server hub  
-**Dependency**: Server WebSocket hub completion  
-**Timeline**: Test at 3:00 PM when server WebSocket hub ready
-
-**WebSocket Integration**:
-```typescript
-// Update ProfessionalSessionManager.ts
-export class ProfessionalSessionManager {
-  private hubConnection: signalR.HubConnection | null = null;
-  private currentSessionId: string | null = null;
-  private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 3;
-  
-  async joinSession(sessionId: string, tenantId: string): Promise<void> {
-    try {
-      this.currentSessionId = sessionId;
-      
-      // Initialize SignalR connection
-      this.hubConnection = new signalR.HubConnectionBuilder()
-        .withUrl(`${process.env.REACT_APP_API_GATEWAY_URL}/professionalhub`, {
-          accessTokenFactory: () => this.getAuthToken()
-        })
-        .withAutomaticReconnect([0, 2000, 10000, 30000])
-        .build();
-      
-      // Set up event handlers
-      this.setupEventHandlers();
-      
-      // Start connection
-      await this.hubConnection.start();
-      
-      // Join the professional session
-      await this.hubConnection.invoke('JoinProfessionalSession', sessionId, tenantId);
-      
-      console.log(`Joined professional session ${sessionId}`);
-      
-    } catch (error) {
-      console.error('Failed to join professional session:', error);
-      await this.handleConnectionError(error);
-    }
-  }
-  
-  private setupEventHandlers(): void {
-    if (!this.hubConnection) return;
+**Priority Endpoints**:
+```csharp
+// Update ProfessionalService.cs - replace mock data with database queries
+public class ProfessionalService : IProfessionalService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly ITenantContext _tenantContext;
     
-    this.hubConnection.on('ParticipantJoined', (participant) => {
-      this.onParticipantJoined(participant);
-    });
-    
-    this.hubConnection.on('InsightShared', (insight) => {
-      this.onInsightShared(insight);
-    });
-    
-    this.hubConnection.on('SessionStatusUpdated', (update) => {
-      this.onSessionStatusUpdated(update);
-    });
-    
-    this.hubConnection.on('ConnectionError', (error) => {
-      console.error('WebSocket connection error:', error);
-      this.handleConnectionError(error);
-    });
-    
-    this.hubConnection.onreconnecting(() => {
-      console.log('Reconnecting to professional session...');
-    });
-    
-    this.hubConnection.onreconnected(() => {
-      console.log('Reconnected to professional session');
-      this.reconnectAttempts = 0;
-    });
-  }
-  
-  async shareInsight(insightId: string, permissions: SharingPermissions): Promise<void> {
-    if (!this.hubConnection || !this.currentSessionId) {
-      throw new Error('Not connected to professional session');
+    public async Task<List<ClientSummary>> GetClientsAsync(string counselorId)
+    {
+        var tenantId = _tenantContext.TenantId;
+        
+        return await _context.CounselorClients
+            .Where(cc => cc.CounselorId == counselorId && cc.TenantId == tenantId)
+            .Select(cc => new ClientSummary
+            {
+                ClientId = cc.ClientId,
+                Name = cc.Client.Name,
+                LastSession = cc.LastSessionDate,
+                Status = cc.Status,
+                ProgressScore = cc.ProgressMetrics
+            })
+            .ToListAsync();
     }
     
-    try {
-      await this.hubConnection.invoke('ShareInsightInSession', 
-        this.currentSessionId, 
-        insightId, 
-        permissions
-      );
-    } catch (error) {
-      console.error('Failed to share insight:', error);
-      throw error;
+    public async Task<ProfessionalSession> CreateSessionAsync(
+        string counselorId, 
+        string clientId, 
+        CreateSessionRequest request)
+    {
+        var session = new ProfessionalSession
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantContext.TenantId,
+            CounselorId = counselorId,
+            ClientId = clientId,
+            SessionType = request.SessionType,
+            Status = "active",
+            StartedAt = DateTime.UtcNow
+        };
+        
+        _context.ProfessionalSessions.Add(session);
+        await _context.SaveChangesAsync();
+        
+        return session;
     }
-  }
-  
-  private async handleConnectionError(error: any): Promise<void> {
-    this.reconnectAttempts++;
-    
-    if (this.reconnectAttempts <= this.maxReconnectAttempts) {
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      
-      setTimeout(() => {
-        if (this.currentSessionId) {
-          this.joinSession(this.currentSessionId, this.getCurrentTenantId());
-        }
-      }, 2000 * this.reconnectAttempts);
-    } else {
-      console.error('Max reconnection attempts reached. Falling back to HTTP polling.');
-      await this.fallbackToHttpPolling();
-    }
-  }
 }
 ```
 
 ## 🔗 **INTEGRATION PRIORITIES**
 
-### **Mobile-Server Communication Features**
+### **API Gateway Development Tasks**
 
 #### **✅ COMPLETED Foundation**
-- [x] **Production Build**: 762.46 kB bundle with professional features
-- [x] **Professional UI**: Complete counselor dashboard, client management, session interface
-- [x] **Authentication Flow**: JWT with tenant context propagation
-- [x] **Offline Capabilities**: Background sync, offline functionality, PWA features
-- [x] **Performance**: 94/100 performance score maintained
+- [x] Tenant-aware routing with `/api/v1/tenants/{tenantId}/` pattern
+- [x] JWT authentication with automatic token refresh
+- [x] Rate limiting operational with tier-based controls
+- [x] Error handling with comprehensive user notifications
 
-#### **🔴 CRITICAL INTEGRATION TASKS**
-
-1. **Hybrid Sync Architecture Implementation** (2 hours)
-   ```typescript
-   // Implement intelligent API routing
-   interface ApiRoutingConfig {
-     localEndpoints: string[];      // Stay on mobile
-     serverEndpoints: string[];     // Route to API Gateway
-     fallbackEnabled: boolean;      // Enable graceful degradation
+#### **🔴 CRITICAL COMPLETION TASKS**
+1. **Professional Routes Integration** (2 hours)
+   ```csharp
+   [Route("api/v1/gateway/professional")]
+   [Authorize(Roles = "counselor,admin")]
+   public class GatewayProfessionalController : TenantGatewayBase
+   {
+       [HttpGet("clients")]
+       public async Task<ActionResult<List<ClientSummary>>> GetCounselorClients(
+           [FromHeader("X-Tenant-ID")] string tenantId,
+           [FromQuery] string counselorId = null)
+       
+       [HttpPost("sessions")]
+       public async Task<ActionResult<ProfessionalSession>> CreateProfessionalSession(
+           [FromHeader("X-Tenant-ID")] string tenantId,
+           [FromBody] CreateSessionRequest request)
+       
+       [HttpGet("analytics/dashboard")]
+       public async Task<ActionResult<CounselorDashboard>> GetCounselorDashboard(
+           [FromHeader("X-Tenant-ID")] string tenantId)
    }
+   ```
+
+2. **Data Integration Routes** (1.5 hours)
+   - Export endpoint for mobile sync integration
+   - Import endpoint for mobile data synchronization
+   - Sync status tracking for hybrid architecture
+
+3. **WebSocket Bridge Configuration** (1 hour)
+   - SignalR hub routing through API Gateway
+   - Tenant context propagation for real-time sessions
+   - Connection management and scaling preparation
+
+### **Multi-tenant Database Implementation**
+
+#### **✅ PREPARED Schema & Policies**
+- [x] Professional tables designed (counselor_clients, professional_sessions, shared_insights)
+- [x] Row-Level Security policies written for complete tenant isolation
+- [x] Materialized views prepared for counselor analytics optimization
+- [x] Migration scripts ready for execution
+
+#### **🔴 CRITICAL DEPLOYMENT TASKS**
+1. **Execute Database Migration** (30 minutes)
+   ```bash
+   # Execute in production database
+   dotnet ef migrations add AddTenantIdToEntities
+   dotnet ef database update
+   ```
+
+2. **Apply RLS Policies** (45 minutes)
+   ```sql
+   -- Enable row-level security
+   ALTER TABLE counselor_clients ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE professional_sessions ENABLE ROW LEVEL SECURITY;
    
-   class IntelligentApiRouter {
-     route(endpoint: string): ApiTarget {
-       // Route sync operations to mobile
-       // Route professional services to server
-       // Enable fallback for all operations
-     }
-   }
-   ```
-
-2. **Professional Services Live Integration** (3 hours)
-   ```typescript
-   // Connect professional UI to live server APIs
-   interface ProfessionalIntegrationPoints {
-     authentication: '/auth/professional';
-     counselorDashboard: '/api/v1/professional/analytics/dashboard';
-     clientManagement: '/api/v1/professional/clients';
-     sessionManagement: '/api/v1/professional/sessions';
-     realTimeCollaboration: '/professionalhub';
-   }
-   ```
-
-3. **Real-time Collaboration Integration** (2 hours)
-   ```typescript
-   // WebSocket professional session management
-   class RealTimeCollaborationManager {
-     async establishConnection(sessionId: string): Promise<void>;
-     async shareInsight(insightId: string, permissions: any): Promise<void>;
-     async updateSessionStatus(status: string, notes?: string): Promise<void>;
-     async handleParticipantEvents(): Promise<void>;
-   }
-   ```
-
-### **Professional Services Testing**
-
-#### **🔴 CRITICAL TEST SCENARIOS**
-1. **End-to-End Professional Workflow** (2 hours)
-   ```typescript
-   describe('Professional Workflow Integration', () => {
-     test('Complete Counselor-Client Lifecycle', async () => {
-       // 1. Authenticate as counselor
-       const auth = await authenticateAsCounselor();
-       expect(auth.isProfessional).toBe(true);
-       
-       // 2. Load counselor dashboard
-       const dashboard = await loadCounselorDashboard();
-       expect(dashboard.totalClients).toBeGreaterThan(0);
-       
-       // 3. Create professional session
-       const session = await createProfessionalSession(clientId);
-       expect(session.status).toBe('active');
-       
-       // 4. Join WebSocket session
-       const wsConnection = await joinWebSocketSession(session.id);
-       expect(wsConnection.state).toBe('Connected');
-       
-       // 5. Share insight in real-time
-       const shareResult = await shareInsightInSession(insightId);
-       expect(shareResult.success).toBe(true);
-     });
-   });
-   ```
-
-2. **Multi-tenant Context Validation** (1 hour)
-   ```typescript
-   test('Tenant Context Switching', async () => {
-     // Test professional features maintain context across tenant switching
-     const tenantA = await switchTenant('tenant-a-123');
-     const clientsA = await getProfessionalClients();
+   -- Create tenant isolation policies
+   CREATE POLICY tenant_isolation_counselor_clients ON counselor_clients 
+     USING (tenant_id = current_setting('app.current_tenant')::UUID);
      
-     const tenantB = await switchTenant('tenant-b-456');
-     const clientsB = await getProfessionalClients();
-     
-     // Verify tenant isolation
-     expect(clientsA).not.toEqual(clientsB);
-   });
+   CREATE POLICY tenant_isolation_professional_sessions ON professional_sessions 
+     USING (tenant_id = current_setting('app.current_tenant')::UUID);
    ```
 
-3. **Performance and Reliability Testing** (1 hour)
-   ```typescript
-   test('Professional Features Performance', async () => {
-     const startTime = Date.now();
-     
-     // Test all professional features under load
-     await Promise.all([
-       loadCounselorDashboard(),
-       getProfessionalClients(),
-       getActiveSessions(),
-       loadSessionAnalytics()
-     ]);
-     
-     const responseTime = Date.now() - startTime;
-     expect(responseTime).toBeLessThan(2000); // 2 second max for parallel load
-   });
-   ```
-
-### **Deployment Configuration Integration**
-
-#### **🔴 CRITICAL CONFIGURATION UPDATES**
-1. **Environment Configuration** (30 minutes)
-   ```typescript
-   // Update .env.production
-   REACT_APP_API_GATEWAY_URL=https://api.sociallyfed.com
-   REACT_APP_WEBSOCKET_URL=https://api.sociallyfed.com/professionalhub
-   REACT_APP_PROFESSIONAL_FEATURES_ENABLED=true
-   REACT_APP_HYBRID_SYNC_ENABLED=true
-   REACT_APP_FALLBACK_MODE_ENABLED=true
-   ```
-
-2. **Service Worker Updates** (45 minutes)
-   ```typescript
-   // Update service worker for hybrid sync
-   self.addEventListener('sync', (event) => {
-     if (event.tag === 'professional-data-sync') {
-       event.waitUntil(syncProfessionalData());
-     }
-     
-     if (event.tag === 'accounts-sync') {
-       event.waitUntil(syncAccountData());
-     }
-   });
+3. **Create Analytics Views** (30 minutes)
+   ```sql
+   -- Materialized view for counselor dashboard
+   CREATE MATERIALIZED VIEW counselor_dashboard_analytics AS
+   SELECT 
+       cc.counselor_id,
+       cc.tenant_id,
+       COUNT(DISTINCT cc.client_id) as total_clients,
+       COUNT(DISTINCT ps.id) as total_sessions,
+       AVG(cc.progress_metrics) as avg_client_progress
+   FROM counselor_clients cc
+   LEFT JOIN professional_sessions ps ON cc.client_id = ps.client_id
+   GROUP BY cc.counselor_id, cc.tenant_id;
    
-   async function syncProfessionalData() {
-     // Sync professional data with server when online
-     const professionalData = await getQueuedProfessionalData();
-     await sendToServerAPI('/api/v1/data/import', professionalData);
+   CREATE UNIQUE INDEX ON counselor_dashboard_analytics (counselor_id, tenant_id);
+   ```
+
+### **Professional Services APIs**
+
+#### **🔴 CRITICAL API METHODS (Complete Today)**
+1. **Counselor Management APIs** (3 hours)
+   - `GET /api/v1/professional/clients` - Get counselor's client list
+   - `POST /api/v1/professional/clients/invite` - Invite new client
+   - `PUT /api/v1/professional/clients/{id}/permissions` - Update sharing permissions
+   - `GET /api/v1/professional/clients/{id}/progress` - Get client progress report
+
+2. **Session Management APIs** (2 hours)
+   - `POST /api/v1/professional/sessions` - Create professional session
+   - `GET /api/v1/professional/sessions/active` - Get active sessions
+   - `PUT /api/v1/professional/sessions/{id}/status` - Update session status
+   - `POST /api/v1/professional/sessions/{id}/notes` - Add session notes
+
+3. **Real-time Collaboration APIs** (2 hours)
+   - `POST /api/v1/professional/collaboration/share-insight` - Share insight in session
+   - `GET /api/v1/professional/collaboration/session/{id}` - Get session participants
+   - `POST /api/v1/professional/collaboration/typing` - Send typing indicators
+   - `POST /api/v1/professional/collaboration/presence` - Update presence status
+
+#### **🟡 PERFORMANCE OPTIMIZATION**
+- **Response Time Target**: <200ms for all professional service routes
+- **Database Query Optimization**: Use materialized views for complex analytics
+- **Caching Strategy**: Redis caching for frequently accessed counselor data
+- **Connection Pooling**: Optimize database connections for concurrent sessions
+
+### **Deployment Configuration Needs**
+
+#### **🔴 IMMEDIATE DEPLOYMENT TASKS**
+1. **Database Optional Configuration** (COMPLETED ✅)
+   - Graceful degradation when database unavailable
+   - In-memory database fallback for Cloud Run deployment
+   - Professional services mock data when database offline
+
+2. **Environment Configuration** (1 hour)
+   ```csharp
+   // appsettings.Production.json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "${DATABASE_CONNECTION_STRING}"
+     },
+     "Professional": {
+       "EnableRealTimeCollaboration": true,
+       "MaxConcurrentSessions": 100,
+       "SessionTimeoutMinutes": 60
+     },
+     "ApiGateway": {
+       "ProfessionalRoutesEnabled": true,
+       "TenantValidationRequired": true,
+       "RateLimiting": {
+         "Professional": "100-per-minute"
+       }
+     }
    }
    ```
 
-3. **Error Handling and Fallbacks** (1 hour)
-   ```typescript
-   // Comprehensive error handling for integration
-   export class IntegrationErrorHandler {
-     async handleApiError(error: ApiError, endpoint: string): Promise<any> {
-       if (error.status === 404 && endpoint.includes('/accounts/sync')) {
-         return await this.fallbackToLocalSync();
-       }
-       
-       if (error.status >= 500) {
-         return await this.fallbackToCachedData();
-       }
-       
-       if (error.name === 'NetworkError') {
-         return await this.enableOfflineMode();
-       }
-       
-       throw error; // Re-throw unhandled errors
-     }
-   }
+3. **Docker Configuration Updates** (30 minutes)
+   ```dockerfile
+   # Update Dockerfile for professional services
+   FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+   WORKDIR /app
+   EXPOSE 8080
+   
+   # Add health check for professional services
+   HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+     CMD curl -f http://localhost:8080/health/professional || exit 1
    ```
 
 ## 🤝 **COORDINATION REQUIREMENTS**
 
-### **Dependencies on Server Work**
+### **Dependencies Between Mobile and Server Work**
 
-#### **🔴 BLOCKING DEPENDENCIES**
-1. **Server Database Integration** → **Professional UI Testing**
-   - **Server Team Delivery**: Database migration and professional services APIs operational
-   - **Mobile Team Need**: Live professional data for UI validation
-   - **Timeline**: Server completion by 12:00 PM → Mobile testing starts 1:00 PM
-   - **Fallback**: Continue with mock data if server delayed beyond 2:00 PM
+#### **🔴 CRITICAL DEPENDENCIES**
+1. **Mobile Sync Architecture** → **Server Data Integration APIs**
+   - **Mobile Team Need**: Server endpoints for data export/import
+   - **Server Team Delivery**: DataIntegrationController with export/import methods
+   - **Timeline**: Must complete by 1:00 PM for mobile integration testing
+   - **Coordination**: Daily sync at 11:00 AM on API contract validation
 
-2. **WebSocket Hub Completion** → **Real-time Collaboration Testing**
-   - **Server Team Delivery**: ProfessionalSessionHub with tenant context
-   - **Mobile Team Need**: SignalR professional session functionality
-   - **Timeline**: Server completion by 3:00 PM → Mobile testing starts 3:30 PM
-   - **Fallback**: HTTP polling for real-time features if WebSocket delayed
+2. **Professional UI Integration** → **Live Professional APIs**
+   - **Mobile Team Need**: All 13 professional service methods operational
+   - **Server Team Delivery**: Complete ProfessionalService with database integration
+   - **Timeline**: Must complete by 2:00 PM for mobile professional UI testing
+   - **Coordination**: Real-time status updates on API endpoint completion
 
-3. **API Gateway Professional Routes** → **End-to-End Integration**
-   - **Server Team Delivery**: All 13 professional service methods through gateway
-   - **Mobile Team Need**: Complete professional workflow validation
-   - **Timeline**: Server completion by 2:00 PM → Mobile validation starts 2:30 PM
-   - **Fallback**: Mock server responses for demonstration if APIs delayed
+3. **Real-time Collaboration** → **WebSocket Hub Completion**
+   - **Mobile Team Need**: SignalR professional session hub functional
+   - **Server Team Delivery**: Complete ProfessionalSessionHub with tenant context
+   - **Timeline**: Must complete by 3:00 PM for WebSocket integration testing
+   - **Coordination**: Joint testing session for real-time features at 3:30 PM
 
 #### **🟡 COORDINATION CHECKPOINTS**
-- **11:00 AM**: Server database status → Mobile team test preparation
-- **1:00 PM**: Professional APIs ready → Mobile team begins live integration testing
+- **11:00 AM**: Server database integration status → Mobile team integration prep
+- **1:00 PM**: Professional APIs completion → Mobile team live testing start
 - **3:00 PM**: WebSocket hub ready → Mobile team real-time collaboration testing
-- **5:00 PM**: Complete integration → Joint production deployment
+- **5:00 PM**: End-to-end workflow validation → Joint team production deployment
 
 ### **Integration Testing Requirements**
 
-#### **🔴 JOINT TESTING SESSIONS**
-1. **Professional API Integration** (1:00-2:30 PM)
-   - **Participants**: Mobile team + Server team + QA
-   - **Focus**: Validate all 13 professional service methods
-   - **Tools**: Automated test suite + manual verification
-   - **Success Criteria**: 100% API methods functional with <200ms response time
+#### **🔴 IMMEDIATE TESTING NEEDS**
+1. **Professional API Testing** (2 hours)
+   ```csharp
+   // Test all 13 professional service methods
+   [Test]
+   public async Task TestProfessionalWorkflow()
+   {
+       // 1. Authenticate as counselor
+       var auth = await AuthenticateAsCounselor("test-tenant-123");
+       
+       // 2. Get counselor clients
+       var clients = await professionalApi.GetCounselorClients();
+       Assert.IsNotEmpty(clients);
+       
+       // 3. Create professional session
+       var session = await professionalApi.CreateSession(clients.First().Id);
+       Assert.AreEqual("active", session.Status);
+       
+       // 4. Test real-time collaboration
+       var hubConnection = await professionalApi.JoinSessionWebSocket(session.Id);
+       Assert.IsTrue(hubConnection.State == HubConnectionState.Connected);
+   }
+   ```
 
-2. **Real-time Collaboration** (3:30-4:30 PM)
-   - **Participants**: Mobile team + Server team
-   - **Focus**: WebSocket professional sessions and real-time features
-   - **Tools**: Multi-user session simulation
-   - **Success Criteria**: Stable connections with <100ms message latency
+2. **Multi-tenant Security Testing** (1.5 hours)
+   ```csharp
+   [Test]
+   public async Task TestTenantIsolation()
+   {
+       // Create data in tenant A
+       var tenantA = "tenant-a-123";
+       var clientA = await CreateClientInTenant(tenantA);
+       
+       // Switch to tenant B
+       var tenantB = "tenant-b-456";
+       var clientsB = await GetClientsInTenant(tenantB);
+       
+       // Verify tenant A data not visible in tenant B
+       Assert.IsFalse(clientsB.Any(c => c.Id == clientA.Id));
+   }
+   ```
 
-3. **End-to-End Workflow Validation** (4:30-5:30 PM)
-   - **Participants**: Full integration team
-   - **Focus**: Complete counselor-client professional workflow
-   - **Tools**: Production-like environment testing
-   - **Success Criteria**: Complete workflow demonstrable to customers
-
-#### **📊 TESTING METRICS**
-- **API Response Time**: <200ms for professional routes
-- **WebSocket Latency**: <100ms for real-time collaboration
-- **UI Performance**: Maintain 94/100 performance score
-- **Error Recovery**: 100% graceful handling of failure scenarios
-- **Offline Functionality**: Complete professional workflow available offline
+3. **Performance Load Testing** (1 hour)
+   ```csharp
+   [Test]
+   public async Task TestConcurrentProfessionalUsers()
+   {
+       var tasks = new List<Task>();
+       
+       // Simulate 25 concurrent counselors
+       for (int i = 0; i < 25; i++)
+       {
+           tasks.Add(SimulateCounselorWorkflow($"counselor-{i}"));
+       }
+       
+       var stopwatch = Stopwatch.StartNew();
+       await Task.WhenAll(tasks);
+       stopwatch.Stop();
+       
+       // Verify response time < 200ms average
+       Assert.Less(stopwatch.ElapsedMilliseconds / 25.0, 200);
+   }
+   ```
 
 ### **Unified Architecture Validation Steps**
 
-#### **🔴 MOBILE VALIDATION SEQUENCE**
-1. **Hybrid Sync Architecture** (30 minutes)
-   - Validate intelligent routing between mobile and server APIs
-   - Test graceful degradation when server unavailable
-   - Verify offline sync queue and background processing
+#### **🔴 CRITICAL VALIDATION SEQUENCE**
+1. **Database Integration Validation** (30 minutes)
+   - Execute migrations and verify schema
+   - Test RLS policies with multi-tenant data
+   - Validate materialized views performance
 
-2. **Professional UI Integration** (60 minutes)
-   - Connect all professional components to live server APIs
-   - Validate real-time data updates and synchronization
-   - Test professional workflow across tenant switching
+2. **API Gateway Professional Routes** (45 minutes)
+   - Test all professional endpoints through gateway
+   - Verify tenant context propagation
+   - Validate rate limiting and authentication
 
-3. **Performance Validation** (30 minutes)
-   - Confirm 94/100 performance score maintained
-   - Validate Core Web Vitals with server integration
-   - Test mobile responsiveness under server load
+3. **Mobile-Server Communication** (60 minutes)
+   - Test hybrid sync architecture
+   - Validate professional UI with live APIs
+   - Verify real-time collaboration features
 
-4. **Real-time Collaboration** (45 minutes)
-   - Validate WebSocket connection stability
-   - Test multi-user professional sessions
-   - Verify real-time insight sharing and notifications
+4. **End-to-End Professional Workflow** (45 minutes)
+   - Complete counselor authentication and client management
+   - Create and manage professional sessions
+   - Test real-time insight sharing and collaboration
 
-5. **Offline and Error Handling** (30 minutes)
-   - Test complete offline professional functionality
-   - Validate error recovery and user notifications
-   - Confirm graceful degradation scenarios
+5. **Performance and Security Validation** (30 minutes)
+   - Load test with 25+ concurrent professional users
+   - Security test multi-tenant data isolation
+   - Validate error handling and graceful degradation
 
-## ✅ **DEFINITION OF DONE - MOBILE INTEGRATION**
+## ✅ **DEFINITION OF DONE - SERVER INTEGRATION**
 
 ### **🔴 MUST COMPLETE TODAY**
-- [ ] **Hybrid Sync Fixed**: Mobile sync 404 errors resolved with intelligent routing
-- [ ] **Professional UI Connected**: All professional components using live server APIs
-- [ ] **Real-time Collaboration**: WebSocket professional sessions functional
-- [ ] **Integration Testing**: 100% pass rate for professional workflow tests
-- [ ] **Performance Maintained**: 94/100 score with server integration
+- [ ] **Database Migration**: Professional services schema deployed with RLS policies
+- [ ] **API Endpoints**: All 13 professional service methods operational with live database
+- [ ] **WebSocket Hub**: ProfessionalSessionHub complete with real-time collaboration
+- [ ] **Data Integration**: Export/import endpoints for mobile sync architecture
+- [ ] **Tenant Security**: 100% verification of multi-tenant data isolation
 
 ### **🟡 HIGH PRIORITY**
-- [ ] **Error Handling**: Comprehensive error recovery and user notifications
-- [ ] **Offline Functionality**: Professional features available offline with sync
-- [ ] **Multi-tenant Context**: Professional features maintain context across tenants
-- [ ] **Demo Readiness**: Complete professional workflow demonstrable live
-- [ ] **Performance Optimization**: Core Web Vitals maintained under server load
+- [ ] **Performance**: <200ms response time for all professional routes under load
+- [ ] **Error Handling**: Graceful degradation and comprehensive error recovery
+- [ ] **Monitoring**: Production-ready logging and metrics collection
+- [ ] **Documentation**: API documentation and integration guides complete
+- [ ] **Testing**: 100% pass rate for professional workflow integration tests
 
 ### **🟢 VALIDATION CRITERIA**
-- [ ] **Zero Integration Errors**: Clean mobile-server communication
-- [ ] **Professional Workflow Complete**: End-to-end counselor-client lifecycle
-- [ ] **Real-time Features**: Stable WebSocket collaboration under load
-- [ ] **Production Deployment**: Mobile app deployed with professional services
-- [ ] **Business Demonstration**: Customer-ready professional workflow demo
+- [ ] **Zero Compilation Errors**: Clean build across entire server solution
+- [ ] **Professional Demo Ready**: Complete counselor-client workflow demonstrable
+- [ ] **Security Compliance**: OWASP validation passed with professional features
+- [ ] **Production Deployment**: Server deployed with monitoring and scaling
+- [ ] **Mobile Integration**: Successful integration with mobile professional UI
 
 ## 📞 **COMMUNICATION PROTOCOL**
 
 ### **Status Updates**
-- **11:00 AM**: Hybrid sync architecture implementation status
-- **1:00 PM**: Professional UI live integration status
-- **3:00 PM**: Real-time collaboration testing status
-- **5:00 PM**: Complete mobile-server integration validation
+- **11:00 AM**: Database integration completion status
+- **1:00 PM**: Professional APIs deployment status  
+- **3:00 PM**: WebSocket hub integration status
+- **5:00 PM**: End-to-end workflow validation results
 
 ### **Escalation Process**
-- **Integration Blockers**: Direct coordination with Server Team Lead
-- **UI/UX Issues**: Immediate review with Product team
-- **Performance Problems**: DevOps team for optimization guidance
+- **Technical Blockers**: Immediate escalation to Senior Claude for architectural guidance
+- **Integration Issues**: Direct coordination with Mobile Team Lead
+- **Performance Problems**: DevOps team for infrastructure optimization
 
 ### **Success Metrics**
-- **API Integration**: 100% professional endpoints connected
-- **WebSocket Stability**: 99%+ uptime for real-time collaboration
-- **Performance Score**: Maintain 94/100 with server integration
-- **Error Recovery**: 100% graceful handling of failure scenarios
-
-## 🎯 **TODAY'S SUCCESS TARGETS**
-
-### **Hour 1-2 (9:00-11:00 AM): Hybrid Sync Resolution**
-- Fix mobile sync 404 errors with intelligent API routing
-- Implement graceful degradation for offline scenarios
-- Validate sync architecture with fallback mechanisms
-
-### **Hour 3-4 (11:00 AM-1:00 PM): Integration Preparation**
-- Prepare professional UI for live API connection
-- Set up automated integration test suite
-- Configure environment for server integration testing
-
-### **Hour 5-6 (1:00-3:00 PM): Live API Integration**
-- Connect professional dashboard to server APIs
-- Validate client management with live data
-- Test session creation and management workflows
-
-### **Hour 7-8 (3:00-5:00 PM): Real-time Collaboration**
-- Integrate WebSocket professional session hub
-- Test real-time insight sharing and collaboration
-- Validate multi-user professional sessions
-
-### **Hour 9-10 (5:00-7:00 PM): Final Validation**
-- Complete end-to-end professional workflow testing
-- Validate performance and security under load
-- Prepare for production deployment and demo
+- **API Response Time**: <200ms for professional routes
+- **Database Performance**: <50ms for analytics queries with RLS
+- **WebSocket Latency**: <100ms for real-time collaboration
+- **Integration Success**: 100% professional workflow operational
 
 ---
 
-**BOTTOM LINE**: Mobile team is ready for server integration with complete professional UI and robust testing infrastructure. Primary focus on resolving sync 404 errors through hybrid architecture and connecting professional features to live server APIs. Success depends on coordinated testing with server team and validation of complete professional workflow.
+**BOTTOM LINE**: Server team is the critical path for unified architecture completion. Database integration, professional APIs, and WebSocket hub completion unlock mobile-server integration testing and production deployment. Priority focus on resolving mobile sync 404 errors and completing professional services database integration to enable end-to-end validation.
 
-**🚀 SUCCESS TARGET**: Complete mobile-server integration validation by 5:00 PM to enable production deployment of unified SociallyFed platform with professional services.
+**🚀 SUCCESS TARGET**: Complete server integration by 5:00 PM to enable production deployment of unified SociallyFed platform supporting individual, professional, and enterprise business models.
 
 ---
-*Generated: July 30, 2025 - Mobile Team Daily Brief*  
-*Next Update: 11:00 AM - Hybrid Sync Implementation Status*  
-*Integration Target: 5:00 PM - Complete Mobile-Server Integration*
+*Generated: July 30, 2025 - Server Team Daily Brief*  
+*Next Update: 11:00 AM - Database Integration Status*  
+*Integration Target: 5:00 PM - Complete Server-Mobile Integration*
