@@ -175,529 +175,1010 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Thu 31 Jul 2025 06:00:44 AEST
+## Session Started: Sun 03 Aug 2025 12:05:38 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# SociallyFed Server Team Daily Brief
-**Date**: Tuesday, July 30, 2025  
-**Sprint Phase**: Unified Architecture Integration Completion  
-**Team Focus**: API Gateway Professional Services & Mobile-Server Integration  
-**Current Integration Status**: 87% Complete - Critical Path Execution
+# SociallyFed Mobile Team Daily Brief - Cloud Run Error Resolution
+**Date**: Saturday, August 3, 2025  
+**Sprint Phase**: Critical Cloud Run Stability & Debugging  
+**Team Focus**: Resolve "ELIFECYCLE Command failed" Error with Enhanced Logging  
+**Current Status**: 🔴 **PRODUCTION INCIDENT** - Cloud Run service crashing after startup
 
 ---
 
 ## 🚨 **CRITICAL PATH PRIORITIES - TODAY**
 
-### **🔴 IMMEDIATE ACTION REQUIRED (Next 2-3 Hours)**
+### **🔴 IMMEDIATE ACTION REQUIRED (Next 2 Hours)**
 
-#### **1. Complete Professional Services Database Integration**
-**Status**: 🔴 **BLOCKING** - Database connection required for mobile-server integration testing  
-**Impact**: Prevents end-to-end professional workflow validation  
-**Timeline**: Must complete by 12:00 PM for integration testing start
+#### **1. Implement Comprehensive Application Logging**
+**Status**: 🔴 **CRITICAL** - Need visibility into application lifecycle and error sources  
+**Root Cause**: Limited logging visibility causing inability to identify crash source  
+**Impact**: Production service unstable, no visibility into failure reasons  
+**Timeline**: Complete enhanced logging within 2 hours for rapid issue identification
 
-**Actions Required**:
-```sql
--- Execute AddTenantIdToEntities migration
-dotnet ef migrations add AddTenantIdToEntities
-dotnet ef database update
+**Enhanced Logging Implementation Strategy**:
+```typescript
+// SOLUTION 1: Application Lifecycle Logging
+// Add to src/index.tsx or src/App.tsx
+import { createLogger } from './utils/logger';
 
--- Apply professional services RLS policies
-\i scripts/professional-services-rls.sql
+const logger = createLogger('ApplicationLifecycle');
 
--- Create materialized views for analytics
-\i scripts/professional-analytics-views.sql
+// Application startup logging
+logger.info('Application startup initiated', {
+  timestamp: new Date().toISOString(),
+  buildVersion: process.env.REACT_APP_VERSION,
+  environment: process.env.NODE_ENV,
+  port: process.env.PORT
+});
 
--- Validate multi-tenant data isolation
-SELECT verify_tenant_isolation('test-tenant-123', 'counselor_clients');
-```
+// Process event logging
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception detected', {
+    error: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString()
+  });
+  // Don't exit immediately - allow logging to complete
+  setTimeout(() => process.exit(1), 1000);
+});
 
-#### **2. Resolve API Routing for Mobile Sync Operations**
-**Status**: 🔴 **URGENT** - Mobile app getting 404 errors on `/accounts/sync`  
-**Root Cause**: Mobile trying to reach server API for client-side sync operations  
-**Solution**: Implement hybrid sync architecture
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Promise Rejection detected', {
+    reason: reason,
+    promise: promise,
+    timestamp: new Date().toISOString()
+  });
+});
 
-**Implementation**:
-```csharp
-// Add to API Gateway - DataIntegrationController.cs
-[ApiController]
-[Route("api/v1/tenants/{tenantId}/data")]
-public class DataIntegrationController : ControllerBase
-{
-    [HttpPost("export")]
-    public async Task<ActionResult<DataExportResult>> ExportUserData(
-        Guid tenantId, 
-        [FromBody] DataExportRequest request)
-    {
-        // Export server-side data for mobile sync
-        var userData = await _userDataService.ExportAsync(
-            request.UserId, 
-            tenantId, 
-            request.DataTypes,
-            request.Since);
-            
-        return Ok(new DataExportResult 
-        { 
-            Data = userData,
-            Timestamp = DateTime.UtcNow,
-            Source = "server"
-        });
-    }
-    
-    [HttpPost("import")]
-    public async Task<ActionResult> ImportMobileData(
-        Guid tenantId,
-        [FromBody] MobileDataImport data)
-    {
-        await _userDataService.ImportMobileDataAsync(tenantId, data);
-        return Ok();
-    }
-    
-    [HttpGet("sync/status")]
-    public async Task<ActionResult<SyncStatusResult>> GetSyncStatus(
-        Guid tenantId,
-        [FromQuery] string userId)
-    {
-        var status = await _syncService.GetUserSyncStatusAsync(tenantId, userId);
-        return Ok(status);
-    }
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received - initiating graceful shutdown', {
+    timestamp: new Date().toISOString()
+  });
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received - initiating graceful shutdown', {
+    timestamp: new Date().toISOString()
+  });
+});
+
+// SOLUTION 2: Enhanced Serve Command Monitoring
+// Create scripts/serve-with-logging.js
+const { spawn } = require('child_process');
+const fs = require('fs');
+
+const startTime = new Date();
+console.log(`[${startTime.toISOString()}] Starting serve command with enhanced monitoring`);
+
+const serveProcess = spawn('serve', ['-s', 'build', '-p', process.env.PORT || '8080'], {
+  stdio: 'pipe',
+  env: process.env
+});
+
+// Log all stdout
+serveProcess.stdout.on('data', (data) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] SERVE STDOUT: ${data.toString()}`);
+});
+
+// Log all stderr
+serveProcess.stderr.on('data', (data) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] SERVE STDERR: ${data.toString()}`);
+});
+
+// Monitor process health
+serveProcess.on('close', (code, signal) => {
+  const timestamp = new Date().toISOString();
+  const uptime = new Date() - startTime;
+  console.log(`[${timestamp}] Serve process ended - Code: ${code}, Signal: ${signal}, Uptime: ${uptime}ms`);
+  
+  if (code !== 0) {
+    console.error(`[${timestamp}] CRITICAL: Serve process failed with non-zero exit code: ${code}`);
+    process.exit(code);
+  }
+});
+
+serveProcess.on('error', (error) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] CRITICAL: Serve process error: ${error.message}`);
+  console.error(`[${timestamp}] Error stack: ${error.stack}`);
+  process.exit(1);
+});
+
+// SOLUTION 3: Build Directory Validation
+// Add to package.json scripts
+"scripts": {
+  "start": "node scripts/validate-and-serve.js",
+  "validate-build": "node scripts/validate-build.js",
+  "serve-debug": "node scripts/serve-with-logging.js"
 }
 ```
 
-### **🟡 HIGH PRIORITY (Hours 3-5)**
+#### **2. Implement Build Directory and Asset Validation**
+**Status**: 🔴 **CRITICAL** - Validate build artifacts before serving to prevent runtime failures  
+**Issue**: Missing or corrupted build files may cause serve command to fail  
+**Solution**: Pre-serve validation with detailed error reporting
 
-#### **3. Complete WebSocket Professional Hub Integration**
-**Status**: 🟡 **75% COMPLETE** - SignalR foundation ready, needs session management  
-**Dependency**: Professional services database integration  
-**Timeline**: Complete by 3:00 PM for real-time collaboration testing
+**Build Validation Implementation**:
+```javascript
+// Create scripts/validate-build.js
+const fs = require('fs');
+const path = require('path');
 
-**Implementation Tasks**:
-```csharp
-// Complete ProfessionalSessionHub.cs
-[Hub]
-public class ProfessionalSessionHub : Hub
-{
-    // Add missing methods for complete integration
-    public async Task JoinProfessionalSession(string sessionId, string tenantId)
-    {
-        // Set tenant context and validate access
-        _tenantContext.SetTenantId(tenantId);
-        await ValidateSessionAccessAsync(sessionId, Context.UserIdentifier);
-        
-        // Add to session group for real-time collaboration
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"professional_session_{sessionId}");
-        
-        // Notify participants
-        await Clients.OthersInGroup($"professional_session_{sessionId}")
-            .SendAsync("ParticipantJoined", new { 
-                UserId = Context.UserIdentifier,
-                JoinedAt = DateTime.UtcNow 
-            });
+function validateBuildDirectory() {
+  const buildDir = path.join(__dirname, '..', 'build');
+  const timestamp = new Date().toISOString();
+  
+  console.log(`[${timestamp}] Starting build directory validation`);
+  
+  // Check if build directory exists
+  if (!fs.existsSync(buildDir)) {
+    console.error(`[${timestamp}] CRITICAL: Build directory does not exist: ${buildDir}`);
+    process.exit(1);
+  }
+  
+  // Required files for React app
+  const requiredFiles = [
+    'index.html',
+    'static/js',
+    'static/css'
+  ];
+  
+  const missingFiles = [];
+  const fileDetails = [];
+  
+  requiredFiles.forEach(file => {
+    const filePath = path.join(buildDir, file);
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      fileDetails.push({
+        file,
+        size: stats.size,
+        modified: stats.mtime.toISOString(),
+        isDirectory: stats.isDirectory()
+      });
+      console.log(`[${timestamp}] ✅ Found: ${file} (${stats.size} bytes)`);
+    } else {
+      missingFiles.push(file);
+      console.error(`[${timestamp}] ❌ Missing: ${file}`);
     }
+  });
+  
+  // Check for JavaScript bundles
+  const jsDir = path.join(buildDir, 'static', 'js');
+  if (fs.existsSync(jsDir)) {
+    const jsFiles = fs.readdirSync(jsDir).filter(f => f.endsWith('.js'));
+    console.log(`[${timestamp}] JavaScript bundles: ${jsFiles.length} files`);
+    jsFiles.forEach(file => {
+      const stats = fs.statSync(path.join(jsDir, file));
+      console.log(`[${timestamp}]   - ${file}: ${stats.size} bytes`);
+    });
+  }
+  
+  // Check for CSS files
+  const cssDir = path.join(buildDir, 'static', 'css');
+  if (fs.existsSync(cssDir)) {
+    const cssFiles = fs.readdirSync(cssDir).filter(f => f.endsWith('.css'));
+    console.log(`[${timestamp}] CSS files: ${cssFiles.length} files`);
+    cssFiles.forEach(file => {
+      const stats = fs.statSync(path.join(cssDir, file));
+      console.log(`[${timestamp}]   - ${file}: ${stats.size} bytes`);
+    });
+  }
+  
+  // Validate index.html content
+  const indexPath = path.join(buildDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    const indexContent = fs.readFileSync(indexPath, 'utf8');
+    if (indexContent.includes('<div id="root">')) {
+      console.log(`[${timestamp}] ✅ index.html contains React root element`);
+    } else {
+      console.error(`[${timestamp}] ❌ index.html missing React root element`);
+      missingFiles.push('valid index.html structure');
+    }
+  }
+  
+  if (missingFiles.length > 0) {
+    console.error(`[${timestamp}] CRITICAL: Build validation failed - Missing files:`, missingFiles);
+    process.exit(1);
+  }
+  
+  console.log(`[${timestamp}] ✅ Build validation completed successfully`);
+  return { success: true, fileDetails };
+}
+
+if (require.main === module) {
+  validateBuildDirectory();
+}
+
+module.exports = { validateBuildDirectory };
+
+// Create scripts/validate-and-serve.js
+const { validateBuildDirectory } = require('./validate-build');
+const { spawn } = require('child_process');
+
+async function validateAndServe() {
+  const timestamp = new Date().toISOString();
+  
+  try {
+    console.log(`[${timestamp}] Pre-serve validation starting`);
     
-    public async Task ShareInsightInSession(string sessionId, string insightId, object permissions)
-    {
-        var result = await _professionalService.ShareInsightAsync(
-            sessionId, insightId, Context.UserIdentifier, permissions);
-            
-        if (result.Success)
-        {
-            await Clients.Group($"professional_session_{sessionId}")
-                .SendAsync("InsightShared", result);
+    // Validate build directory
+    const validation = validateBuildDirectory();
+    console.log(`[${timestamp}] Build validation passed - proceeding with serve`);
+    
+    // Start serve with monitoring
+    console.log(`[${timestamp}] Starting serve command`);
+    const serveProcess = spawn('serve', ['-s', 'build', '-p', process.env.PORT || '8080'], {
+      stdio: 'inherit',
+      env: process.env
+    });
+    
+    serveProcess.on('close', (code) => {
+      const endTime = new Date().toISOString();
+      if (code === 0) {
+        console.log(`[${endTime}] Serve process completed successfully`);
+      } else {
+        console.error(`[${endTime}] CRITICAL: Serve process failed with code: ${code}`);
+      }
+      process.exit(code);
+    });
+    
+    serveProcess.on('error', (error) => {
+      const errorTime = new Date().toISOString();
+      console.error(`[${errorTime}] CRITICAL: Serve process error: ${error.message}`);
+      process.exit(1);
+    });
+    
+  } catch (error) {
+    console.error(`[${timestamp}] CRITICAL: Validation failed: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+validateAndServe();
+```
+
+#### **3. Enhanced Cloud Run Environment Debugging**
+**Status**: 🔴 **CRITICAL** - Add Cloud Run specific debugging and health monitoring  
+**Issue**: Need visibility into Cloud Run environment differences vs local  
+**Solution**: Environment-aware logging and health checks
+
+**Cloud Run Environment Debugging**:
+```javascript
+// Create scripts/cloud-run-debug.js
+const fs = require('fs');
+const os = require('os');
+
+function logEnvironmentDetails() {
+  const timestamp = new Date().toISOString();
+  
+  console.log(`[${timestamp}] === CLOUD RUN ENVIRONMENT DEBUG ===`);
+  
+  // System information
+  console.log(`[${timestamp}] OS: ${os.type()} ${os.release()}`);
+  console.log(`[${timestamp}] Architecture: ${os.arch()}`);
+  console.log(`[${timestamp}] Node version: ${process.version}`);
+  console.log(`[${timestamp}] Total memory: ${Math.round(os.totalmem() / 1024 / 1024)} MB`);
+  console.log(`[${timestamp}] Free memory: ${Math.round(os.freemem() / 1024 / 1024)} MB`);
+  console.log(`[${timestamp}] CPU count: ${os.cpus().length}`);
+  
+  // Environment variables (safe ones only)
+  const safeEnvVars = [
+    'NODE_ENV',
+    'PORT',
+    'K_SERVICE',
+    'K_REVISION',
+    'K_CONFIGURATION',
+    'GOOGLE_CLOUD_PROJECT'
+  ];
+  
+  console.log(`[${timestamp}] Environment variables:`);
+  safeEnvVars.forEach(key => {
+    console.log(`[${timestamp}]   ${key}: ${process.env[key] || 'undefined'}`);
+  });
+  
+  // Current working directory
+  console.log(`[${timestamp}] Working directory: ${process.cwd()}`);
+  
+  // List workspace contents
+  try {
+    const workspaceContents = fs.readdirSync('/workspace');
+    console.log(`[${timestamp}] Workspace contents: ${workspaceContents.join(', ')}`);
+  } catch (error) {
+    console.log(`[${timestamp}] Could not read workspace: ${error.message}`);
+  }
+  
+  // List current directory contents
+  try {
+    const currentContents = fs.readdirSync(process.cwd());
+    console.log(`[${timestamp}] Current directory contents: ${currentContents.join(', ')}`);
+  } catch (error) {
+    console.log(`[${timestamp}] Could not read current directory: ${error.message}`);
+  }
+  
+  // Check for package.json
+  try {
+    const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    console.log(`[${timestamp}] Package: ${packageJson.name}@${packageJson.version}`);
+    console.log(`[${timestamp}] Start script: ${packageJson.scripts?.start}`);
+  } catch (error) {
+    console.log(`[${timestamp}] Could not read package.json: ${error.message}`);
+  }
+  
+  // Check serve installation
+  try {
+    const { spawn } = require('child_process');
+    const serveCheck = spawn('serve', ['--version'], { stdio: 'pipe' });
+    
+    serveCheck.stdout.on('data', (data) => {
+      console.log(`[${timestamp}] Serve version: ${data.toString().trim()}`);
+    });
+    
+    serveCheck.on('error', (error) => {
+      console.log(`[${timestamp}] Serve not found or error: ${error.message}`);
+    });
+  } catch (error) {
+    console.log(`[${timestamp}] Could not check serve installation: ${error.message}`);
+  }
+  
+  console.log(`[${timestamp}] === END ENVIRONMENT DEBUG ===`);
+}
+
+module.exports = { logEnvironmentDetails };
+
+if (require.main === module) {
+  logEnvironmentDetails();
+}
+```
+
+### **🟡 HIGH PRIORITY (Hours 2-4)**
+
+#### **4. Implement Health Check and Monitoring Endpoints**
+**Status**: 🟡 **READY** - Add application health monitoring for Cloud Run  
+**Purpose**: Provide Cloud Run with health status and enable better monitoring  
+**Timeline**: Implement after core logging is in place
+
+**Health Check Implementation**:
+```javascript
+// Create public/health-check.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SociallyFed Health Check</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>SociallyFed Mobile - Health Check</h1>
+    <p>Status: <span id="status">OK</span></p>
+    <p>Timestamp: <span id="timestamp"></span></p>
+    <p>Build: <span id="build"></span></p>
+    
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        document.getElementById('build').textContent = '%REACT_APP_VERSION%' || 'development';
+        
+        // Basic functionality test
+        try {
+            // Test if React would work
+            if (typeof window !== 'undefined' && window.document) {
+                document.getElementById('status').textContent = 'OK';
+                document.getElementById('status').style.color = 'green';
+            }
+        } catch (error) {
+            document.getElementById('status').textContent = 'ERROR: ' + error.message;
+            document.getElementById('status').style.color = 'red';
         }
+    </script>
+</body>
+</html>
+
+// Create scripts/serve-with-health.js
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+const port = process.env.PORT || 8080;
+const buildPath = path.join(__dirname, '..', 'build');
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  const timestamp = new Date().toISOString();
+  
+  try {
+    // Check if build directory exists and has content
+    const buildExists = fs.existsSync(buildPath);
+    const indexExists = fs.existsSync(path.join(buildPath, 'index.html'));
+    
+    const healthStatus = {
+      status: buildExists && indexExists ? 'healthy' : 'unhealthy',
+      timestamp,
+      buildDirectory: buildExists,
+      indexFile: indexExists,
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: process.env.REACT_APP_VERSION || 'unknown'
+    };
+    
+    console.log(`[${timestamp}] Health check requested:`, JSON.stringify(healthStatus, null, 2));
+    
+    if (healthStatus.status === 'healthy') {
+      res.status(200).json(healthStatus);
+    } else {
+      res.status(503).json(healthStatus);
     }
+  } catch (error) {
+    console.error(`[${timestamp}] Health check error:`, error);
+    res.status(503).json({
+      status: 'error',
+      error: error.message,
+      timestamp
+    });
+  }
+});
+
+// Serve static files
+app.use(express.static(buildPath));
+
+// Handle React routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
+
+// Error handling
+app.use((error, req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] Express error:`, error);
+  res.status(500).json({
+    status: 'error',
+    error: error.message,
+    timestamp
+  });
+});
+
+app.listen(port, () => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] SociallyFed Mobile Health Server listening on port ${port}`);
+  console.log(`[${timestamp}] Health check available at: http://localhost:${port}/health`);
+});
+```
+
+#### **5. Resource Monitoring and Memory Management**
+**Status**: 🟡 **READY** - Monitor resource usage to identify potential memory/CPU issues  
+**Purpose**: Detect resource exhaustion that could cause the ELIFECYCLE error  
+**Implementation**: Real-time resource monitoring with alerts
+
+**Resource Monitoring Implementation**:
+```javascript
+// Create scripts/resource-monitor.js
+const os = require('os');
+
+class ResourceMonitor {
+  constructor(options = {}) {
+    this.interval = options.interval || 30000; // 30 seconds
+    this.memoryThreshold = options.memoryThreshold || 0.8; // 80%
+    this.cpuThreshold = options.cpuThreshold || 0.8; // 80%
+    this.monitoring = false;
+    this.stats = [];
+  }
+  
+  start() {
+    if (this.monitoring) return;
+    
+    this.monitoring = true;
+    console.log(`[${new Date().toISOString()}] Resource monitoring started - interval: ${this.interval}ms`);
+    
+    this.monitoringInterval = setInterval(() => {
+      this.collectStats();
+    }, this.interval);
+    
+    // Initial stats
+    this.collectStats();
+  }
+  
+  stop() {
+    if (!this.monitoring) return;
+    
+    this.monitoring = false;
+    clearInterval(this.monitoringInterval);
+    console.log(`[${new Date().toISOString()}] Resource monitoring stopped`);
+  }
+  
+  collectStats() {
+    const timestamp = new Date().toISOString();
+    
+    // Memory statistics
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memoryUsagePercent = usedMem / totalMem;
+    
+    // Process memory
+    const processMemory = process.memoryUsage();
+    
+    // CPU load average (1 minute)
+    const loadAvg = os.loadavg()[0]; // 1-minute load average
+    const cpuCount = os.cpus().length;
+    const cpuUsagePercent = loadAvg / cpuCount;
+    
+    const stats = {
+      timestamp,
+      system: {
+        totalMemoryMB: Math.round(totalMem / 1024 / 1024),
+        freeMemoryMB: Math.round(freeMem / 1024 / 1024),
+        usedMemoryMB: Math.round(usedMem / 1024 / 1024),
+        memoryUsagePercent: Math.round(memoryUsagePercent * 100),
+        cpuUsagePercent: Math.round(cpuUsagePercent * 100),
+        loadAverage: loadAvg,
+        cpuCount
+      },
+      process: {
+        rssMemoryMB: Math.round(processMemory.rss / 1024 / 1024),
+        heapUsedMB: Math.round(processMemory.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(processMemory.heapTotal / 1024 / 1024),
+        externalMB: Math.round(processMemory.external / 1024 / 1024),
+        uptimeSeconds: Math.round(process.uptime())
+      }
+    };
+    
+    this.stats.push(stats);
+    
+    // Keep only last 100 entries
+    if (this.stats.length > 100) {
+      this.stats.shift();
+    }
+    
+    // Log current stats
+    console.log(`[${timestamp}] Resources - Memory: ${stats.system.memoryUsagePercent}%, CPU: ${stats.system.cpuUsagePercent}%, Process: ${stats.process.rssMemoryMB}MB`);
+    
+    // Check thresholds
+    this.checkThresholds(stats);
+  }
+  
+  checkThresholds(stats) {
+    const timestamp = new Date().toISOString();
+    
+    // Memory threshold check
+    if (stats.system.memoryUsagePercent / 100 > this.memoryThreshold) {
+      console.warn(`[${timestamp}] WARNING: High memory usage - ${stats.system.memoryUsagePercent}% (threshold: ${this.memoryThreshold * 100}%)`);
+    }
+    
+    // CPU threshold check
+    if (stats.system.cpuUsagePercent / 100 > this.cpuThreshold) {
+      console.warn(`[${timestamp}] WARNING: High CPU usage - ${stats.system.cpuUsagePercent}% (threshold: ${this.cpuThreshold * 100}%)`);
+    }
+    
+    // Process memory growth check
+    if (stats.process.rssMemoryMB > 512) { // 512MB threshold for Cloud Run
+      console.warn(`[${timestamp}] WARNING: High process memory usage - ${stats.process.rssMemoryMB}MB`);
+    }
+  }
+  
+  getStats() {
+    return this.stats;
+  }
+  
+  getCurrentStats() {
+    return this.stats[this.stats.length - 1];
+  }
+}
+
+module.exports = { ResourceMonitor };
+
+// If run directly, start monitoring
+if (require.main === module) {
+  const monitor = new ResourceMonitor();
+  monitor.start();
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received - stopping resource monitor');
+    monitor.stop();
+    process.exit(0);
+  });
+  
+  process.on('SIGINT', () => {
+    console.log('SIGINT received - stopping resource monitor');
+    monitor.stop();
+    process.exit(0);
+  });
 }
 ```
 
-#### **4. Professional Services API Completion**
-**Status**: 🟡 **90% COMPLETE** - 13 API methods designed, need database connection  
-**Focus**: Connect to live database and replace mock data  
-**Timeline**: Complete by 4:00 PM for mobile integration testing
+## 🔍 **ERROR ANALYSIS & RESOLUTION STRATEGY**
 
-**Priority Endpoints**:
-```csharp
-// Update ProfessionalService.cs - replace mock data with database queries
-public class ProfessionalService : IProfessionalService
+### **Root Cause Analysis Framework**
+
+#### **Error Pattern Analysis from Cloud Run Logs**
+Based on the provided logs showing "ELIFECYCLE Command failed" error:
+
+1. **Timeline of Events**:
+   - `20:20:33`: Successful startup - "baseline@1.6.4 start"
+   - `20:20:33`: Serve command initiated - "serve -s build -p $PORT"  
+   - `20:20:34`: Health check passed - "Default STARTUP TCP probe succeeded"
+   - `20:20:34`: Server accepting connections - "Accepting connections at http://localhost:8080"
+   - `20:20:34`: Successful HTTP request - "GET /" returned 200 in 109ms
+   - `20:35:36`: **FAILURE** - "ELIFECYCLE Command failed" (15 minutes later)
+   - `20:35:36`: Graceful shutdown initiated
+
+2. **Key Observations**:
+   - Initial startup was successful
+   - Application served requests successfully for ~15 minutes
+   - Failure occurred during runtime, not startup
+   - Graceful shutdown was attempted
+
+#### **Potential Failure Scenarios**
+
+```typescript
+// Investigation Framework for ELIFECYCLE failures
+interface FailureScenario {
+  scenario: string;
+  probability: 'High' | 'Medium' | 'Low';
+  investigation: string[];
+  mitigation: string[];
+}
+
+const failureScenarios: FailureScenario[] = [
+  {
+    scenario: "Memory Exhaustion",
+    probability: "High",
+    investigation: [
+      "Monitor process memory usage over time",
+      "Check for memory leaks in React components",
+      "Analyze build bundle size and dependencies",
+      "Monitor Cloud Run memory limits"
+    ],
+    mitigation: [
+      "Implement resource monitoring",
+      "Add memory usage alerts",
+      "Optimize bundle size",
+      "Increase Cloud Run memory allocation"
+    ]
+  },
+  {
+    scenario: "File System Issues",
+    probability: "Medium", 
+    investigation: [
+      "Validate build directory integrity",
+      "Check for missing or corrupted files",
+      "Verify file permissions",
+      "Monitor disk space usage"
+    ],
+    mitigation: [
+      "Add build validation before serving",
+      "Implement file integrity checks",
+      "Add disk space monitoring",
+      "Use read-only file system mounts"
+    ]
+  },
+  {
+    scenario: "NPM/Serve Command Issues",
+    probability: "Medium",
+    investigation: [
+      "Check serve package version compatibility",
+      "Verify npm dependencies integrity",
+      "Analyze serve command configuration",
+      "Test with alternative static servers"
+    ],
+    mitigation: [
+      "Pin serve package version",
+      "Add serve command monitoring",
+      "Implement fallback static server",
+      "Use multi-stage Docker builds"
+    ]
+  },
+  {
+    scenario: "Cloud Run Environment Issues", 
+    probability: "Low",
+    investigation: [
+      "Compare local vs Cloud Run environment",
+      "Check Cloud Run configuration",
+      "Verify container resource limits",
+      "Analyze Cloud Run platform issues"
+    ],
+    mitigation: [
+      "Add environment debugging",
+      "Implement health checks",
+      "Configure appropriate resource limits",
+      "Add Cloud Run specific error handling"
+    ]
+  }
+];
+```
+
+### **Comprehensive Debugging Strategy**
+
+#### **Phase 1: Immediate Visibility (0-2 hours)**
+```bash
+# 1. Add enhanced logging to package.json
 {
-    private readonly ApplicationDbContext _context;
-    private readonly ITenantContext _tenantContext;
+  "scripts": {
+    "start": "node scripts/cloud-run-debug.js && node scripts/validate-and-serve.js",
+    "start:monitor": "node scripts/resource-monitor.js & node scripts/validate-and-serve.js",
+    "validate": "node scripts/validate-build.js",
+    "debug": "node scripts/cloud-run-debug.js"
+  }
+}
+
+# 2. Update Dockerfile for better debugging
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Add debugging tools
+RUN npm install -g serve@14.2.1
+
+COPY . .
+RUN npm run build
+
+# Production stage with debugging
+FROM node:18-alpine
+WORKDIR /app
+
+# Copy debugging scripts
+COPY scripts/ ./scripts/
+COPY package.json ./
+
+# Install serve and debugging dependencies
+RUN npm install -g serve@14.2.1
+
+# Copy build artifacts
+COPY --from=builder /app/build ./build
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
+
+# Start with enhanced monitoring
+CMD ["node", "scripts/validate-and-serve.js"]
+```
+
+#### **Phase 2: Advanced Monitoring (2-4 hours)**
+```typescript
+// Enhanced error tracking and reporting
+class CloudRunErrorTracker {
+  private errors: CloudRunError[] = [];
+  private startTime: Date = new Date();
+  
+  constructor() {
+    this.setupErrorHandlers();
+    this.setupPerformanceMonitoring();
+  }
+  
+  private setupErrorHandlers(): void {
+    // Track all error types
+    process.on('uncaughtException', (error) => {
+      this.trackError('uncaughtException', error);
+    });
     
-    public async Task<List<ClientSummary>> GetClientsAsync(string counselorId)
-    {
-        var tenantId = _tenantContext.TenantId;
-        
-        return await _context.CounselorClients
-            .Where(cc => cc.CounselorId == counselorId && cc.TenantId == tenantId)
-            .Select(cc => new ClientSummary
-            {
-                ClientId = cc.ClientId,
-                Name = cc.Client.Name,
-                LastSession = cc.LastSessionDate,
-                Status = cc.Status,
-                ProgressScore = cc.ProgressMetrics
-            })
-            .ToListAsync();
-    }
+    process.on('unhandledRejection', (reason, promise) => {
+      this.trackError('unhandledRejection', new Error(String(reason)));
+    });
     
-    public async Task<ProfessionalSession> CreateSessionAsync(
-        string counselorId, 
-        string clientId, 
-        CreateSessionRequest request)
-    {
-        var session = new ProfessionalSession
-        {
-            Id = Guid.NewGuid(),
-            TenantId = _tenantContext.TenantId,
-            CounselorId = counselorId,
-            ClientId = clientId,
-            SessionType = request.SessionType,
-            Status = "active",
-            StartedAt = DateTime.UtcNow
-        };
-        
-        _context.ProfessionalSessions.Add(session);
-        await _context.SaveChangesAsync();
-        
-        return session;
+    process.on('warning', (warning) => {
+      this.trackWarning(warning);
+    });
+  }
+  
+  private setupPerformanceMonitoring(): void {
+    // Monitor event loop lag
+    setInterval(() => {
+      const start = process.hrtime.bigint();
+      setImmediate(() => {
+        const lag = Number(process.hrtime.bigint() - start) / 1000000; // Convert to ms
+        if (lag > 100) { // Alert if lag > 100ms
+          console.warn(`[${new Date().toISOString()}] Event loop lag: ${lag.toFixed(2)}ms`);
+        }
+      });
+    }, 5000);
+    
+    // Monitor garbage collection
+    if (global.gc) {
+      setInterval(() => {
+        const memBefore = process.memoryUsage();
+        global.gc();
+        const memAfter = process.memoryUsage();
+        console.log(`[${new Date().toISOString()}] GC freed ${(memBefore.heapUsed - memAfter.heapUsed) / 1024 / 1024} MB`);
+      }, 60000);
     }
+  }
+  
+  private trackError(type: string, error: Error): void {
+    const errorInfo: CloudRunError = {
+      type,
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      pid: process.pid
+    };
+    
+    this.errors.push(errorInfo);
+    
+    // Log immediately
+    console.error(`[${errorInfo.timestamp.toISOString()}] CRITICAL ${type}:`, JSON.stringify(errorInfo, null, 2));
+    
+    // Keep only last 50 errors
+    if (this.errors.length > 50) {
+      this.errors.shift();
+    }
+  }
+  
+  getErrorReport(): ErrorReport {
+    return {
+      startTime: this.startTime,
+      uptime: process.uptime(),
+      errorCount: this.errors.length,
+      errors: this.errors,
+      currentMemory: process.memoryUsage(),
+      version: process.env.REACT_APP_VERSION || 'unknown'
+    };
+  }
+}
+
+interface CloudRunError {
+  type: string;
+  message: string;
+  stack?: string;
+  timestamp: Date;
+  uptime: number;
+  memory: NodeJS.MemoryUsage;
+  pid: number;
+}
+
+interface ErrorReport {
+  startTime: Date;
+  uptime: number;
+  errorCount: number;
+  errors: CloudRunError[];
+  currentMemory: NodeJS.MemoryUsage;
+  version: string;
 }
 ```
 
-## 🔗 **INTEGRATION PRIORITIES**
+#### **Phase 3: Production Hardening (4-6 hours)**
+```yaml
+# cloud-run-service.yaml - Enhanced configuration
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sociallyfed-mobile
+  annotations:
+    run.googleapis.com/cpu-throttling: "false"
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: "1"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      containerConcurrency: 100
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/sociallyfed/mobile:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "8080"
+        - name: REACT_APP_VERSION
+          value: "1.6.4"
+        resources:
+          limits:
+            cpu: "2000m"     # Increased from default
+            memory: "1Gi"    # Increased from default 512Mi
+          requests:
+            cpu: "500m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+```
 
-### **API Gateway Development Tasks**
+## ✅ **IMPLEMENTATION CHECKLIST - DEBUGGING ENHANCEMENT**
 
-#### **✅ COMPLETED Foundation**
-- [x] Tenant-aware routing with `/api/v1/tenants/{tenantId}/` pattern
-- [x] JWT authentication with automatic token refresh
-- [x] Rate limiting operational with tier-based controls
-- [x] Error handling with comprehensive user notifications
+### **🔴 IMMEDIATE IMPLEMENTATION (0-2 hours)**
+- [ ] **Enhanced Application Logging**: Add comprehensive startup, runtime, and error logging
+- [ ] **Build Validation Script**: Validate build directory and assets before serving  
+- [ ] **Cloud Run Environment Debugging**: Log environment details and configuration
+- [ ] **Process Event Monitoring**: Track uncaught exceptions and process signals
+- [ ] **Updated Package Scripts**: Replace basic start command with debugging version
 
-#### **🔴 CRITICAL COMPLETION TASKS**
-1. **Professional Routes Integration** (2 hours)
-   ```csharp
-   [Route("api/v1/gateway/professional")]
-   [Authorize(Roles = "counselor,admin")]
-   public class GatewayProfessionalController : TenantGatewayBase
-   {
-       [HttpGet("clients")]
-       public async Task<ActionResult<List<ClientSummary>>> GetCounselorClients(
-           [FromHeader("X-Tenant-ID")] string tenantId,
-           [FromQuery] string counselorId = null)
-       
-       [HttpPost("sessions")]
-       public async Task<ActionResult<ProfessionalSession>> CreateProfessionalSession(
-           [FromHeader("X-Tenant-ID")] string tenantId,
-           [FromBody] CreateSessionRequest request)
-       
-       [HttpGet("analytics/dashboard")]
-       public async Task<ActionResult<CounselorDashboard>> GetCounselorDashboard(
-           [FromHeader("X-Tenant-ID")] string tenantId)
-   }
-   ```
+### **🟡 ADVANCED MONITORING (2-4 hours)**  
+- [ ] **Resource Monitor**: Real-time CPU and memory usage tracking with alerts
+- [ ] **Health Check Endpoints**: HTTP endpoints for Cloud Run health monitoring
+- [ ] **Error Tracking System**: Comprehensive error collection and reporting
+- [ ] **Performance Monitoring**: Event loop lag and garbage collection monitoring
+- [ ] **File System Monitoring**: Build directory integrity and disk space monitoring
 
-2. **Data Integration Routes** (1.5 hours)
-   - Export endpoint for mobile sync integration
-   - Import endpoint for mobile data synchronization
-   - Sync status tracking for hybrid architecture
+### **🟢 PRODUCTION HARDENING (4-6 hours)**
+- [ ] **Enhanced Cloud Run Config**: Increased memory limits and better health checks
+- [ ] **Graceful Error Recovery**: Automatic restart and recovery mechanisms  
+- [ ] **Logging Integration**: Structured logging for Google Cloud Logging
+- [ ] **Monitoring Dashboard**: Cloud Run monitoring and alerting setup
+- [ ] **Deployment Validation**: Pre-deployment testing and validation scripts
 
-3. **WebSocket Bridge Configuration** (1 hour)
-   - SignalR hub routing through API Gateway
-   - Tenant context propagation for real-time sessions
-   - Connection management and scaling preparation
+## 📊 **SUCCESS METRICS - DEBUGGING IMPLEMENTATION**
 
-### **Multi-tenant Database Implementation**
+### **🔴 CRITICAL SUCCESS CRITERIA**
+- **Error Visibility**: 100% visibility into application lifecycle and error sources
+- **Cloud Run Stability**: Zero ELIFECYCLE errors after enhanced monitoring implementation  
+- **Resource Monitoring**: Real-time tracking of memory and CPU usage with alerting
+- **Health Check Functionality**: Working HTTP health endpoints for Cloud Run monitoring
+- **Graceful Error Handling**: All process errors logged and handled without silent failures
 
-#### **✅ PREPARED Schema & Policies**
-- [x] Professional tables designed (counselor_clients, professional_sessions, shared_insights)
-- [x] Row-Level Security policies written for complete tenant isolation
-- [x] Materialized views prepared for counselor analytics optimization
-- [x] Migration scripts ready for execution
+### **🟡 MONITORING EFFECTIVENESS**
+- **Error Detection Speed**: Errors detected and logged within 5 seconds of occurrence
+- **Resource Alert Accuracy**: Memory/CPU alerts triggered before service degradation
+- **Health Check Response**: Health endpoints respond within 100ms with accurate status
+- **Log Quality**: All logs structured and searchable in Google Cloud Logging
+- **Recovery Time**: Service auto-recovery within 60 seconds of detected issues
 
-#### **🔴 CRITICAL DEPLOYMENT TASKS**
-1. **Execute Database Migration** (30 minutes)
-   ```bash
-   # Execute in production database
-   dotnet ef migrations add AddTenantIdToEntities
-   dotnet ef database update
-   ```
+### **🟢 PRODUCTION READINESS** 
+- **Zero Silent Failures**: All errors visible and tracked in monitoring systems
+- **Proactive Monitoring**: Issues detected before user impact through health checks
+- **Operational Excellence**: Full observability into application performance and errors
+- **Deployment Confidence**: Enhanced debugging provides confidence in production deployments
+- **Incident Response**: Complete error context available for rapid incident resolution
 
-2. **Apply RLS Policies** (45 minutes)
-   ```sql
-   -- Enable row-level security
-   ALTER TABLE counselor_clients ENABLE ROW LEVEL SECURITY;
-   ALTER TABLE professional_sessions ENABLE ROW LEVEL SECURITY;
-   
-   -- Create tenant isolation policies
-   CREATE POLICY tenant_isolation_counselor_clients ON counselor_clients 
-     USING (tenant_id = current_setting('app.current_tenant')::UUID);
-     
-   CREATE POLICY tenant_isolation_professional_sessions ON professional_sessions 
-     USING (tenant_id = current_setting('app.current_tenant')::UUID);
-   ```
+---
 
-3. **Create Analytics Views** (30 minutes)
-   ```sql
-   -- Materialized view for counselor dashboard
-   CREATE MATERIALIZED VIEW counselor_dashboard_analytics AS
-   SELECT 
-       cc.counselor_id,
-       cc.tenant_id,
-       COUNT(DISTINCT cc.client_id) as total_clients,
-       COUNT(DISTINCT ps.id) as total_sessions,
-       AVG(cc.progress_metrics) as avg_client_progress
-   FROM counselor_clients cc
-   LEFT JOIN professional_sessions ps ON cc.client_id = ps.client_id
-   GROUP BY cc.counselor_id, cc.tenant_id;
-   
-   CREATE UNIQUE INDEX ON counselor_dashboard_analytics (counselor_id, tenant_id);
-   ```
-
-### **Professional Services APIs**
-
-#### **🔴 CRITICAL API METHODS (Complete Today)**
-1. **Counselor Management APIs** (3 hours)
-   - `GET /api/v1/professional/clients` - Get counselor's client list
-   - `POST /api/v1/professional/clients/invite` - Invite new client
-   - `PUT /api/v1/professional/clients/{id}/permissions` - Update sharing permissions
-   - `GET /api/v1/professional/clients/{id}/progress` - Get client progress report
-
-2. **Session Management APIs** (2 hours)
-   - `POST /api/v1/professional/sessions` - Create professional session
-   - `GET /api/v1/professional/sessions/active` - Get active sessions
-   - `PUT /api/v1/professional/sessions/{id}/status` - Update session status
-   - `POST /api/v1/professional/sessions/{id}/notes` - Add session notes
-
-3. **Real-time Collaboration APIs** (2 hours)
-   - `POST /api/v1/professional/collaboration/share-insight` - Share insight in session
-   - `GET /api/v1/professional/collaboration/session/{id}` - Get session participants
-   - `POST /api/v1/professional/collaboration/typing` - Send typing indicators
-   - `POST /api/v1/professional/collaboration/presence` - Update presence status
-
-#### **🟡 PERFORMANCE OPTIMIZATION**
-- **Response Time Target**: <200ms for all professional service routes
-- **Database Query Optimization**: Use materialized views for complex analytics
-- **Caching Strategy**: Redis caching for frequently accessed counselor data
-- **Connection Pooling**: Optimize database connections for concurrent sessions
-
-### **Deployment Configuration Needs**
-
-#### **🔴 IMMEDIATE DEPLOYMENT TASKS**
-1. **Database Optional Configuration** (COMPLETED ✅)
-   - Graceful degradation when database unavailable
-   - In-memory database fallback for Cloud Run deployment
-   - Professional services mock data when database offline
-
-2. **Environment Configuration** (1 hour)
-   ```csharp
-   // appsettings.Production.json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "${DATABASE_CONNECTION_STRING}"
-     },
-     "Professional": {
-       "EnableRealTimeCollaboration": true,
-       "MaxConcurrentSessions": 100,
-       "SessionTimeoutMinutes": 60
-     },
-     "ApiGateway": {
-       "ProfessionalRoutesEnabled": true,
-       "TenantValidationRequired": true,
-       "RateLimiting": {
-         "Professional": "100-per-minute"
-       }
-     }
-   }
-   ```
-
-3. **Docker Configuration Updates** (30 minutes)
-   ```dockerfile
-   # Update Dockerfile for professional services
-   FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-   WORKDIR /app
-   EXPOSE 8080
-   
-   # Add health check for professional services
-   HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-     CMD curl -f http://localhost:8080/health/professional || exit 1
-   ```
-
-## 🤝 **COORDINATION REQUIREMENTS**
-
-### **Dependencies Between Mobile and Server Work**
-
-#### **🔴 CRITICAL DEPENDENCIES**
-1. **Mobile Sync Architecture** → **Server Data Integration APIs**
-   - **Mobile Team Need**: Server endpoints for data export/import
-   - **Server Team Delivery**: DataIntegrationController with export/import methods
-   - **Timeline**: Must complete by 1:00 PM for mobile integration testing
-   - **Coordination**: Daily sync at 11:00 AM on API contract validation
-
-2. **Professional UI Integration** → **Live Professional APIs**
-   - **Mobile Team Need**: All 13 professional service methods operational
-   - **Server Team Delivery**: Complete ProfessionalService with database integration
-   - **Timeline**: Must complete by 2:00 PM for mobile professional UI testing
-   - **Coordination**: Real-time status updates on API endpoint completion
-
-3. **Real-time Collaboration** → **WebSocket Hub Completion**
-   - **Mobile Team Need**: SignalR professional session hub functional
-   - **Server Team Delivery**: Complete ProfessionalSessionHub with tenant context
-   - **Timeline**: Must complete by 3:00 PM for WebSocket integration testing
-   - **Coordination**: Joint testing session for real-time features at 3:30 PM
-
-#### **🟡 COORDINATION CHECKPOINTS**
-- **11:00 AM**: Server database integration status → Mobile team integration prep
-- **1:00 PM**: Professional APIs completion → Mobile team live testing start
-- **3:00 PM**: WebSocket hub ready → Mobile team real-time collaboration testing
-- **5:00 PM**: End-to-end workflow validation → Joint team production deployment
-
-### **Integration Testing Requirements**
-
-#### **🔴 IMMEDIATE TESTING NEEDS**
-1. **Professional API Testing** (2 hours)
-   ```csharp
-   // Test all 13 professional service methods
-   [Test]
-   public async Task TestProfessionalWorkflow()
-   {
-       // 1. Authenticate as counselor
-       var auth = await AuthenticateAsCounselor("test-tenant-123");
-       
-       // 2. Get counselor clients
-       var clients = await professionalApi.GetCounselorClients();
-       Assert.IsNotEmpty(clients);
-       
-       // 3. Create professional session
-       var session = await professionalApi.CreateSession(clients.First().Id);
-       Assert.AreEqual("active", session.Status);
-       
-       // 4. Test real-time collaboration
-       var hubConnection = await professionalApi.JoinSessionWebSocket(session.Id);
-       Assert.IsTrue(hubConnection.State == HubConnectionState.Connected);
-   }
-   ```
-
-2. **Multi-tenant Security Testing** (1.5 hours)
-   ```csharp
-   [Test]
-   public async Task TestTenantIsolation()
-   {
-       // Create data in tenant A
-       var tenantA = "tenant-a-123";
-       var clientA = await CreateClientInTenant(tenantA);
-       
-       // Switch to tenant B
-       var tenantB = "tenant-b-456";
-       var clientsB = await GetClientsInTenant(tenantB);
-       
-       // Verify tenant A data not visible in tenant B
-       Assert.IsFalse(clientsB.Any(c => c.Id == clientA.Id));
-   }
-   ```
-
-3. **Performance Load Testing** (1 hour)
-   ```csharp
-   [Test]
-   public async Task TestConcurrentProfessionalUsers()
-   {
-       var tasks = new List<Task>();
-       
-       // Simulate 25 concurrent counselors
-       for (int i = 0; i < 25; i++)
-       {
-           tasks.Add(SimulateCounselorWorkflow($"counselor-{i}"));
-       }
-       
-       var stopwatch = Stopwatch.StartNew();
-       await Task.WhenAll(tasks);
-       stopwatch.Stop();
-       
-       // Verify response time < 200ms average
-       Assert.Less(stopwatch.ElapsedMilliseconds / 25.0, 200);
-   }
-   ```
-
-### **Unified Architecture Validation Steps**
-
-#### **🔴 CRITICAL VALIDATION SEQUENCE**
-1. **Database Integration Validation** (30 minutes)
-   - Execute migrations and verify schema
-   - Test RLS policies with multi-tenant data
-   - Validate materialized views performance
-
-2. **API Gateway Professional Routes** (45 minutes)
-   - Test all professional endpoints through gateway
-   - Verify tenant context propagation
-   - Validate rate limiting and authentication
-
-3. **Mobile-Server Communication** (60 minutes)
-   - Test hybrid sync architecture
-   - Validate professional UI with live APIs
-   - Verify real-time collaboration features
-
-4. **End-to-End Professional Workflow** (45 minutes)
-   - Complete counselor authentication and client management
-   - Create and manage professional sessions
-   - Test real-time insight sharing and collaboration
-
-5. **Performance and Security Validation** (30 minutes)
-   - Load test with 25+ concurrent professional users
-   - Security test multi-tenant data isolation
-   - Validate error handling and graceful degradation
-
-## ✅ **DEFINITION OF DONE - SERVER INTEGRATION**
-
-### **🔴 MUST COMPLETE TODAY**
-- [ ] **Database Migration**: Professional services schema deployed with RLS policies
-- [ ] **API Endpoints**: All 13 professional service methods operational with live database
-- [ ] **WebSocket Hub**: ProfessionalSessionHub complete with real-time collaboration
-- [ ] **Data Integration**: Export/import endpoints for mobile sync architecture
-- [ ] **Tenant Security**: 100% verification of multi-tenant data isolation
-
-### **🟡 HIGH PRIORITY**
-- [ ] **Performance**: <200ms response time for all professional routes under load
-- [ ] **Error Handling**: Graceful degradation and comprehensive error recovery
-- [ ] **Monitoring**: Production-ready logging and metrics collection
-- [ ] **Documentation**: API documentation and integration guides complete
-- [ ] **Testing**: 100% pass rate for professional workflow integration tests
-
-### **🟢 VALIDATION CRITERIA**
-- [ ] **Zero Compilation Errors**: Clean build across entire server solution
-- [ ] **Professional Demo Ready**: Complete counselor-client workflow demonstrable
-- [ ] **Security Compliance**: OWASP validation passed with professional features
-- [ ] **Production Deployment**: Server deployed with monitoring and scaling
-- [ ] **Mobile Integration**: Successful integration with mobile professional UI
-
-## 📞 **COMMUNICATION PROTOCOL**
+## 📞 **COMMUNICATION PROTOCOL - DEBUGGING FOCUSED**
 
 ### **Status Updates**
-- **11:00 AM**: Database integration completion status
-- **1:00 PM**: Professional APIs deployment status  
-- **3:00 PM**: WebSocket hub integration status
-- **5:00 PM**: End-to-end workflow validation results
+- **10:00 AM**: Enhanced logging implementation completed and deployed
+- **12:00 PM**: Resource monitoring and health checks operational  
+- **2:00 PM**: Cloud Run deployment with debugging enhancements tested
+- **4:00 PM**: Production monitoring and alerting validation completed
+- **6:00 PM**: Final stability testing and error resolution validation
 
 ### **Escalation Process**
-- **Technical Blockers**: Immediate escalation to Senior Claude for architectural guidance
-- **Integration Issues**: Direct coordination with Mobile Team Lead
-- **Performance Problems**: DevOps team for infrastructure optimization
+- **Persistent ELIFECYCLE Errors**: Immediate escalation to senior DevOps for Cloud Run platform issues
+- **Memory/Resource Issues**: Infrastructure team for Cloud Run resource allocation review
+- **Application Code Issues**: Senior React developer for code-level debugging and optimization
 
-### **Success Metrics**
-- **API Response Time**: <200ms for professional routes
-- **Database Performance**: <50ms for analytics queries with RLS
-- **WebSocket Latency**: <100ms for real-time collaboration
-- **Integration Success**: 100% professional workflow operational
-
----
-
-**BOTTOM LINE**: Server team is the critical path for unified architecture completion. Database integration, professional APIs, and WebSocket hub completion unlock mobile-server integration testing and production deployment. Priority focus on resolving mobile sync 404 errors and completing professional services database integration to enable end-to-end validation.
-
-**🚀 SUCCESS TARGET**: Complete server integration by 5:00 PM to enable production deployment of unified SociallyFed platform supporting individual, professional, and enterprise business models.
+### **Success Validation**
+- **Error Resolution**: No ELIFECYCLE errors in 24-hour monitoring period after deployment
+- **Visibility Achievement**: Complete error tracking and monitoring operational
+- **Production Stability**: Cloud Run service maintains 99.9% uptime with enhanced monitoring
+- **Operational Readiness**: Development team has full visibility into production issues
 
 ---
-*Generated: July 30, 2025 - Server Team Daily Brief*  
-*Next Update: 11:00 AM - Database Integration Status*  
-*Integration Target: 5:00 PM - Complete Server-Mobile Integration*
+
+**BOTTOM LINE**: The "ELIFECYCLE Command failed" error represents a critical production stability issue requiring immediate enhanced logging and monitoring implementation. By adding comprehensive application lifecycle logging, resource monitoring, build validation, and health checks, we will achieve complete visibility into the failure source and implement proactive monitoring to prevent future occurrences.
+
+**🚀 SUCCESS TARGET**: Resolve production stability issues through enhanced debugging by 6:00 PM and establish comprehensive monitoring for long-term operational excellence.
+
+---
+*Generated: August 3, 2025 - Mobile Team Cloud Run Debugging Priority*  
+*Critical Blocker: ELIFECYCLE Command failed error requiring enhanced visibility*  
+*Implementation Target: 6:00 PM - Complete debugging enhancement deployment*  
+*Success Criteria: Zero production errors with full monitoring operational*
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -1719,521 +2200,1002 @@ interface UnifiedProfessionalWorkflow {
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# SociallyFed Server Team Daily Brief
-**Date**: Tuesday, July 30, 2025  
-**Sprint Phase**: Unified Architecture Integration Completion  
-**Team Focus**: API Gateway Professional Services & Mobile-Server Integration  
-**Current Integration Status**: 87% Complete - Critical Path Execution
+# SociallyFed Mobile Team Daily Brief - Cloud Run Error Resolution
+**Date**: Saturday, August 3, 2025  
+**Sprint Phase**: Critical Cloud Run Stability & Debugging  
+**Team Focus**: Resolve "ELIFECYCLE Command failed" Error with Enhanced Logging  
+**Current Status**: 🔴 **PRODUCTION INCIDENT** - Cloud Run service crashing after startup
 
 ---
 
 ## 🚨 **CRITICAL PATH PRIORITIES - TODAY**
 
-### **🔴 IMMEDIATE ACTION REQUIRED (Next 2-3 Hours)**
+### **🔴 IMMEDIATE ACTION REQUIRED (Next 2 Hours)**
 
-#### **1. Complete Professional Services Database Integration**
-**Status**: 🔴 **BLOCKING** - Database connection required for mobile-server integration testing  
-**Impact**: Prevents end-to-end professional workflow validation  
-**Timeline**: Must complete by 12:00 PM for integration testing start
+#### **1. Implement Comprehensive Application Logging**
+**Status**: 🔴 **CRITICAL** - Need visibility into application lifecycle and error sources  
+**Root Cause**: Limited logging visibility causing inability to identify crash source  
+**Impact**: Production service unstable, no visibility into failure reasons  
+**Timeline**: Complete enhanced logging within 2 hours for rapid issue identification
 
-**Actions Required**:
-```sql
--- Execute AddTenantIdToEntities migration
-dotnet ef migrations add AddTenantIdToEntities
-dotnet ef database update
+**Enhanced Logging Implementation Strategy**:
+```typescript
+// SOLUTION 1: Application Lifecycle Logging
+// Add to src/index.tsx or src/App.tsx
+import { createLogger } from './utils/logger';
 
--- Apply professional services RLS policies
-\i scripts/professional-services-rls.sql
+const logger = createLogger('ApplicationLifecycle');
 
--- Create materialized views for analytics
-\i scripts/professional-analytics-views.sql
+// Application startup logging
+logger.info('Application startup initiated', {
+  timestamp: new Date().toISOString(),
+  buildVersion: process.env.REACT_APP_VERSION,
+  environment: process.env.NODE_ENV,
+  port: process.env.PORT
+});
 
--- Validate multi-tenant data isolation
-SELECT verify_tenant_isolation('test-tenant-123', 'counselor_clients');
-```
+// Process event logging
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception detected', {
+    error: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString()
+  });
+  // Don't exit immediately - allow logging to complete
+  setTimeout(() => process.exit(1), 1000);
+});
 
-#### **2. Resolve API Routing for Mobile Sync Operations**
-**Status**: 🔴 **URGENT** - Mobile app getting 404 errors on `/accounts/sync`  
-**Root Cause**: Mobile trying to reach server API for client-side sync operations  
-**Solution**: Implement hybrid sync architecture
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Promise Rejection detected', {
+    reason: reason,
+    promise: promise,
+    timestamp: new Date().toISOString()
+  });
+});
 
-**Implementation**:
-```csharp
-// Add to API Gateway - DataIntegrationController.cs
-[ApiController]
-[Route("api/v1/tenants/{tenantId}/data")]
-public class DataIntegrationController : ControllerBase
-{
-    [HttpPost("export")]
-    public async Task<ActionResult<DataExportResult>> ExportUserData(
-        Guid tenantId, 
-        [FromBody] DataExportRequest request)
-    {
-        // Export server-side data for mobile sync
-        var userData = await _userDataService.ExportAsync(
-            request.UserId, 
-            tenantId, 
-            request.DataTypes,
-            request.Since);
-            
-        return Ok(new DataExportResult 
-        { 
-            Data = userData,
-            Timestamp = DateTime.UtcNow,
-            Source = "server"
-        });
-    }
-    
-    [HttpPost("import")]
-    public async Task<ActionResult> ImportMobileData(
-        Guid tenantId,
-        [FromBody] MobileDataImport data)
-    {
-        await _userDataService.ImportMobileDataAsync(tenantId, data);
-        return Ok();
-    }
-    
-    [HttpGet("sync/status")]
-    public async Task<ActionResult<SyncStatusResult>> GetSyncStatus(
-        Guid tenantId,
-        [FromQuery] string userId)
-    {
-        var status = await _syncService.GetUserSyncStatusAsync(tenantId, userId);
-        return Ok(status);
-    }
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received - initiating graceful shutdown', {
+    timestamp: new Date().toISOString()
+  });
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received - initiating graceful shutdown', {
+    timestamp: new Date().toISOString()
+  });
+});
+
+// SOLUTION 2: Enhanced Serve Command Monitoring
+// Create scripts/serve-with-logging.js
+const { spawn } = require('child_process');
+const fs = require('fs');
+
+const startTime = new Date();
+console.log(`[${startTime.toISOString()}] Starting serve command with enhanced monitoring`);
+
+const serveProcess = spawn('serve', ['-s', 'build', '-p', process.env.PORT || '8080'], {
+  stdio: 'pipe',
+  env: process.env
+});
+
+// Log all stdout
+serveProcess.stdout.on('data', (data) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] SERVE STDOUT: ${data.toString()}`);
+});
+
+// Log all stderr
+serveProcess.stderr.on('data', (data) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] SERVE STDERR: ${data.toString()}`);
+});
+
+// Monitor process health
+serveProcess.on('close', (code, signal) => {
+  const timestamp = new Date().toISOString();
+  const uptime = new Date() - startTime;
+  console.log(`[${timestamp}] Serve process ended - Code: ${code}, Signal: ${signal}, Uptime: ${uptime}ms`);
+  
+  if (code !== 0) {
+    console.error(`[${timestamp}] CRITICAL: Serve process failed with non-zero exit code: ${code}`);
+    process.exit(code);
+  }
+});
+
+serveProcess.on('error', (error) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] CRITICAL: Serve process error: ${error.message}`);
+  console.error(`[${timestamp}] Error stack: ${error.stack}`);
+  process.exit(1);
+});
+
+// SOLUTION 3: Build Directory Validation
+// Add to package.json scripts
+"scripts": {
+  "start": "node scripts/validate-and-serve.js",
+  "validate-build": "node scripts/validate-build.js",
+  "serve-debug": "node scripts/serve-with-logging.js"
 }
 ```
 
-### **🟡 HIGH PRIORITY (Hours 3-5)**
+#### **2. Implement Build Directory and Asset Validation**
+**Status**: 🔴 **CRITICAL** - Validate build artifacts before serving to prevent runtime failures  
+**Issue**: Missing or corrupted build files may cause serve command to fail  
+**Solution**: Pre-serve validation with detailed error reporting
 
-#### **3. Complete WebSocket Professional Hub Integration**
-**Status**: 🟡 **75% COMPLETE** - SignalR foundation ready, needs session management  
-**Dependency**: Professional services database integration  
-**Timeline**: Complete by 3:00 PM for real-time collaboration testing
+**Build Validation Implementation**:
+```javascript
+// Create scripts/validate-build.js
+const fs = require('fs');
+const path = require('path');
 
-**Implementation Tasks**:
-```csharp
-// Complete ProfessionalSessionHub.cs
-[Hub]
-public class ProfessionalSessionHub : Hub
-{
-    // Add missing methods for complete integration
-    public async Task JoinProfessionalSession(string sessionId, string tenantId)
-    {
-        // Set tenant context and validate access
-        _tenantContext.SetTenantId(tenantId);
-        await ValidateSessionAccessAsync(sessionId, Context.UserIdentifier);
-        
-        // Add to session group for real-time collaboration
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"professional_session_{sessionId}");
-        
-        // Notify participants
-        await Clients.OthersInGroup($"professional_session_{sessionId}")
-            .SendAsync("ParticipantJoined", new { 
-                UserId = Context.UserIdentifier,
-                JoinedAt = DateTime.UtcNow 
-            });
+function validateBuildDirectory() {
+  const buildDir = path.join(__dirname, '..', 'build');
+  const timestamp = new Date().toISOString();
+  
+  console.log(`[${timestamp}] Starting build directory validation`);
+  
+  // Check if build directory exists
+  if (!fs.existsSync(buildDir)) {
+    console.error(`[${timestamp}] CRITICAL: Build directory does not exist: ${buildDir}`);
+    process.exit(1);
+  }
+  
+  // Required files for React app
+  const requiredFiles = [
+    'index.html',
+    'static/js',
+    'static/css'
+  ];
+  
+  const missingFiles = [];
+  const fileDetails = [];
+  
+  requiredFiles.forEach(file => {
+    const filePath = path.join(buildDir, file);
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      fileDetails.push({
+        file,
+        size: stats.size,
+        modified: stats.mtime.toISOString(),
+        isDirectory: stats.isDirectory()
+      });
+      console.log(`[${timestamp}] ✅ Found: ${file} (${stats.size} bytes)`);
+    } else {
+      missingFiles.push(file);
+      console.error(`[${timestamp}] ❌ Missing: ${file}`);
     }
+  });
+  
+  // Check for JavaScript bundles
+  const jsDir = path.join(buildDir, 'static', 'js');
+  if (fs.existsSync(jsDir)) {
+    const jsFiles = fs.readdirSync(jsDir).filter(f => f.endsWith('.js'));
+    console.log(`[${timestamp}] JavaScript bundles: ${jsFiles.length} files`);
+    jsFiles.forEach(file => {
+      const stats = fs.statSync(path.join(jsDir, file));
+      console.log(`[${timestamp}]   - ${file}: ${stats.size} bytes`);
+    });
+  }
+  
+  // Check for CSS files
+  const cssDir = path.join(buildDir, 'static', 'css');
+  if (fs.existsSync(cssDir)) {
+    const cssFiles = fs.readdirSync(cssDir).filter(f => f.endsWith('.css'));
+    console.log(`[${timestamp}] CSS files: ${cssFiles.length} files`);
+    cssFiles.forEach(file => {
+      const stats = fs.statSync(path.join(cssDir, file));
+      console.log(`[${timestamp}]   - ${file}: ${stats.size} bytes`);
+    });
+  }
+  
+  // Validate index.html content
+  const indexPath = path.join(buildDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    const indexContent = fs.readFileSync(indexPath, 'utf8');
+    if (indexContent.includes('<div id="root">')) {
+      console.log(`[${timestamp}] ✅ index.html contains React root element`);
+    } else {
+      console.error(`[${timestamp}] ❌ index.html missing React root element`);
+      missingFiles.push('valid index.html structure');
+    }
+  }
+  
+  if (missingFiles.length > 0) {
+    console.error(`[${timestamp}] CRITICAL: Build validation failed - Missing files:`, missingFiles);
+    process.exit(1);
+  }
+  
+  console.log(`[${timestamp}] ✅ Build validation completed successfully`);
+  return { success: true, fileDetails };
+}
+
+if (require.main === module) {
+  validateBuildDirectory();
+}
+
+module.exports = { validateBuildDirectory };
+
+// Create scripts/validate-and-serve.js
+const { validateBuildDirectory } = require('./validate-build');
+const { spawn } = require('child_process');
+
+async function validateAndServe() {
+  const timestamp = new Date().toISOString();
+  
+  try {
+    console.log(`[${timestamp}] Pre-serve validation starting`);
     
-    public async Task ShareInsightInSession(string sessionId, string insightId, object permissions)
-    {
-        var result = await _professionalService.ShareInsightAsync(
-            sessionId, insightId, Context.UserIdentifier, permissions);
-            
-        if (result.Success)
-        {
-            await Clients.Group($"professional_session_{sessionId}")
-                .SendAsync("InsightShared", result);
+    // Validate build directory
+    const validation = validateBuildDirectory();
+    console.log(`[${timestamp}] Build validation passed - proceeding with serve`);
+    
+    // Start serve with monitoring
+    console.log(`[${timestamp}] Starting serve command`);
+    const serveProcess = spawn('serve', ['-s', 'build', '-p', process.env.PORT || '8080'], {
+      stdio: 'inherit',
+      env: process.env
+    });
+    
+    serveProcess.on('close', (code) => {
+      const endTime = new Date().toISOString();
+      if (code === 0) {
+        console.log(`[${endTime}] Serve process completed successfully`);
+      } else {
+        console.error(`[${endTime}] CRITICAL: Serve process failed with code: ${code}`);
+      }
+      process.exit(code);
+    });
+    
+    serveProcess.on('error', (error) => {
+      const errorTime = new Date().toISOString();
+      console.error(`[${errorTime}] CRITICAL: Serve process error: ${error.message}`);
+      process.exit(1);
+    });
+    
+  } catch (error) {
+    console.error(`[${timestamp}] CRITICAL: Validation failed: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+validateAndServe();
+```
+
+#### **3. Enhanced Cloud Run Environment Debugging**
+**Status**: 🔴 **CRITICAL** - Add Cloud Run specific debugging and health monitoring  
+**Issue**: Need visibility into Cloud Run environment differences vs local  
+**Solution**: Environment-aware logging and health checks
+
+**Cloud Run Environment Debugging**:
+```javascript
+// Create scripts/cloud-run-debug.js
+const fs = require('fs');
+const os = require('os');
+
+function logEnvironmentDetails() {
+  const timestamp = new Date().toISOString();
+  
+  console.log(`[${timestamp}] === CLOUD RUN ENVIRONMENT DEBUG ===`);
+  
+  // System information
+  console.log(`[${timestamp}] OS: ${os.type()} ${os.release()}`);
+  console.log(`[${timestamp}] Architecture: ${os.arch()}`);
+  console.log(`[${timestamp}] Node version: ${process.version}`);
+  console.log(`[${timestamp}] Total memory: ${Math.round(os.totalmem() / 1024 / 1024)} MB`);
+  console.log(`[${timestamp}] Free memory: ${Math.round(os.freemem() / 1024 / 1024)} MB`);
+  console.log(`[${timestamp}] CPU count: ${os.cpus().length}`);
+  
+  // Environment variables (safe ones only)
+  const safeEnvVars = [
+    'NODE_ENV',
+    'PORT',
+    'K_SERVICE',
+    'K_REVISION',
+    'K_CONFIGURATION',
+    'GOOGLE_CLOUD_PROJECT'
+  ];
+  
+  console.log(`[${timestamp}] Environment variables:`);
+  safeEnvVars.forEach(key => {
+    console.log(`[${timestamp}]   ${key}: ${process.env[key] || 'undefined'}`);
+  });
+  
+  // Current working directory
+  console.log(`[${timestamp}] Working directory: ${process.cwd()}`);
+  
+  // List workspace contents
+  try {
+    const workspaceContents = fs.readdirSync('/workspace');
+    console.log(`[${timestamp}] Workspace contents: ${workspaceContents.join(', ')}`);
+  } catch (error) {
+    console.log(`[${timestamp}] Could not read workspace: ${error.message}`);
+  }
+  
+  // List current directory contents
+  try {
+    const currentContents = fs.readdirSync(process.cwd());
+    console.log(`[${timestamp}] Current directory contents: ${currentContents.join(', ')}`);
+  } catch (error) {
+    console.log(`[${timestamp}] Could not read current directory: ${error.message}`);
+  }
+  
+  // Check for package.json
+  try {
+    const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    console.log(`[${timestamp}] Package: ${packageJson.name}@${packageJson.version}`);
+    console.log(`[${timestamp}] Start script: ${packageJson.scripts?.start}`);
+  } catch (error) {
+    console.log(`[${timestamp}] Could not read package.json: ${error.message}`);
+  }
+  
+  // Check serve installation
+  try {
+    const { spawn } = require('child_process');
+    const serveCheck = spawn('serve', ['--version'], { stdio: 'pipe' });
+    
+    serveCheck.stdout.on('data', (data) => {
+      console.log(`[${timestamp}] Serve version: ${data.toString().trim()}`);
+    });
+    
+    serveCheck.on('error', (error) => {
+      console.log(`[${timestamp}] Serve not found or error: ${error.message}`);
+    });
+  } catch (error) {
+    console.log(`[${timestamp}] Could not check serve installation: ${error.message}`);
+  }
+  
+  console.log(`[${timestamp}] === END ENVIRONMENT DEBUG ===`);
+}
+
+module.exports = { logEnvironmentDetails };
+
+if (require.main === module) {
+  logEnvironmentDetails();
+}
+```
+
+### **🟡 HIGH PRIORITY (Hours 2-4)**
+
+#### **4. Implement Health Check and Monitoring Endpoints**
+**Status**: 🟡 **READY** - Add application health monitoring for Cloud Run  
+**Purpose**: Provide Cloud Run with health status and enable better monitoring  
+**Timeline**: Implement after core logging is in place
+
+**Health Check Implementation**:
+```javascript
+// Create public/health-check.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SociallyFed Health Check</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>SociallyFed Mobile - Health Check</h1>
+    <p>Status: <span id="status">OK</span></p>
+    <p>Timestamp: <span id="timestamp"></span></p>
+    <p>Build: <span id="build"></span></p>
+    
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        document.getElementById('build').textContent = '%REACT_APP_VERSION%' || 'development';
+        
+        // Basic functionality test
+        try {
+            // Test if React would work
+            if (typeof window !== 'undefined' && window.document) {
+                document.getElementById('status').textContent = 'OK';
+                document.getElementById('status').style.color = 'green';
+            }
+        } catch (error) {
+            document.getElementById('status').textContent = 'ERROR: ' + error.message;
+            document.getElementById('status').style.color = 'red';
         }
+    </script>
+</body>
+</html>
+
+// Create scripts/serve-with-health.js
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+const port = process.env.PORT || 8080;
+const buildPath = path.join(__dirname, '..', 'build');
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  const timestamp = new Date().toISOString();
+  
+  try {
+    // Check if build directory exists and has content
+    const buildExists = fs.existsSync(buildPath);
+    const indexExists = fs.existsSync(path.join(buildPath, 'index.html'));
+    
+    const healthStatus = {
+      status: buildExists && indexExists ? 'healthy' : 'unhealthy',
+      timestamp,
+      buildDirectory: buildExists,
+      indexFile: indexExists,
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: process.env.REACT_APP_VERSION || 'unknown'
+    };
+    
+    console.log(`[${timestamp}] Health check requested:`, JSON.stringify(healthStatus, null, 2));
+    
+    if (healthStatus.status === 'healthy') {
+      res.status(200).json(healthStatus);
+    } else {
+      res.status(503).json(healthStatus);
     }
+  } catch (error) {
+    console.error(`[${timestamp}] Health check error:`, error);
+    res.status(503).json({
+      status: 'error',
+      error: error.message,
+      timestamp
+    });
+  }
+});
+
+// Serve static files
+app.use(express.static(buildPath));
+
+// Handle React routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
+
+// Error handling
+app.use((error, req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] Express error:`, error);
+  res.status(500).json({
+    status: 'error',
+    error: error.message,
+    timestamp
+  });
+});
+
+app.listen(port, () => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] SociallyFed Mobile Health Server listening on port ${port}`);
+  console.log(`[${timestamp}] Health check available at: http://localhost:${port}/health`);
+});
+```
+
+#### **5. Resource Monitoring and Memory Management**
+**Status**: 🟡 **READY** - Monitor resource usage to identify potential memory/CPU issues  
+**Purpose**: Detect resource exhaustion that could cause the ELIFECYCLE error  
+**Implementation**: Real-time resource monitoring with alerts
+
+**Resource Monitoring Implementation**:
+```javascript
+// Create scripts/resource-monitor.js
+const os = require('os');
+
+class ResourceMonitor {
+  constructor(options = {}) {
+    this.interval = options.interval || 30000; // 30 seconds
+    this.memoryThreshold = options.memoryThreshold || 0.8; // 80%
+    this.cpuThreshold = options.cpuThreshold || 0.8; // 80%
+    this.monitoring = false;
+    this.stats = [];
+  }
+  
+  start() {
+    if (this.monitoring) return;
+    
+    this.monitoring = true;
+    console.log(`[${new Date().toISOString()}] Resource monitoring started - interval: ${this.interval}ms`);
+    
+    this.monitoringInterval = setInterval(() => {
+      this.collectStats();
+    }, this.interval);
+    
+    // Initial stats
+    this.collectStats();
+  }
+  
+  stop() {
+    if (!this.monitoring) return;
+    
+    this.monitoring = false;
+    clearInterval(this.monitoringInterval);
+    console.log(`[${new Date().toISOString()}] Resource monitoring stopped`);
+  }
+  
+  collectStats() {
+    const timestamp = new Date().toISOString();
+    
+    // Memory statistics
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memoryUsagePercent = usedMem / totalMem;
+    
+    // Process memory
+    const processMemory = process.memoryUsage();
+    
+    // CPU load average (1 minute)
+    const loadAvg = os.loadavg()[0]; // 1-minute load average
+    const cpuCount = os.cpus().length;
+    const cpuUsagePercent = loadAvg / cpuCount;
+    
+    const stats = {
+      timestamp,
+      system: {
+        totalMemoryMB: Math.round(totalMem / 1024 / 1024),
+        freeMemoryMB: Math.round(freeMem / 1024 / 1024),
+        usedMemoryMB: Math.round(usedMem / 1024 / 1024),
+        memoryUsagePercent: Math.round(memoryUsagePercent * 100),
+        cpuUsagePercent: Math.round(cpuUsagePercent * 100),
+        loadAverage: loadAvg,
+        cpuCount
+      },
+      process: {
+        rssMemoryMB: Math.round(processMemory.rss / 1024 / 1024),
+        heapUsedMB: Math.round(processMemory.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(processMemory.heapTotal / 1024 / 1024),
+        externalMB: Math.round(processMemory.external / 1024 / 1024),
+        uptimeSeconds: Math.round(process.uptime())
+      }
+    };
+    
+    this.stats.push(stats);
+    
+    // Keep only last 100 entries
+    if (this.stats.length > 100) {
+      this.stats.shift();
+    }
+    
+    // Log current stats
+    console.log(`[${timestamp}] Resources - Memory: ${stats.system.memoryUsagePercent}%, CPU: ${stats.system.cpuUsagePercent}%, Process: ${stats.process.rssMemoryMB}MB`);
+    
+    // Check thresholds
+    this.checkThresholds(stats);
+  }
+  
+  checkThresholds(stats) {
+    const timestamp = new Date().toISOString();
+    
+    // Memory threshold check
+    if (stats.system.memoryUsagePercent / 100 > this.memoryThreshold) {
+      console.warn(`[${timestamp}] WARNING: High memory usage - ${stats.system.memoryUsagePercent}% (threshold: ${this.memoryThreshold * 100}%)`);
+    }
+    
+    // CPU threshold check
+    if (stats.system.cpuUsagePercent / 100 > this.cpuThreshold) {
+      console.warn(`[${timestamp}] WARNING: High CPU usage - ${stats.system.cpuUsagePercent}% (threshold: ${this.cpuThreshold * 100}%)`);
+    }
+    
+    // Process memory growth check
+    if (stats.process.rssMemoryMB > 512) { // 512MB threshold for Cloud Run
+      console.warn(`[${timestamp}] WARNING: High process memory usage - ${stats.process.rssMemoryMB}MB`);
+    }
+  }
+  
+  getStats() {
+    return this.stats;
+  }
+  
+  getCurrentStats() {
+    return this.stats[this.stats.length - 1];
+  }
+}
+
+module.exports = { ResourceMonitor };
+
+// If run directly, start monitoring
+if (require.main === module) {
+  const monitor = new ResourceMonitor();
+  monitor.start();
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received - stopping resource monitor');
+    monitor.stop();
+    process.exit(0);
+  });
+  
+  process.on('SIGINT', () => {
+    console.log('SIGINT received - stopping resource monitor');
+    monitor.stop();
+    process.exit(0);
+  });
 }
 ```
 
-#### **4. Professional Services API Completion**
-**Status**: 🟡 **90% COMPLETE** - 13 API methods designed, need database connection  
-**Focus**: Connect to live database and replace mock data  
-**Timeline**: Complete by 4:00 PM for mobile integration testing
+## 🔍 **ERROR ANALYSIS & RESOLUTION STRATEGY**
 
-**Priority Endpoints**:
-```csharp
-// Update ProfessionalService.cs - replace mock data with database queries
-public class ProfessionalService : IProfessionalService
+### **Root Cause Analysis Framework**
+
+#### **Error Pattern Analysis from Cloud Run Logs**
+Based on the provided logs showing "ELIFECYCLE Command failed" error:
+
+1. **Timeline of Events**:
+   - `20:20:33`: Successful startup - "baseline@1.6.4 start"
+   - `20:20:33`: Serve command initiated - "serve -s build -p $PORT"  
+   - `20:20:34`: Health check passed - "Default STARTUP TCP probe succeeded"
+   - `20:20:34`: Server accepting connections - "Accepting connections at http://localhost:8080"
+   - `20:20:34`: Successful HTTP request - "GET /" returned 200 in 109ms
+   - `20:35:36`: **FAILURE** - "ELIFECYCLE Command failed" (15 minutes later)
+   - `20:35:36`: Graceful shutdown initiated
+
+2. **Key Observations**:
+   - Initial startup was successful
+   - Application served requests successfully for ~15 minutes
+   - Failure occurred during runtime, not startup
+   - Graceful shutdown was attempted
+
+#### **Potential Failure Scenarios**
+
+```typescript
+// Investigation Framework for ELIFECYCLE failures
+interface FailureScenario {
+  scenario: string;
+  probability: 'High' | 'Medium' | 'Low';
+  investigation: string[];
+  mitigation: string[];
+}
+
+const failureScenarios: FailureScenario[] = [
+  {
+    scenario: "Memory Exhaustion",
+    probability: "High",
+    investigation: [
+      "Monitor process memory usage over time",
+      "Check for memory leaks in React components",
+      "Analyze build bundle size and dependencies",
+      "Monitor Cloud Run memory limits"
+    ],
+    mitigation: [
+      "Implement resource monitoring",
+      "Add memory usage alerts",
+      "Optimize bundle size",
+      "Increase Cloud Run memory allocation"
+    ]
+  },
+  {
+    scenario: "File System Issues",
+    probability: "Medium", 
+    investigation: [
+      "Validate build directory integrity",
+      "Check for missing or corrupted files",
+      "Verify file permissions",
+      "Monitor disk space usage"
+    ],
+    mitigation: [
+      "Add build validation before serving",
+      "Implement file integrity checks",
+      "Add disk space monitoring",
+      "Use read-only file system mounts"
+    ]
+  },
+  {
+    scenario: "NPM/Serve Command Issues",
+    probability: "Medium",
+    investigation: [
+      "Check serve package version compatibility",
+      "Verify npm dependencies integrity",
+      "Analyze serve command configuration",
+      "Test with alternative static servers"
+    ],
+    mitigation: [
+      "Pin serve package version",
+      "Add serve command monitoring",
+      "Implement fallback static server",
+      "Use multi-stage Docker builds"
+    ]
+  },
+  {
+    scenario: "Cloud Run Environment Issues", 
+    probability: "Low",
+    investigation: [
+      "Compare local vs Cloud Run environment",
+      "Check Cloud Run configuration",
+      "Verify container resource limits",
+      "Analyze Cloud Run platform issues"
+    ],
+    mitigation: [
+      "Add environment debugging",
+      "Implement health checks",
+      "Configure appropriate resource limits",
+      "Add Cloud Run specific error handling"
+    ]
+  }
+];
+```
+
+### **Comprehensive Debugging Strategy**
+
+#### **Phase 1: Immediate Visibility (0-2 hours)**
+```bash
+# 1. Add enhanced logging to package.json
 {
-    private readonly ApplicationDbContext _context;
-    private readonly ITenantContext _tenantContext;
+  "scripts": {
+    "start": "node scripts/cloud-run-debug.js && node scripts/validate-and-serve.js",
+    "start:monitor": "node scripts/resource-monitor.js & node scripts/validate-and-serve.js",
+    "validate": "node scripts/validate-build.js",
+    "debug": "node scripts/cloud-run-debug.js"
+  }
+}
+
+# 2. Update Dockerfile for better debugging
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Add debugging tools
+RUN npm install -g serve@14.2.1
+
+COPY . .
+RUN npm run build
+
+# Production stage with debugging
+FROM node:18-alpine
+WORKDIR /app
+
+# Copy debugging scripts
+COPY scripts/ ./scripts/
+COPY package.json ./
+
+# Install serve and debugging dependencies
+RUN npm install -g serve@14.2.1
+
+# Copy build artifacts
+COPY --from=builder /app/build ./build
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
+
+# Start with enhanced monitoring
+CMD ["node", "scripts/validate-and-serve.js"]
+```
+
+#### **Phase 2: Advanced Monitoring (2-4 hours)**
+```typescript
+// Enhanced error tracking and reporting
+class CloudRunErrorTracker {
+  private errors: CloudRunError[] = [];
+  private startTime: Date = new Date();
+  
+  constructor() {
+    this.setupErrorHandlers();
+    this.setupPerformanceMonitoring();
+  }
+  
+  private setupErrorHandlers(): void {
+    // Track all error types
+    process.on('uncaughtException', (error) => {
+      this.trackError('uncaughtException', error);
+    });
     
-    public async Task<List<ClientSummary>> GetClientsAsync(string counselorId)
-    {
-        var tenantId = _tenantContext.TenantId;
-        
-        return await _context.CounselorClients
-            .Where(cc => cc.CounselorId == counselorId && cc.TenantId == tenantId)
-            .Select(cc => new ClientSummary
-            {
-                ClientId = cc.ClientId,
-                Name = cc.Client.Name,
-                LastSession = cc.LastSessionDate,
-                Status = cc.Status,
-                ProgressScore = cc.ProgressMetrics
-            })
-            .ToListAsync();
-    }
+    process.on('unhandledRejection', (reason, promise) => {
+      this.trackError('unhandledRejection', new Error(String(reason)));
+    });
     
-    public async Task<ProfessionalSession> CreateSessionAsync(
-        string counselorId, 
-        string clientId, 
-        CreateSessionRequest request)
-    {
-        var session = new ProfessionalSession
-        {
-            Id = Guid.NewGuid(),
-            TenantId = _tenantContext.TenantId,
-            CounselorId = counselorId,
-            ClientId = clientId,
-            SessionType = request.SessionType,
-            Status = "active",
-            StartedAt = DateTime.UtcNow
-        };
-        
-        _context.ProfessionalSessions.Add(session);
-        await _context.SaveChangesAsync();
-        
-        return session;
+    process.on('warning', (warning) => {
+      this.trackWarning(warning);
+    });
+  }
+  
+  private setupPerformanceMonitoring(): void {
+    // Monitor event loop lag
+    setInterval(() => {
+      const start = process.hrtime.bigint();
+      setImmediate(() => {
+        const lag = Number(process.hrtime.bigint() - start) / 1000000; // Convert to ms
+        if (lag > 100) { // Alert if lag > 100ms
+          console.warn(`[${new Date().toISOString()}] Event loop lag: ${lag.toFixed(2)}ms`);
+        }
+      });
+    }, 5000);
+    
+    // Monitor garbage collection
+    if (global.gc) {
+      setInterval(() => {
+        const memBefore = process.memoryUsage();
+        global.gc();
+        const memAfter = process.memoryUsage();
+        console.log(`[${new Date().toISOString()}] GC freed ${(memBefore.heapUsed - memAfter.heapUsed) / 1024 / 1024} MB`);
+      }, 60000);
     }
+  }
+  
+  private trackError(type: string, error: Error): void {
+    const errorInfo: CloudRunError = {
+      type,
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      pid: process.pid
+    };
+    
+    this.errors.push(errorInfo);
+    
+    // Log immediately
+    console.error(`[${errorInfo.timestamp.toISOString()}] CRITICAL ${type}:`, JSON.stringify(errorInfo, null, 2));
+    
+    // Keep only last 50 errors
+    if (this.errors.length > 50) {
+      this.errors.shift();
+    }
+  }
+  
+  getErrorReport(): ErrorReport {
+    return {
+      startTime: this.startTime,
+      uptime: process.uptime(),
+      errorCount: this.errors.length,
+      errors: this.errors,
+      currentMemory: process.memoryUsage(),
+      version: process.env.REACT_APP_VERSION || 'unknown'
+    };
+  }
+}
+
+interface CloudRunError {
+  type: string;
+  message: string;
+  stack?: string;
+  timestamp: Date;
+  uptime: number;
+  memory: NodeJS.MemoryUsage;
+  pid: number;
+}
+
+interface ErrorReport {
+  startTime: Date;
+  uptime: number;
+  errorCount: number;
+  errors: CloudRunError[];
+  currentMemory: NodeJS.MemoryUsage;
+  version: string;
 }
 ```
 
-## 🔗 **INTEGRATION PRIORITIES**
+#### **Phase 3: Production Hardening (4-6 hours)**
+```yaml
+# cloud-run-service.yaml - Enhanced configuration
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sociallyfed-mobile
+  annotations:
+    run.googleapis.com/cpu-throttling: "false"
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: "1"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cpu-throttling: "false"
+    spec:
+      containerConcurrency: 100
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/sociallyfed/mobile:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "8080"
+        - name: REACT_APP_VERSION
+          value: "1.6.4"
+        resources:
+          limits:
+            cpu: "2000m"     # Increased from default
+            memory: "1Gi"    # Increased from default 512Mi
+          requests:
+            cpu: "500m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+```
 
-### **API Gateway Development Tasks**
+## ✅ **IMPLEMENTATION CHECKLIST - DEBUGGING ENHANCEMENT**
 
-#### **✅ COMPLETED Foundation**
-- [x] Tenant-aware routing with `/api/v1/tenants/{tenantId}/` pattern
-- [x] JWT authentication with automatic token refresh
-- [x] Rate limiting operational with tier-based controls
-- [x] Error handling with comprehensive user notifications
+### **🔴 IMMEDIATE IMPLEMENTATION (0-2 hours)**
+- [ ] **Enhanced Application Logging**: Add comprehensive startup, runtime, and error logging
+- [ ] **Build Validation Script**: Validate build directory and assets before serving  
+- [ ] **Cloud Run Environment Debugging**: Log environment details and configuration
+- [ ] **Process Event Monitoring**: Track uncaught exceptions and process signals
+- [ ] **Updated Package Scripts**: Replace basic start command with debugging version
 
-#### **🔴 CRITICAL COMPLETION TASKS**
-1. **Professional Routes Integration** (2 hours)
-   ```csharp
-   [Route("api/v1/gateway/professional")]
-   [Authorize(Roles = "counselor,admin")]
-   public class GatewayProfessionalController : TenantGatewayBase
-   {
-       [HttpGet("clients")]
-       public async Task<ActionResult<List<ClientSummary>>> GetCounselorClients(
-           [FromHeader("X-Tenant-ID")] string tenantId,
-           [FromQuery] string counselorId = null)
-       
-       [HttpPost("sessions")]
-       public async Task<ActionResult<ProfessionalSession>> CreateProfessionalSession(
-           [FromHeader("X-Tenant-ID")] string tenantId,
-           [FromBody] CreateSessionRequest request)
-       
-       [HttpGet("analytics/dashboard")]
-       public async Task<ActionResult<CounselorDashboard>> GetCounselorDashboard(
-           [FromHeader("X-Tenant-ID")] string tenantId)
-   }
-   ```
+### **🟡 ADVANCED MONITORING (2-4 hours)**  
+- [ ] **Resource Monitor**: Real-time CPU and memory usage tracking with alerts
+- [ ] **Health Check Endpoints**: HTTP endpoints for Cloud Run health monitoring
+- [ ] **Error Tracking System**: Comprehensive error collection and reporting
+- [ ] **Performance Monitoring**: Event loop lag and garbage collection monitoring
+- [ ] **File System Monitoring**: Build directory integrity and disk space monitoring
 
-2. **Data Integration Routes** (1.5 hours)
-   - Export endpoint for mobile sync integration
-   - Import endpoint for mobile data synchronization
-   - Sync status tracking for hybrid architecture
+### **🟢 PRODUCTION HARDENING (4-6 hours)**
+- [ ] **Enhanced Cloud Run Config**: Increased memory limits and better health checks
+- [ ] **Graceful Error Recovery**: Automatic restart and recovery mechanisms  
+- [ ] **Logging Integration**: Structured logging for Google Cloud Logging
+- [ ] **Monitoring Dashboard**: Cloud Run monitoring and alerting setup
+- [ ] **Deployment Validation**: Pre-deployment testing and validation scripts
 
-3. **WebSocket Bridge Configuration** (1 hour)
-   - SignalR hub routing through API Gateway
-   - Tenant context propagation for real-time sessions
-   - Connection management and scaling preparation
+## 📊 **SUCCESS METRICS - DEBUGGING IMPLEMENTATION**
 
-### **Multi-tenant Database Implementation**
+### **🔴 CRITICAL SUCCESS CRITERIA**
+- **Error Visibility**: 100% visibility into application lifecycle and error sources
+- **Cloud Run Stability**: Zero ELIFECYCLE errors after enhanced monitoring implementation  
+- **Resource Monitoring**: Real-time tracking of memory and CPU usage with alerting
+- **Health Check Functionality**: Working HTTP health endpoints for Cloud Run monitoring
+- **Graceful Error Handling**: All process errors logged and handled without silent failures
 
-#### **✅ PREPARED Schema & Policies**
-- [x] Professional tables designed (counselor_clients, professional_sessions, shared_insights)
-- [x] Row-Level Security policies written for complete tenant isolation
-- [x] Materialized views prepared for counselor analytics optimization
-- [x] Migration scripts ready for execution
+### **🟡 MONITORING EFFECTIVENESS**
+- **Error Detection Speed**: Errors detected and logged within 5 seconds of occurrence
+- **Resource Alert Accuracy**: Memory/CPU alerts triggered before service degradation
+- **Health Check Response**: Health endpoints respond within 100ms with accurate status
+- **Log Quality**: All logs structured and searchable in Google Cloud Logging
+- **Recovery Time**: Service auto-recovery within 60 seconds of detected issues
 
-#### **🔴 CRITICAL DEPLOYMENT TASKS**
-1. **Execute Database Migration** (30 minutes)
-   ```bash
-   # Execute in production database
-   dotnet ef migrations add AddTenantIdToEntities
-   dotnet ef database update
-   ```
+### **🟢 PRODUCTION READINESS** 
+- **Zero Silent Failures**: All errors visible and tracked in monitoring systems
+- **Proactive Monitoring**: Issues detected before user impact through health checks
+- **Operational Excellence**: Full observability into application performance and errors
+- **Deployment Confidence**: Enhanced debugging provides confidence in production deployments
+- **Incident Response**: Complete error context available for rapid incident resolution
 
-2. **Apply RLS Policies** (45 minutes)
-   ```sql
-   -- Enable row-level security
-   ALTER TABLE counselor_clients ENABLE ROW LEVEL SECURITY;
-   ALTER TABLE professional_sessions ENABLE ROW LEVEL SECURITY;
-   
-   -- Create tenant isolation policies
-   CREATE POLICY tenant_isolation_counselor_clients ON counselor_clients 
-     USING (tenant_id = current_setting('app.current_tenant')::UUID);
-     
-   CREATE POLICY tenant_isolation_professional_sessions ON professional_sessions 
-     USING (tenant_id = current_setting('app.current_tenant')::UUID);
-   ```
+---
 
-3. **Create Analytics Views** (30 minutes)
-   ```sql
-   -- Materialized view for counselor dashboard
-   CREATE MATERIALIZED VIEW counselor_dashboard_analytics AS
-   SELECT 
-       cc.counselor_id,
-       cc.tenant_id,
-       COUNT(DISTINCT cc.client_id) as total_clients,
-       COUNT(DISTINCT ps.id) as total_sessions,
-       AVG(cc.progress_metrics) as avg_client_progress
-   FROM counselor_clients cc
-   LEFT JOIN professional_sessions ps ON cc.client_id = ps.client_id
-   GROUP BY cc.counselor_id, cc.tenant_id;
-   
-   CREATE UNIQUE INDEX ON counselor_dashboard_analytics (counselor_id, tenant_id);
-   ```
-
-### **Professional Services APIs**
-
-#### **🔴 CRITICAL API METHODS (Complete Today)**
-1. **Counselor Management APIs** (3 hours)
-   - `GET /api/v1/professional/clients` - Get counselor's client list
-   - `POST /api/v1/professional/clients/invite` - Invite new client
-   - `PUT /api/v1/professional/clients/{id}/permissions` - Update sharing permissions
-   - `GET /api/v1/professional/clients/{id}/progress` - Get client progress report
-
-2. **Session Management APIs** (2 hours)
-   - `POST /api/v1/professional/sessions` - Create professional session
-   - `GET /api/v1/professional/sessions/active` - Get active sessions
-   - `PUT /api/v1/professional/sessions/{id}/status` - Update session status
-   - `POST /api/v1/professional/sessions/{id}/notes` - Add session notes
-
-3. **Real-time Collaboration APIs** (2 hours)
-   - `POST /api/v1/professional/collaboration/share-insight` - Share insight in session
-   - `GET /api/v1/professional/collaboration/session/{id}` - Get session participants
-   - `POST /api/v1/professional/collaboration/typing` - Send typing indicators
-   - `POST /api/v1/professional/collaboration/presence` - Update presence status
-
-#### **🟡 PERFORMANCE OPTIMIZATION**
-- **Response Time Target**: <200ms for all professional service routes
-- **Database Query Optimization**: Use materialized views for complex analytics
-- **Caching Strategy**: Redis caching for frequently accessed counselor data
-- **Connection Pooling**: Optimize database connections for concurrent sessions
-
-### **Deployment Configuration Needs**
-
-#### **🔴 IMMEDIATE DEPLOYMENT TASKS**
-1. **Database Optional Configuration** (COMPLETED ✅)
-   - Graceful degradation when database unavailable
-   - In-memory database fallback for Cloud Run deployment
-   - Professional services mock data when database offline
-
-2. **Environment Configuration** (1 hour)
-   ```csharp
-   // appsettings.Production.json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "${DATABASE_CONNECTION_STRING}"
-     },
-     "Professional": {
-       "EnableRealTimeCollaboration": true,
-       "MaxConcurrentSessions": 100,
-       "SessionTimeoutMinutes": 60
-     },
-     "ApiGateway": {
-       "ProfessionalRoutesEnabled": true,
-       "TenantValidationRequired": true,
-       "RateLimiting": {
-         "Professional": "100-per-minute"
-       }
-     }
-   }
-   ```
-
-3. **Docker Configuration Updates** (30 minutes)
-   ```dockerfile
-   # Update Dockerfile for professional services
-   FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-   WORKDIR /app
-   EXPOSE 8080
-   
-   # Add health check for professional services
-   HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-     CMD curl -f http://localhost:8080/health/professional || exit 1
-   ```
-
-## 🤝 **COORDINATION REQUIREMENTS**
-
-### **Dependencies Between Mobile and Server Work**
-
-#### **🔴 CRITICAL DEPENDENCIES**
-1. **Mobile Sync Architecture** → **Server Data Integration APIs**
-   - **Mobile Team Need**: Server endpoints for data export/import
-   - **Server Team Delivery**: DataIntegrationController with export/import methods
-   - **Timeline**: Must complete by 1:00 PM for mobile integration testing
-   - **Coordination**: Daily sync at 11:00 AM on API contract validation
-
-2. **Professional UI Integration** → **Live Professional APIs**
-   - **Mobile Team Need**: All 13 professional service methods operational
-   - **Server Team Delivery**: Complete ProfessionalService with database integration
-   - **Timeline**: Must complete by 2:00 PM for mobile professional UI testing
-   - **Coordination**: Real-time status updates on API endpoint completion
-
-3. **Real-time Collaboration** → **WebSocket Hub Completion**
-   - **Mobile Team Need**: SignalR professional session hub functional
-   - **Server Team Delivery**: Complete ProfessionalSessionHub with tenant context
-   - **Timeline**: Must complete by 3:00 PM for WebSocket integration testing
-   - **Coordination**: Joint testing session for real-time features at 3:30 PM
-
-#### **🟡 COORDINATION CHECKPOINTS**
-- **11:00 AM**: Server database integration status → Mobile team integration prep
-- **1:00 PM**: Professional APIs completion → Mobile team live testing start
-- **3:00 PM**: WebSocket hub ready → Mobile team real-time collaboration testing
-- **5:00 PM**: End-to-end workflow validation → Joint team production deployment
-
-### **Integration Testing Requirements**
-
-#### **🔴 IMMEDIATE TESTING NEEDS**
-1. **Professional API Testing** (2 hours)
-   ```csharp
-   // Test all 13 professional service methods
-   [Test]
-   public async Task TestProfessionalWorkflow()
-   {
-       // 1. Authenticate as counselor
-       var auth = await AuthenticateAsCounselor("test-tenant-123");
-       
-       // 2. Get counselor clients
-       var clients = await professionalApi.GetCounselorClients();
-       Assert.IsNotEmpty(clients);
-       
-       // 3. Create professional session
-       var session = await professionalApi.CreateSession(clients.First().Id);
-       Assert.AreEqual("active", session.Status);
-       
-       // 4. Test real-time collaboration
-       var hubConnection = await professionalApi.JoinSessionWebSocket(session.Id);
-       Assert.IsTrue(hubConnection.State == HubConnectionState.Connected);
-   }
-   ```
-
-2. **Multi-tenant Security Testing** (1.5 hours)
-   ```csharp
-   [Test]
-   public async Task TestTenantIsolation()
-   {
-       // Create data in tenant A
-       var tenantA = "tenant-a-123";
-       var clientA = await CreateClientInTenant(tenantA);
-       
-       // Switch to tenant B
-       var tenantB = "tenant-b-456";
-       var clientsB = await GetClientsInTenant(tenantB);
-       
-       // Verify tenant A data not visible in tenant B
-       Assert.IsFalse(clientsB.Any(c => c.Id == clientA.Id));
-   }
-   ```
-
-3. **Performance Load Testing** (1 hour)
-   ```csharp
-   [Test]
-   public async Task TestConcurrentProfessionalUsers()
-   {
-       var tasks = new List<Task>();
-       
-       // Simulate 25 concurrent counselors
-       for (int i = 0; i < 25; i++)
-       {
-           tasks.Add(SimulateCounselorWorkflow($"counselor-{i}"));
-       }
-       
-       var stopwatch = Stopwatch.StartNew();
-       await Task.WhenAll(tasks);
-       stopwatch.Stop();
-       
-       // Verify response time < 200ms average
-       Assert.Less(stopwatch.ElapsedMilliseconds / 25.0, 200);
-   }
-   ```
-
-### **Unified Architecture Validation Steps**
-
-#### **🔴 CRITICAL VALIDATION SEQUENCE**
-1. **Database Integration Validation** (30 minutes)
-   - Execute migrations and verify schema
-   - Test RLS policies with multi-tenant data
-   - Validate materialized views performance
-
-2. **API Gateway Professional Routes** (45 minutes)
-   - Test all professional endpoints through gateway
-   - Verify tenant context propagation
-   - Validate rate limiting and authentication
-
-3. **Mobile-Server Communication** (60 minutes)
-   - Test hybrid sync architecture
-   - Validate professional UI with live APIs
-   - Verify real-time collaboration features
-
-4. **End-to-End Professional Workflow** (45 minutes)
-   - Complete counselor authentication and client management
-   - Create and manage professional sessions
-   - Test real-time insight sharing and collaboration
-
-5. **Performance and Security Validation** (30 minutes)
-   - Load test with 25+ concurrent professional users
-   - Security test multi-tenant data isolation
-   - Validate error handling and graceful degradation
-
-## ✅ **DEFINITION OF DONE - SERVER INTEGRATION**
-
-### **🔴 MUST COMPLETE TODAY**
-- [ ] **Database Migration**: Professional services schema deployed with RLS policies
-- [ ] **API Endpoints**: All 13 professional service methods operational with live database
-- [ ] **WebSocket Hub**: ProfessionalSessionHub complete with real-time collaboration
-- [ ] **Data Integration**: Export/import endpoints for mobile sync architecture
-- [ ] **Tenant Security**: 100% verification of multi-tenant data isolation
-
-### **🟡 HIGH PRIORITY**
-- [ ] **Performance**: <200ms response time for all professional routes under load
-- [ ] **Error Handling**: Graceful degradation and comprehensive error recovery
-- [ ] **Monitoring**: Production-ready logging and metrics collection
-- [ ] **Documentation**: API documentation and integration guides complete
-- [ ] **Testing**: 100% pass rate for professional workflow integration tests
-
-### **🟢 VALIDATION CRITERIA**
-- [ ] **Zero Compilation Errors**: Clean build across entire server solution
-- [ ] **Professional Demo Ready**: Complete counselor-client workflow demonstrable
-- [ ] **Security Compliance**: OWASP validation passed with professional features
-- [ ] **Production Deployment**: Server deployed with monitoring and scaling
-- [ ] **Mobile Integration**: Successful integration with mobile professional UI
-
-## 📞 **COMMUNICATION PROTOCOL**
+## 📞 **COMMUNICATION PROTOCOL - DEBUGGING FOCUSED**
 
 ### **Status Updates**
-- **11:00 AM**: Database integration completion status
-- **1:00 PM**: Professional APIs deployment status  
-- **3:00 PM**: WebSocket hub integration status
-- **5:00 PM**: End-to-end workflow validation results
+- **10:00 AM**: Enhanced logging implementation completed and deployed
+- **12:00 PM**: Resource monitoring and health checks operational  
+- **2:00 PM**: Cloud Run deployment with debugging enhancements tested
+- **4:00 PM**: Production monitoring and alerting validation completed
+- **6:00 PM**: Final stability testing and error resolution validation
 
 ### **Escalation Process**
-- **Technical Blockers**: Immediate escalation to Senior Claude for architectural guidance
-- **Integration Issues**: Direct coordination with Mobile Team Lead
-- **Performance Problems**: DevOps team for infrastructure optimization
+- **Persistent ELIFECYCLE Errors**: Immediate escalation to senior DevOps for Cloud Run platform issues
+- **Memory/Resource Issues**: Infrastructure team for Cloud Run resource allocation review
+- **Application Code Issues**: Senior React developer for code-level debugging and optimization
 
-### **Success Metrics**
-- **API Response Time**: <200ms for professional routes
-- **Database Performance**: <50ms for analytics queries with RLS
-- **WebSocket Latency**: <100ms for real-time collaboration
-- **Integration Success**: 100% professional workflow operational
-
----
-
-**BOTTOM LINE**: Server team is the critical path for unified architecture completion. Database integration, professional APIs, and WebSocket hub completion unlock mobile-server integration testing and production deployment. Priority focus on resolving mobile sync 404 errors and completing professional services database integration to enable end-to-end validation.
-
-**🚀 SUCCESS TARGET**: Complete server integration by 5:00 PM to enable production deployment of unified SociallyFed platform supporting individual, professional, and enterprise business models.
+### **Success Validation**
+- **Error Resolution**: No ELIFECYCLE errors in 24-hour monitoring period after deployment
+- **Visibility Achievement**: Complete error tracking and monitoring operational
+- **Production Stability**: Cloud Run service maintains 99.9% uptime with enhanced monitoring
+- **Operational Readiness**: Development team has full visibility into production issues
 
 ---
-*Generated: July 30, 2025 - Server Team Daily Brief*  
-*Next Update: 11:00 AM - Database Integration Status*  
-*Integration Target: 5:00 PM - Complete Server-Mobile Integration*
+
+**BOTTOM LINE**: The "ELIFECYCLE Command failed" error represents a critical production stability issue requiring immediate enhanced logging and monitoring implementation. By adding comprehensive application lifecycle logging, resource monitoring, build validation, and health checks, we will achieve complete visibility into the failure source and implement proactive monitoring to prevent future occurrences.
+
+**🚀 SUCCESS TARGET**: Resolve production stability issues through enhanced debugging by 6:00 PM and establish comprehensive monitoring for long-term operational excellence.
+
+---
+*Generated: August 3, 2025 - Mobile Team Cloud Run Debugging Priority*  
+*Critical Blocker: ELIFECYCLE Command failed error requiring enhanced visibility*  
+*Implementation Target: 6:00 PM - Complete debugging enhancement deployment*  
+*Success Criteria: Zero production errors with full monitoring operational*
