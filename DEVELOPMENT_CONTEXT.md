@@ -175,579 +175,498 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Mon 04 Aug 2025 04:52:50 AEST
+## Session Started: Tue 05 Aug 2025 02:46:38 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - Server Team
-## August 4th, 2025 - Critical Resolution & Integration Completion
+# Daily Brief - Mobile Team  
+## August 5th, 2025 - Critical Endpoint Migration & Server Integration
 
-### 🚨 **CRITICAL STATUS: PRODUCTION INCIDENT RESOLUTION**
-**Current Situation**: 401 Unauthorized errors on `/accounts/sync` endpoint blocking mobile app functionality  
-**Impact**: Mobile users cannot sync data, affecting core application functionality  
-**Priority**: **P0 - CRITICAL** - Immediate resolution required  
-**Timeline**: Resolution target within 4 hours  
+### 🚨 **CRITICAL STATUS: ENDPOINT MIGRATION REQUIRED**
+**Current Situation**: Mobile app hitting `api.sociallyfed.com/accounts/sync` with JWT tokens, but server expects Firebase auth  
+**Root Cause**: Authentication mismatch - mobile using JWT, legacy endpoint using Firebase  
+**Impact**: 401 Unauthorized errors blocking all data synchronization  
+**Your Action**: **MIGRATE TO NEW JWT ENDPOINTS** (Option 1 - Recommended by server team)  
 
 ---
 
 ## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
 
-### **IMMEDIATE PRIORITY (Next 2 Hours)**
-1. **🔴 AUTH FLOW DIAGNOSIS & REPAIR**
-   - Investigate JWT token validation in sync endpoint
-   - Verify token generation and signing key configuration
-   - Test authentication flow end-to-end
+### **🔴 P0 IMMEDIATE PRIORITY (Next 2 Hours) - ENDPOINT MIGRATION**
+1. **🟡 MIGRATE AUTHENTICATION ENDPOINTS**
+   - **CHANGE FROM**: `api.sociallyfed.com/accounts/sync` (Firebase auth)
+   - **CHANGE TO**: `api.sociallyfed.com/sync/sync` (JWT auth)  
+   - Update ServerApiService to use new secure endpoints
+   - Test JWT token flow with new `/sync/*` routes
 
-2. **🔴 DATABASE SERVICES COMPLETION**
-   - Implement missing service implementations (currently mock services)
-   - Connect professional services to actual database
-   - Execute pending database migrations
+2. **🟡 UPDATE PROFESSIONAL SERVICES ENDPOINTS**
+   - Migrate professional features to `/professional/*` routes (JWT auth)
+   - Update WebSocket connections to use JWT authentication
+   - Validate multi-tenant switching with new endpoint structure
 
-### **INTEGRATION COMPLETION (Hours 3-4)**
-3. **🟡 MOBILE-SERVER SYNC VALIDATION**
-   - Validate `/accounts/sync` endpoint functionality
-   - Test data synchronization with mobile app
-   - Performance validation under load
+### **🟡 INTEGRATION VALIDATION (Hours 2-4) - POST-MIGRATION**
+3. **🔴 END-TO-END SYNC TESTING**
+   - Verify data synchronization works with JWT endpoints
+   - Test conflict resolution and incremental sync
+   - Validate tenant isolation with new authentication flow
 
-4. **🟡 PROFESSIONAL SERVICES INTEGRATION**
-   - Complete API Gateway professional routes
-   - Validate WebSocket professional hub
-   - Test multi-tenant isolation
+4. **🔴 PROFESSIONAL FEATURES INTEGRATION**
+   - Test counselor dashboard with live server data
+   - Validate real-time collaboration features
+   - Confirm client management workflows function correctly
+
+---
+
+## **📊 DEPENDENCIES BETWEEN MOBILE AND SERVER WORK**
+
+### **✅ COMPLETED BY SERVER TEAM (August 4th)**
+- **JWT Authentication Infrastructure**: Complete validation middleware implemented
+- **New Secure Endpoints**: `/sync/*` and `/professional/*` routes operational  
+- **Dual Auth Strategy**: Legacy Firebase + New JWT auth both working
+- **Multi-tenant Support**: Tenant isolation validated in JWT tokens
+- **Database Services**: Real database operations replacing mock services
+
+### **🔄 MOBILE TEAM DEPENDENCIES (TODAY'S WORK)**
+- **Endpoint Migration**: Switch from `/accounts/sync` → `/sync/sync`
+- **JWT Token Handling**: Update token format and validation
+- **Error Handling**: Adapt to new error response formats  
+- **Professional Routes**: Migrate to JWT-protected professional endpoints
+- **WebSocket Auth**: Update real-time features for JWT authentication
+
+### **🤝 COORDINATION REQUIREMENTS**
+- **Server Team**: JWT_SECRET configuration and token format validation
+- **Mobile Team**: Device ID format and request headers standardization  
+- **Both Teams**: Error response format and retry behavior alignment
+
+---
+
+## **🧪 INTEGRATION TESTING REQUIREMENTS**
+
+### **Phase 1: Basic Authentication (Priority 1)**
+```typescript
+// CRITICAL: Test new JWT authentication endpoint
+const authTests = [
+  'POST /api/auth/login → JWT tokens returned',
+  'JWT token validation and refresh mechanics',  
+  'Token expiry handling and automatic refresh',
+  'Error handling for invalid credentials',
+  'Device ID registration and persistence'
+];
+```
+
+### **Phase 2: Data Synchronization (Priority 1)**  
+```typescript
+// CRITICAL: Test new sync endpoint  
+const syncTests = [
+  'POST /api/sync/sync → Successful data sync',
+  'Incremental sync with lastSyncTimestamp',
+  'Conflict resolution for concurrent changes',
+  'Large data payload handling (>1MB)',
+  'Network interruption and retry logic'
+];
+```
+
+### **Phase 3: Professional Services (Priority 2)**
+```typescript  
+// HIGH: Test professional features integration
+const professionalTests = [
+  'GET /api/professional/dashboard → Counselor analytics',
+  'GET /api/professional/clients → Client list with tenant isolation',
+  'WebSocket /hub/professional → Real-time collaboration',
+  'POST /api/professional/sessions → Session management',
+  'Multi-tenant switching with JWT tenant_id claim'
+];
+```
+
+### **Phase 4: Error Recovery (Priority 2)**
+```typescript
+// HIGH: Test resilience and error handling
+const resilienceTests = [
+  'Server downtime handling and offline mode',
+  'Invalid JWT token recovery flow',  
+  'Rate limiting and backoff strategies',
+  'Network switching (WiFi → Cellular)',
+  'Memory and battery optimization validation'
+];
+```
+
+---
+
+## **🏗️ UNIFIED ARCHITECTURE VALIDATION STEPS**
+
+### **Step 1: Authentication Flow Validation**
+```mermaid
+sequenceDiagram
+    participant Mobile as Mobile App
+    participant Server as Server API  
+    participant DB as Database
+    
+    Mobile->>Server: POST /api/auth/login (email, password)  
+    Server->>DB: Validate user credentials
+    DB-->>Server: User data + tenant info
+    Server-->>Mobile: JWT tokens (access + refresh)
+    Note over Mobile: Store tokens securely
+    
+    Mobile->>Server: POST /api/sync/sync (Bearer JWT)
+    Server->>Server: Validate JWT + extract tenant_id
+    Server->>DB: Query user data filtered by tenant
+    DB-->>Server: Tenant-specific data
+    Server-->>Mobile: Sync response with data
+```
+
+### **Step 2: Service Integration Validation**
+- **Mobile → ServerApiService**: JWT token management and API communication  
+- **ServerApiService → New Endpoints**: `/sync/*` and `/professional/*` routes
+- **JWT Middleware → Database**: User context extraction with tenant isolation
+- **Professional Services → WebSocket**: Real-time features with JWT auth
+
+### **Step 3: Multi-Tenant Architecture Validation**  
+- **JWT Claims**: Validate `tenant_id` claim extraction and validation
+- **Database Queries**: Confirm all queries filtered by tenant
+- **API Responses**: Verify no cross-tenant data leakage
+- **Professional Isolation**: Test counselor-client data boundaries
+
+### **Step 4: Performance & Reliability Validation**
+- **Response Times**: All API calls <2 seconds average  
+- **Memory Usage**: No leaks from WebSocket or API service  
+- **Battery Impact**: Background sync optimization
+- **Offline Resilience**: Graceful degradation when server unavailable
+
+---
+
+## **✅ DEFINITION OF DONE FOR TODAY**
+
+### **🎯 MIGRATION SUCCESS CRITERIA**
+- [ ] **Authentication Migration**: Mobile app successfully authenticates using `/api/auth/login`
+- [ ] **Sync Endpoint Migration**: Data sync works via `/api/sync/sync` with JWT  
+- [ ] **Professional Features**: Counselor dashboard loads via `/api/professional/*` routes
+- [ ] **WebSocket Integration**: Real-time features connect with JWT authentication
+- [ ] **Error Handling**: Graceful handling of all authentication and API errors
+
+### **📱 MOBILE APP FUNCTIONALITY**  
+- [ ] **User Login**: Complete authentication flow without 401 errors
+- [ ] **Data Sync**: Successful bidirectional data synchronization  
+- [ ] **Offline Mode**: App remains functional when server unreachable
+- [ ] **Professional Mode**: Counselor features fully operational
+- [ ] **Multi-Tenant**: Seamless switching between tenant contexts
+
+### **🔧 TECHNICAL IMPLEMENTATION**
+- [ ] **JWT Token Handling**: Secure storage, refresh, and validation  
+- [ ] **API Service Update**: All endpoints migrated to new routes
+- [ ] **Error Recovery**: Robust retry logic and user feedback
+- [ ] **Performance**: No UI blocking during server communication  
+- [ ] **Security**: No sensitive data exposed in logs or storage
+
+### **🧪 VALIDATION COMPLETE**
+- [ ] **Integration Tests**: All critical user journeys pass  
+- [ ] **Professional Tests**: Counselor workflows fully functional
+- [ ] **Multi-Tenant Tests**: Tenant isolation validated  
+- [ ] **Resilience Tests**: Error recovery and offline mode work
+- [ ] **Performance Tests**: Response times meet target (<2s)
+
+### **📊 PRODUCTION READINESS**  
+- [ ] **Build Validation**: Clean build with no errors or critical warnings
+- [ ] **Security Review**: JWT implementation and data handling validated
+- [ ] **Documentation**: API changes documented for team reference  
+- [ ] **Monitoring**: Error tracking and performance metrics active
+- [ ] **Deployment**: Ready for staging/production deployment
 
 ---
 
 ## **🔧 TECHNICAL IMPLEMENTATION GUIDE**
 
-### **1. JWT Authentication Debug & Fix**
+### **Critical Code Changes Required**
 
-#### **Immediate Diagnosis Steps**
-```csharp
-// STEP 1: Check JWT configuration in Program.cs
-public class AuthenticationDiagnostics
-{
-    public static void ValidateJwtConfiguration(IServiceCollection services)
-    {
-        // Verify JWT settings are properly configured
-        var jwtSettings = builder.Configuration.GetSection("Jwt");
-        var secretKey = jwtSettings["SecretKey"];
-        var issuer = jwtSettings["Issuer"];
-        var audience = jwtSettings["Audience"];
-        
-        Console.WriteLine($"JWT Config - Issuer: {issuer}, Audience: {audience}");
-        Console.WriteLine($"JWT Secret Key Length: {secretKey?.Length ?? 0}");
-        
-        if (string.IsNullOrEmpty(secretKey) || secretKey.Length < 32)
-        {
-            throw new InvalidOperationException("JWT Secret Key missing or too short");
-        }
-    }
+#### **1. Update ServerApiService - Endpoint Migration**
+```typescript
+export class ServerApiService {
+  // CHANGE: Update base endpoints from /accounts/* to /sync/* and /professional/*
+  
+  async syncData(lastSyncTimestamp?: Date, data?: any): Promise<SyncResult> {
+    console.log('Starting data sync with new endpoint...');
     
-    // STEP 2: Add detailed JWT validation logging
-    public static void ConfigureJwtWithLogging(IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                var jwtSettings = configuration.GetSection("Jwt");
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
-                };
-                
-                // CRITICAL: Add detailed event logging
-                options.Events = new JwtBearerEvents
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        Console.WriteLine($"JWT Auth Failed: {context.Exception.Message}");
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        Console.WriteLine($"JWT Token Validated for: {context.Principal.Identity.Name}");
-                        return Task.CompletedTask;
-                    },
-                    OnMessageReceived = context =>
-                    {
-                        Console.WriteLine($"JWT Token Received: {context.Token?.Substring(0, 20)}...");
-                        return Task.CompletedTask;
-                    }
-                };
-            });
-    }
+    const syncRequest = {
+      lastSyncTimestamp: lastSyncTimestamp?.toISOString(),
+      data: data,
+      deviceId: this.getDeviceId()
+    };
+
+    // CRITICAL CHANGE: Switch from /accounts/sync to /sync/sync
+    const result = await this.makeAuthenticatedRequest<SyncResponse>(
+      '/api/sync/sync',  // ← CHANGED FROM '/api/accounts/sync'
+      {
+        method: 'POST',
+        body: JSON.stringify(syncRequest),
+      }
+    );
+
+    return {
+      success: true,
+      serverData: result.serverData,
+      conflictResolutions: result.conflictResolutions || [],
+      lastSyncTimestamp: new Date(result.lastSyncTimestamp),
+      changesCount: result.changesCount
+    };
+  }
+
+  // CRITICAL: Add professional services methods with new endpoints
+  async getProfessionalDashboard(tenantId: string): Promise<CounselorDashboard> {
+    return await this.makeAuthenticatedRequest<CounselorDashboard>(
+      `/api/professional/dashboard`,  // ← NEW ENDPOINT
+      {
+        method: 'GET',
+        headers: {
+          'X-Tenant-ID': tenantId
+        }
+      }
+    );
+  }
+
+  async getProfessionalClients(tenantId: string): Promise<ClientSummary[]> {
+    return await this.makeAuthenticatedRequest<ClientSummary[]>(
+      `/api/professional/clients`,  // ← NEW ENDPOINT  
+      {
+        method: 'GET',
+        headers: {
+          'X-Tenant-ID': tenantId
+        }
+      }
+    );
+  }
 }
 ```
 
-#### **JWT Token Generation Endpoint**
-```csharp
-// CRITICAL: Ensure JWT token generation is working
-[ApiController]
-[Route("api/[controller]")]
-public class AuthController : ControllerBase
-{
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<AuthController> _logger;
-    
-    public AuthController(IConfiguration configuration, ILogger<AuthController> logger)
-    {
-        _configuration = configuration;
-        _logger = logger;
+#### **2. Update Authentication Flow**
+```typescript
+// CRITICAL: Ensure JWT tokens are properly formatted for new endpoints
+export class AuthenticationService {
+  async authenticate(email: string, password: string): Promise<AuthResult> {
+    try {
+      // SAME ENDPOINT: /api/auth/login already uses JWT
+      const response = await fetch(`${this.baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new AuthenticationError(`Authentication failed: ${response.status}`);
+      }
+
+      const authResponse = await response.json();
+      
+      // CRITICAL: Validate JWT token format  
+      if (!this.isValidJWT(authResponse.accessToken)) {
+        throw new AuthenticationError('Invalid JWT token format received');
+      }
+
+      // Store tokens for new endpoint usage
+      this.storeTokens(authResponse.accessToken, authResponse.refreshToken);
+
+      return {
+        success: true,
+        user: authResponse.user,
+        expiresIn: authResponse.expiresIn
+      };
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      throw error;
     }
-    
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
-    {
-        try
-        {
-            // STEP 1: Validate user credentials (implement your validation logic)
-            var user = await ValidateUserCredentials(request.Email, request.Password);
-            if (user == null)
-            {
-                return Unauthorized(new { message = "Invalid credentials" });
-            }
-            
-            // STEP 2: Generate JWT token with proper claims
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshToken();
-            
-            _logger.LogInformation($"JWT token generated for user: {user.Email}");
-            
-            return Ok(new AuthResponse
-            {
-                AccessToken = token,
-                RefreshToken = refreshToken,
-                ExpiresIn = 3600, // 1 hour
-                TokenType = "Bearer",
-                User = new UserResponse
-                {
-                    Id = user.Id,
-                    Email = user.Email,
-                    Role = user.Role,
-                    TenantId = user.TenantId
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Login failed for {Email}", request.Email);
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+  }
+
+  private isValidJWT(token: string): boolean {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return false;
+      
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.uid && payload.email && payload.tenantId;  // ← CRITICAL: Validate tenant_id claim
+    } catch {
+      return false;
     }
-    
-    private string GenerateJwtToken(User user)
-    {
-        var jwtSettings = _configuration.GetSection("Jwt");
-        var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
-        
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role),
-            new Claim("tenant_id", user.TenantId),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(JwtRegisteredClaimNames.Iat, 
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), 
-                ClaimValueTypes.Integer64)
-        };
-        
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddHours(1),
-            Issuer = jwtSettings["Issuer"],
-            Audience = jwtSettings["Audience"],
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(secretKey), 
-                SecurityAlgorithms.HmacSha256Signature)
-        };
-        
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
-    }
+  }
 }
 ```
 
-### **2. Accounts Sync Endpoint Implementation**
+#### **3. Update Professional Features Integration**
+```typescript
+// CRITICAL: Migrate professional components to use new JWT endpoints
+export const CounselorDashboard: React.FC = () => {
+  const [dashboard, setDashboard] = useState<CounselorDashboard | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { apiService, tenantId } = useServices();
 
-#### **Complete Sync Controller**
-```csharp
-[ApiController]
-[Route("api/[controller]")]
-[Authorize] // CRITICAL: Ensure authorization is applied
-public class AccountsController : ControllerBase
-{
-    private readonly IDataSyncService _dataSyncService;
-    private readonly ITenantService _tenantService;
-    private readonly ILogger<AccountsController> _logger;
-    
-    public AccountsController(
-        IDataSyncService dataSyncService,
-        ITenantService tenantService,
-        ILogger<AccountsController> logger)
-    {
-        _dataSyncService = dataSyncService;
-        _tenantService = tenantService;
-        _logger = logger;
-    }
-    
-    [HttpPost("sync")]
-    public async Task<IActionResult> SyncData([FromBody] SyncRequest request)
-    {
-        try
-        {
-            // STEP 1: Get user context from JWT claims
-            var userId = GetCurrentUserId();
-            var tenantId = GetCurrentTenantId();
-            
-            _logger.LogInformation($"Sync request from user {userId} in tenant {tenantId}");
-            
-            // STEP 2: Validate tenant access
-            var hasAccess = await _tenantService.ValidateUserTenantAccess(userId, tenantId);
-            if (!hasAccess)
-            {
-                _logger.LogWarning($"Unauthorized tenant access attempt: User {userId}, Tenant {tenantId}");
-                return Forbid("Access denied to tenant");
-            }
-            
-            // STEP 3: Process sync request
-            var syncResult = await _dataSyncService.ProcessSyncRequest(new SyncContext
-            {
-                UserId = userId,
-                TenantId = tenantId,
-                LastSyncTimestamp = request.LastSyncTimestamp,
-                ClientData = request.Data,
-                DeviceId = request.DeviceId
-            });
-            
-            _logger.LogInformation($"Sync completed for user {userId}: {syncResult.ChangesCount} changes");
-            
-            return Ok(new SyncResponse
-            {
-                Success = true,
-                ServerData = syncResult.ServerData,
-                ConflictResolutions = syncResult.ConflictResolutions,
-                LastSyncTimestamp = syncResult.NewTimestamp,
-                ChangesCount = syncResult.ChangesCount
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Sync failed for request: {@Request}", request);
-            return StatusCode(500, new { 
-                success = false, 
-                message = "Sync failed", 
-                error = ex.Message 
-            });
-        }
-    }
-    
-    private string GetCurrentUserId()
-    {
-        return User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-            ?? throw new UnauthorizedAccessException("User ID not found in token");
-    }
-    
-    private string GetCurrentTenantId()
-    {
-        return User.FindFirst("tenant_id")?.Value 
-            ?? throw new UnauthorizedAccessException("Tenant ID not found in token");
-    }
-}
+  useEffect(() => {
+    loadDashboard();
+  }, [tenantId]);
 
-// Data transfer objects
-public class SyncRequest
-{
-    public DateTime? LastSyncTimestamp { get; set; }
-    public object Data { get; set; }
-    public string DeviceId { get; set; }
-}
+  const loadDashboard = async () => {
+    try {
+      setError(null);
+      
+      // CRITICAL CHANGE: Use new professional endpoint
+      const dashboardData = await apiService.getProfessionalDashboard(tenantId);
+      setDashboard(dashboardData);
+    } catch (error) {
+      console.error('Failed to load counselor dashboard:', error);
+      setError('Failed to load dashboard. Please check your connection and try again.');
+    }
+  };
 
-public class SyncResponse
-{
-    public bool Success { get; set; }
-    public object ServerData { get; set; }
-    public List<ConflictResolution> ConflictResolutions { get; set; }
-    public DateTime LastSyncTimestamp { get; set; }
-    public int ChangesCount { get; set; }
-}
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={loadDashboard}
+          className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="counselor-dashboard">
+      {dashboard ? (
+        <div>
+          <h1>Counselor Dashboard</h1>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Total Clients</h3>
+              <p>{dashboard.totalClients}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Active Sessions</h3>
+              <p>{dashboard.activeSessions}</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div>Loading dashboard...</div>
+      )}
+    </div>
+  );
+};
 ```
 
-### **3. Database Service Implementation**
+#### **4. Update WebSocket Connection for JWT Auth**
+```typescript
+// CRITICAL: Update WebSocket to use JWT authentication  
+export class ProfessionalWebSocketService {
+  private connection: HubConnection | null = null;
+  private apiService: ServerApiService;
 
-#### **DataSyncService Implementation**
-```csharp
-public interface IDataSyncService
-{
-    Task<SyncResult> ProcessSyncRequest(SyncContext context);
-}
+  constructor(apiService: ServerApiService) {
+    this.apiService = apiService;
+  }
 
-public class DataSyncService : IDataSyncService
-{
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<DataSyncService> _logger;
-    
-    public DataSyncService(ApplicationDbContext context, ILogger<DataSyncService> logger)
-    {
-        _context = context;
-        _logger = logger;
+  async connect(tenantId: string): Promise<void> {
+    try {
+      // CRITICAL: Get current JWT token for WebSocket auth
+      const token = await this.apiService.getValidToken();
+      
+      this.connection = new HubConnectionBuilder()
+        .withUrl(`${this.apiService.baseUrl}/hub/professional`, {
+          accessTokenFactory: () => token  // ← CRITICAL: JWT auth for WebSocket
+        })
+        .build();
+
+      // Add tenant context to connection
+      this.connection.on('JoinTenant', (message) => {
+        console.log('Joined tenant:', message);
+      });
+
+      await this.connection.start();
+      
+      // Join tenant-specific group
+      await this.connection.invoke('JoinTenant', tenantId);
+      
+      console.log('Professional WebSocket connected with JWT auth');
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
+      throw error;
     }
-    
-    public async Task<SyncResult> ProcessSyncRequest(SyncContext context)
-    {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        
-        try
-        {
-            // STEP 1: Get server changes since last sync
-            var serverChanges = await GetServerChangesSince(context.UserId, context.TenantId, context.LastSyncTimestamp);
-            
-            // STEP 2: Process client changes
-            var conflictResolutions = await ProcessClientChanges(context);
-            
-            // STEP 3: Create sync result
-            var result = new SyncResult
-            {
-                ServerData = serverChanges,
-                ConflictResolutions = conflictResolutions,
-                NewTimestamp = DateTime.UtcNow,
-                ChangesCount = serverChanges.Count + conflictResolutions.Count
-            };
-            
-            await transaction.CommitAsync();
-            return result;
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "Sync transaction failed for user {UserId}", context.UserId);
-            throw;
-        }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.connection) {
+      await this.connection.stop();
+      this.connection = null;
     }
-    
-    private async Task<List<object>> GetServerChangesSince(string userId, string tenantId, DateTime? lastSync)
-    {
-        var timestamp = lastSync ?? DateTime.MinValue;
-        
-        // Get journal entries
-        var journalEntries = await _context.JournalEntries
-            .Where(j => j.UserId == Guid.Parse(userId) && 
-                       j.TenantId == Guid.Parse(tenantId) && 
-                       j.ModifiedAt > timestamp)
-            .Select(j => new {
-                Type = "journal_entry",
-                Id = j.Id,
-                Content = j.Content,
-                CreatedAt = j.CreatedAt,
-                ModifiedAt = j.ModifiedAt
-            })
-            .ToListAsync();
-        
-        // Get insights
-        var insights = await _context.Insights
-            .Where(i => i.UserId == Guid.Parse(userId) && 
-                       i.TenantId == Guid.Parse(tenantId) && 
-                       i.ModifiedAt > timestamp)
-            .Select(i => new {
-                Type = "insight",
-                Id = i.Id,
-                Title = i.Title,
-                Content = i.Content,
-                Category = i.Category,
-                GeneratedAt = i.GeneratedAt,
-                ModifiedAt = i.ModifiedAt
-            })
-            .ToListAsync();
-        
-        var changes = new List<object>();
-        changes.AddRange(journalEntries);
-        changes.AddRange(insights);
-        
-        return changes;
-    }
-    
-    private async Task<List<ConflictResolution>> ProcessClientChanges(SyncContext context)
-    {
-        var resolutions = new List<ConflictResolution>();
-        
-        // Implementation for processing client data changes
-        // Handle conflicts, validate data, update database
-        
-        return resolutions;
-    }
+  }
 }
 ```
-
-### **4. Professional Services Database Integration**
-
-#### **Complete Professional Service Implementation**
-```csharp
-public class ProfessionalService : IProfessionalService
-{
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<ProfessionalService> _logger;
-    
-    public ProfessionalService(ApplicationDbContext context, ILogger<ProfessionalService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-    
-    public async Task<List<ClientSummary>> GetClientsAsync(string counselorId)
-    {
-        return await _context.CounselorClients
-            .Where(cc => cc.CounselorId == Guid.Parse(counselorId))
-            .Include(cc => cc.Client)
-            .Select(cc => new ClientSummary
-            {
-                Id = cc.ClientId,
-                Name = cc.Client.Name,
-                Email = cc.Client.Email,
-                Status = cc.Status,
-                LastSession = cc.LastSessionDate,
-                SharingPermissions = cc.SharingPermissions
-            })
-            .ToListAsync();
-    }
-    
-    public async Task<CounselorDashboard> GetCounselorDashboardAsync(string counselorId)
-    {
-        var totalClients = await _context.CounselorClients
-            .CountAsync(cc => cc.CounselorId == Guid.Parse(counselorId));
-        
-        var activeSessions = await _context.ProfessionalSessions
-            .CountAsync(ps => ps.CounselorId == Guid.Parse(counselorId) && ps.Status == "active");
-        
-        var thisMonthSessions = await _context.ProfessionalSessions
-            .CountAsync(ps => ps.CounselorId == Guid.Parse(counselorId) && 
-                             ps.StartedAt >= DateTime.UtcNow.AddDays(-30));
-        
-        return new CounselorDashboard
-        {
-            TotalClients = totalClients,
-            ActiveSessions = activeSessions,
-            ThisMonthSessions = thisMonthSessions,
-            FromCache = false
-        };
-    }
-    
-    // Implement other professional service methods...
-}
-```
-
----
-
-## **📋 CRITICAL DATABASE MIGRATIONS**
-
-### **Entity Model Updates**
-```csharp
-// Add to JournalEntry entity
-public class JournalEntry : BaseEntity
-{
-    public Guid TenantId { get; set; } // ADD THIS
-    public string Content { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime ModifiedAt { get; set; } // ADD THIS
-    public Guid UserId { get; set; }
-    
-    public virtual User User { get; set; }
-}
-
-// Add to Insight entity  
-public class Insight : BaseEntity
-{
-    public Guid TenantId { get; set; } // ADD THIS
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public string Category { get; set; }
-    public DateTime GeneratedAt { get; set; }
-    public DateTime ModifiedAt { get; set; } // ADD THIS
-    public Guid UserId { get; set; }
-    
-    public virtual User User { get; set; }
-}
-```
-
-### **Database Migration Command**
-```bash
-# Execute immediately after entity updates
-dotnet ef migrations add AddTenantIdAndModifiedAtToEntities
-dotnet ef database update
-```
-
----
-
-## **🔥 DEPLOYMENT CHECKLIST**
-
-### **Immediate Actions (Next 30 minutes)**
-- [ ] **JWT Configuration Validation**: Verify all JWT settings in appsettings.json
-- [ ] **Database Connection**: Confirm database connection string and accessibility
-- [ ] **Entity Model Updates**: Add TenantId and ModifiedAt properties
-- [ ] **Migration Execution**: Run database migration for new fields
-- [ ] **Service Registration**: Ensure all services are properly registered in Program.cs
-
-### **Testing Validation (Next 30 minutes)**  
-- [ ] **Auth Endpoint Test**: Test `/api/auth/login` returns valid JWT
-- [ ] **Sync Endpoint Test**: Test `/api/accounts/sync` with valid JWT
-- [ ] **Professional APIs Test**: Test counselor dashboard endpoints
-- [ ] **Database Query Test**: Verify tenant isolation works correctly
-- [ ] **Mobile Integration Test**: Test sync from mobile app
-
-### **Production Deployment (Next 60 minutes)**
-- [ ] **Environment Variables**: Set production JWT secrets and database connection
-- [ ] **Service Deployment**: Deploy server with updated authentication
-- [ ] **Health Check Validation**: Verify all endpoints respond correctly
-- [ ] **Mobile App Update**: Ensure mobile app can authenticate and sync
-- [ ] **Monitoring Setup**: Configure logging and alerting for auth failures
 
 ---
 
 ## **⚠️ CRITICAL RISKS & MITIGATION**
 
-### **Risk 1: Authentication Configuration Issues**
-- **Mitigation**: Use environment-specific JWT settings, test with Postman
-- **Fallback**: Implement temporary API key auth if JWT issues persist
+### **Risk 1: JWT Token Format Mismatch** 
+- **Probability**: High (60%) - New JWT implementation may have different claims
+- **Impact**: All API calls fail with 401 errors  
+- **Mitigation**: Validate JWT token structure in development, add comprehensive logging
+- **Escalation**: Direct coordination with server team on JWT payload format
 
-### **Risk 2: Database Migration Failures**
-- **Mitigation**: Backup database before migration, test on staging first
-- **Fallback**: Use in-memory database temporarily while resolving issues
+### **Risk 2: Professional Services Endpoint Changes**
+- **Probability**: Medium (40%) - Professional endpoints may have different routes  
+- **Impact**: Counselor features completely broken
+- **Mitigation**: Test all professional endpoints systematically, prepare fallback UI
+- **Testing**: Validate every professional feature with real server data
 
-### **Risk 3: Mobile-Server Integration Breaks**
-- **Mitigation**: Coordinate with mobile team, test incrementally
-- **Fallback**: Rollback to previous version if critical issues found
-
----
-
-## **📞 COORDINATION REQUIREMENTS**
-
-### **Mobile Team Coordination**
-- **Share JWT Token Example**: Provide sample JWT for mobile testing
-- **API Documentation**: Update Swagger docs with authentication requirements
-- **Error Handling**: Coordinate error response format for 401/403 errors
-- **Testing Support**: Provide test user credentials for integration testing
-
-### **DevOps Coordination**
-- **Environment Variables**: Coordinate JWT secrets and database credentials
-- **Deployment Pipeline**: Ensure CI/CD pipeline includes database migrations
-- **Monitoring Setup**: Configure alerts for authentication failures
-- **SSL/TLS Configuration**: Verify HTTPS is properly configured for JWT
+### **Risk 3: WebSocket Authentication Failures**  
+- **Probability**: Medium (35%) - WebSocket JWT auth is complex
+- **Impact**: Real-time collaboration features non-functional
+- **Mitigation**: Implement WebSocket reconnection logic, fallback to polling
+- **Monitoring**: Add detailed WebSocket connection state logging
 
 ---
 
-**Generated**: August 4th, 2025  
-**Priority**: P0 - CRITICAL PRODUCTION INCIDENT  
-**Target Resolution**: 4 hours  
-**Next Review**: Every 30 minutes until resolved  
-**Escalation**: Technical Lead if no progress in 2 hours
+## **🤝 COORDINATION WITH SERVER TEAM**
+
+### **IMMEDIATE INFORMATION NEEDED (Today)**
+1. **JWT Payload Structure**: Complete JWT claims format with tenant_id location
+2. **New Endpoint Documentation**: Full API documentation for `/sync/*` and `/professional/*`  
+3. **Error Response Format**: Standardized error response structure for new endpoints
+4. **WebSocket Hub URL**: Correct WebSocket endpoint URL for JWT authentication
+5. **Rate Limiting**: API rate limits and retry guidance for mobile clients
+
+### **INFORMATION TO PROVIDE TO SERVER TEAM** 
+1. **Migration Timeline**: When mobile app will switch to new endpoints (today)
+2. **JWT Token Usage**: How mobile app stores, refreshes, and validates JWT tokens
+3. **Device Identification**: Device ID format and usage in API requests  
+4. **Error Scenarios**: What error information mobile app needs for user feedback
+5. **Performance Requirements**: Mobile app response time and payload size needs
+
+---
+
+## **📈 SUCCESS METRICS**
+
+### **CRITICAL SUCCESS CRITERIA (End of Day)**
+- [ ] **Zero 401 Errors**: All API calls authenticate successfully with JWT  
+- [ ] **Sync Success Rate**: >95% success rate for data synchronization operations
+- [ ] **Professional Features**: Complete counselor workflow functional end-to-end
+- [ ] **Response Time**: <2 seconds average for all new endpoint calls
+- [ ] **Error Recovery**: Graceful handling of all authentication and network errors
+
+### **PERFORMANCE TARGETS**
+- **Initial Login**: <1 second for JWT token acquisition  
+- **Data Sync**: <3 seconds for typical user data synchronization
+- **Dashboard Load**: <2 seconds for counselor dashboard with all widgets
+- **WebSocket Connect**: <5 seconds for real-time features to be ready
+- **Memory Usage**: No memory leaks from new API service or WebSocket connections
+
+---
+
+**Generated**: August 5th, 2025  
+**Priority**: P0 - CRITICAL (Blocking all mobile functionality)  
+**Status**: Ready for immediate endpoint migration implementation  
+**Next Review**: End of day - verify all endpoints migrated and functional  
+**Escalation**: If authentication still fails after endpoint migration within 2 hours
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -1769,571 +1688,490 @@ interface UnifiedProfessionalWorkflow {
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# Daily Brief - Server Team
-## August 4th, 2025 - Critical Resolution & Integration Completion
+# Daily Brief - Mobile Team  
+## August 5th, 2025 - Critical Endpoint Migration & Server Integration
 
-### 🚨 **CRITICAL STATUS: PRODUCTION INCIDENT RESOLUTION**
-**Current Situation**: 401 Unauthorized errors on `/accounts/sync` endpoint blocking mobile app functionality  
-**Impact**: Mobile users cannot sync data, affecting core application functionality  
-**Priority**: **P0 - CRITICAL** - Immediate resolution required  
-**Timeline**: Resolution target within 4 hours  
+### 🚨 **CRITICAL STATUS: ENDPOINT MIGRATION REQUIRED**
+**Current Situation**: Mobile app hitting `api.sociallyfed.com/accounts/sync` with JWT tokens, but server expects Firebase auth  
+**Root Cause**: Authentication mismatch - mobile using JWT, legacy endpoint using Firebase  
+**Impact**: 401 Unauthorized errors blocking all data synchronization  
+**Your Action**: **MIGRATE TO NEW JWT ENDPOINTS** (Option 1 - Recommended by server team)  
 
 ---
 
 ## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
 
-### **IMMEDIATE PRIORITY (Next 2 Hours)**
-1. **🔴 AUTH FLOW DIAGNOSIS & REPAIR**
-   - Investigate JWT token validation in sync endpoint
-   - Verify token generation and signing key configuration
-   - Test authentication flow end-to-end
+### **🔴 P0 IMMEDIATE PRIORITY (Next 2 Hours) - ENDPOINT MIGRATION**
+1. **🟡 MIGRATE AUTHENTICATION ENDPOINTS**
+   - **CHANGE FROM**: `api.sociallyfed.com/accounts/sync` (Firebase auth)
+   - **CHANGE TO**: `api.sociallyfed.com/sync/sync` (JWT auth)  
+   - Update ServerApiService to use new secure endpoints
+   - Test JWT token flow with new `/sync/*` routes
 
-2. **🔴 DATABASE SERVICES COMPLETION**
-   - Implement missing service implementations (currently mock services)
-   - Connect professional services to actual database
-   - Execute pending database migrations
+2. **🟡 UPDATE PROFESSIONAL SERVICES ENDPOINTS**
+   - Migrate professional features to `/professional/*` routes (JWT auth)
+   - Update WebSocket connections to use JWT authentication
+   - Validate multi-tenant switching with new endpoint structure
 
-### **INTEGRATION COMPLETION (Hours 3-4)**
-3. **🟡 MOBILE-SERVER SYNC VALIDATION**
-   - Validate `/accounts/sync` endpoint functionality
-   - Test data synchronization with mobile app
-   - Performance validation under load
+### **🟡 INTEGRATION VALIDATION (Hours 2-4) - POST-MIGRATION**
+3. **🔴 END-TO-END SYNC TESTING**
+   - Verify data synchronization works with JWT endpoints
+   - Test conflict resolution and incremental sync
+   - Validate tenant isolation with new authentication flow
 
-4. **🟡 PROFESSIONAL SERVICES INTEGRATION**
-   - Complete API Gateway professional routes
-   - Validate WebSocket professional hub
-   - Test multi-tenant isolation
+4. **🔴 PROFESSIONAL FEATURES INTEGRATION**
+   - Test counselor dashboard with live server data
+   - Validate real-time collaboration features
+   - Confirm client management workflows function correctly
+
+---
+
+## **📊 DEPENDENCIES BETWEEN MOBILE AND SERVER WORK**
+
+### **✅ COMPLETED BY SERVER TEAM (August 4th)**
+- **JWT Authentication Infrastructure**: Complete validation middleware implemented
+- **New Secure Endpoints**: `/sync/*` and `/professional/*` routes operational  
+- **Dual Auth Strategy**: Legacy Firebase + New JWT auth both working
+- **Multi-tenant Support**: Tenant isolation validated in JWT tokens
+- **Database Services**: Real database operations replacing mock services
+
+### **🔄 MOBILE TEAM DEPENDENCIES (TODAY'S WORK)**
+- **Endpoint Migration**: Switch from `/accounts/sync` → `/sync/sync`
+- **JWT Token Handling**: Update token format and validation
+- **Error Handling**: Adapt to new error response formats  
+- **Professional Routes**: Migrate to JWT-protected professional endpoints
+- **WebSocket Auth**: Update real-time features for JWT authentication
+
+### **🤝 COORDINATION REQUIREMENTS**
+- **Server Team**: JWT_SECRET configuration and token format validation
+- **Mobile Team**: Device ID format and request headers standardization  
+- **Both Teams**: Error response format and retry behavior alignment
+
+---
+
+## **🧪 INTEGRATION TESTING REQUIREMENTS**
+
+### **Phase 1: Basic Authentication (Priority 1)**
+```typescript
+// CRITICAL: Test new JWT authentication endpoint
+const authTests = [
+  'POST /api/auth/login → JWT tokens returned',
+  'JWT token validation and refresh mechanics',  
+  'Token expiry handling and automatic refresh',
+  'Error handling for invalid credentials',
+  'Device ID registration and persistence'
+];
+```
+
+### **Phase 2: Data Synchronization (Priority 1)**  
+```typescript
+// CRITICAL: Test new sync endpoint  
+const syncTests = [
+  'POST /api/sync/sync → Successful data sync',
+  'Incremental sync with lastSyncTimestamp',
+  'Conflict resolution for concurrent changes',
+  'Large data payload handling (>1MB)',
+  'Network interruption and retry logic'
+];
+```
+
+### **Phase 3: Professional Services (Priority 2)**
+```typescript  
+// HIGH: Test professional features integration
+const professionalTests = [
+  'GET /api/professional/dashboard → Counselor analytics',
+  'GET /api/professional/clients → Client list with tenant isolation',
+  'WebSocket /hub/professional → Real-time collaboration',
+  'POST /api/professional/sessions → Session management',
+  'Multi-tenant switching with JWT tenant_id claim'
+];
+```
+
+### **Phase 4: Error Recovery (Priority 2)**
+```typescript
+// HIGH: Test resilience and error handling
+const resilienceTests = [
+  'Server downtime handling and offline mode',
+  'Invalid JWT token recovery flow',  
+  'Rate limiting and backoff strategies',
+  'Network switching (WiFi → Cellular)',
+  'Memory and battery optimization validation'
+];
+```
+
+---
+
+## **🏗️ UNIFIED ARCHITECTURE VALIDATION STEPS**
+
+### **Step 1: Authentication Flow Validation**
+```mermaid
+sequenceDiagram
+    participant Mobile as Mobile App
+    participant Server as Server API  
+    participant DB as Database
+    
+    Mobile->>Server: POST /api/auth/login (email, password)  
+    Server->>DB: Validate user credentials
+    DB-->>Server: User data + tenant info
+    Server-->>Mobile: JWT tokens (access + refresh)
+    Note over Mobile: Store tokens securely
+    
+    Mobile->>Server: POST /api/sync/sync (Bearer JWT)
+    Server->>Server: Validate JWT + extract tenant_id
+    Server->>DB: Query user data filtered by tenant
+    DB-->>Server: Tenant-specific data
+    Server-->>Mobile: Sync response with data
+```
+
+### **Step 2: Service Integration Validation**
+- **Mobile → ServerApiService**: JWT token management and API communication  
+- **ServerApiService → New Endpoints**: `/sync/*` and `/professional/*` routes
+- **JWT Middleware → Database**: User context extraction with tenant isolation
+- **Professional Services → WebSocket**: Real-time features with JWT auth
+
+### **Step 3: Multi-Tenant Architecture Validation**  
+- **JWT Claims**: Validate `tenant_id` claim extraction and validation
+- **Database Queries**: Confirm all queries filtered by tenant
+- **API Responses**: Verify no cross-tenant data leakage
+- **Professional Isolation**: Test counselor-client data boundaries
+
+### **Step 4: Performance & Reliability Validation**
+- **Response Times**: All API calls <2 seconds average  
+- **Memory Usage**: No leaks from WebSocket or API service  
+- **Battery Impact**: Background sync optimization
+- **Offline Resilience**: Graceful degradation when server unavailable
+
+---
+
+## **✅ DEFINITION OF DONE FOR TODAY**
+
+### **🎯 MIGRATION SUCCESS CRITERIA**
+- [ ] **Authentication Migration**: Mobile app successfully authenticates using `/api/auth/login`
+- [ ] **Sync Endpoint Migration**: Data sync works via `/api/sync/sync` with JWT  
+- [ ] **Professional Features**: Counselor dashboard loads via `/api/professional/*` routes
+- [ ] **WebSocket Integration**: Real-time features connect with JWT authentication
+- [ ] **Error Handling**: Graceful handling of all authentication and API errors
+
+### **📱 MOBILE APP FUNCTIONALITY**  
+- [ ] **User Login**: Complete authentication flow without 401 errors
+- [ ] **Data Sync**: Successful bidirectional data synchronization  
+- [ ] **Offline Mode**: App remains functional when server unreachable
+- [ ] **Professional Mode**: Counselor features fully operational
+- [ ] **Multi-Tenant**: Seamless switching between tenant contexts
+
+### **🔧 TECHNICAL IMPLEMENTATION**
+- [ ] **JWT Token Handling**: Secure storage, refresh, and validation  
+- [ ] **API Service Update**: All endpoints migrated to new routes
+- [ ] **Error Recovery**: Robust retry logic and user feedback
+- [ ] **Performance**: No UI blocking during server communication  
+- [ ] **Security**: No sensitive data exposed in logs or storage
+
+### **🧪 VALIDATION COMPLETE**
+- [ ] **Integration Tests**: All critical user journeys pass  
+- [ ] **Professional Tests**: Counselor workflows fully functional
+- [ ] **Multi-Tenant Tests**: Tenant isolation validated  
+- [ ] **Resilience Tests**: Error recovery and offline mode work
+- [ ] **Performance Tests**: Response times meet target (<2s)
+
+### **📊 PRODUCTION READINESS**  
+- [ ] **Build Validation**: Clean build with no errors or critical warnings
+- [ ] **Security Review**: JWT implementation and data handling validated
+- [ ] **Documentation**: API changes documented for team reference  
+- [ ] **Monitoring**: Error tracking and performance metrics active
+- [ ] **Deployment**: Ready for staging/production deployment
 
 ---
 
 ## **🔧 TECHNICAL IMPLEMENTATION GUIDE**
 
-### **1. JWT Authentication Debug & Fix**
+### **Critical Code Changes Required**
 
-#### **Immediate Diagnosis Steps**
-```csharp
-// STEP 1: Check JWT configuration in Program.cs
-public class AuthenticationDiagnostics
-{
-    public static void ValidateJwtConfiguration(IServiceCollection services)
-    {
-        // Verify JWT settings are properly configured
-        var jwtSettings = builder.Configuration.GetSection("Jwt");
-        var secretKey = jwtSettings["SecretKey"];
-        var issuer = jwtSettings["Issuer"];
-        var audience = jwtSettings["Audience"];
-        
-        Console.WriteLine($"JWT Config - Issuer: {issuer}, Audience: {audience}");
-        Console.WriteLine($"JWT Secret Key Length: {secretKey?.Length ?? 0}");
-        
-        if (string.IsNullOrEmpty(secretKey) || secretKey.Length < 32)
-        {
-            throw new InvalidOperationException("JWT Secret Key missing or too short");
-        }
-    }
+#### **1. Update ServerApiService - Endpoint Migration**
+```typescript
+export class ServerApiService {
+  // CHANGE: Update base endpoints from /accounts/* to /sync/* and /professional/*
+  
+  async syncData(lastSyncTimestamp?: Date, data?: any): Promise<SyncResult> {
+    console.log('Starting data sync with new endpoint...');
     
-    // STEP 2: Add detailed JWT validation logging
-    public static void ConfigureJwtWithLogging(IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                var jwtSettings = configuration.GetSection("Jwt");
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
-                };
-                
-                // CRITICAL: Add detailed event logging
-                options.Events = new JwtBearerEvents
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        Console.WriteLine($"JWT Auth Failed: {context.Exception.Message}");
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        Console.WriteLine($"JWT Token Validated for: {context.Principal.Identity.Name}");
-                        return Task.CompletedTask;
-                    },
-                    OnMessageReceived = context =>
-                    {
-                        Console.WriteLine($"JWT Token Received: {context.Token?.Substring(0, 20)}...");
-                        return Task.CompletedTask;
-                    }
-                };
-            });
-    }
+    const syncRequest = {
+      lastSyncTimestamp: lastSyncTimestamp?.toISOString(),
+      data: data,
+      deviceId: this.getDeviceId()
+    };
+
+    // CRITICAL CHANGE: Switch from /accounts/sync to /sync/sync
+    const result = await this.makeAuthenticatedRequest<SyncResponse>(
+      '/api/sync/sync',  // ← CHANGED FROM '/api/accounts/sync'
+      {
+        method: 'POST',
+        body: JSON.stringify(syncRequest),
+      }
+    );
+
+    return {
+      success: true,
+      serverData: result.serverData,
+      conflictResolutions: result.conflictResolutions || [],
+      lastSyncTimestamp: new Date(result.lastSyncTimestamp),
+      changesCount: result.changesCount
+    };
+  }
+
+  // CRITICAL: Add professional services methods with new endpoints
+  async getProfessionalDashboard(tenantId: string): Promise<CounselorDashboard> {
+    return await this.makeAuthenticatedRequest<CounselorDashboard>(
+      `/api/professional/dashboard`,  // ← NEW ENDPOINT
+      {
+        method: 'GET',
+        headers: {
+          'X-Tenant-ID': tenantId
+        }
+      }
+    );
+  }
+
+  async getProfessionalClients(tenantId: string): Promise<ClientSummary[]> {
+    return await this.makeAuthenticatedRequest<ClientSummary[]>(
+      `/api/professional/clients`,  // ← NEW ENDPOINT  
+      {
+        method: 'GET',
+        headers: {
+          'X-Tenant-ID': tenantId
+        }
+      }
+    );
+  }
 }
 ```
 
-#### **JWT Token Generation Endpoint**
-```csharp
-// CRITICAL: Ensure JWT token generation is working
-[ApiController]
-[Route("api/[controller]")]
-public class AuthController : ControllerBase
-{
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<AuthController> _logger;
-    
-    public AuthController(IConfiguration configuration, ILogger<AuthController> logger)
-    {
-        _configuration = configuration;
-        _logger = logger;
+#### **2. Update Authentication Flow**
+```typescript
+// CRITICAL: Ensure JWT tokens are properly formatted for new endpoints
+export class AuthenticationService {
+  async authenticate(email: string, password: string): Promise<AuthResult> {
+    try {
+      // SAME ENDPOINT: /api/auth/login already uses JWT
+      const response = await fetch(`${this.baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new AuthenticationError(`Authentication failed: ${response.status}`);
+      }
+
+      const authResponse = await response.json();
+      
+      // CRITICAL: Validate JWT token format  
+      if (!this.isValidJWT(authResponse.accessToken)) {
+        throw new AuthenticationError('Invalid JWT token format received');
+      }
+
+      // Store tokens for new endpoint usage
+      this.storeTokens(authResponse.accessToken, authResponse.refreshToken);
+
+      return {
+        success: true,
+        user: authResponse.user,
+        expiresIn: authResponse.expiresIn
+      };
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      throw error;
     }
-    
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
-    {
-        try
-        {
-            // STEP 1: Validate user credentials (implement your validation logic)
-            var user = await ValidateUserCredentials(request.Email, request.Password);
-            if (user == null)
-            {
-                return Unauthorized(new { message = "Invalid credentials" });
-            }
-            
-            // STEP 2: Generate JWT token with proper claims
-            var token = GenerateJwtToken(user);
-            var refreshToken = GenerateRefreshToken();
-            
-            _logger.LogInformation($"JWT token generated for user: {user.Email}");
-            
-            return Ok(new AuthResponse
-            {
-                AccessToken = token,
-                RefreshToken = refreshToken,
-                ExpiresIn = 3600, // 1 hour
-                TokenType = "Bearer",
-                User = new UserResponse
-                {
-                    Id = user.Id,
-                    Email = user.Email,
-                    Role = user.Role,
-                    TenantId = user.TenantId
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Login failed for {Email}", request.Email);
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+  }
+
+  private isValidJWT(token: string): boolean {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return false;
+      
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.uid && payload.email && payload.tenantId;  // ← CRITICAL: Validate tenant_id claim
+    } catch {
+      return false;
     }
-    
-    private string GenerateJwtToken(User user)
-    {
-        var jwtSettings = _configuration.GetSection("Jwt");
-        var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
-        
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role),
-            new Claim("tenant_id", user.TenantId),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(JwtRegisteredClaimNames.Iat, 
-                new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), 
-                ClaimValueTypes.Integer64)
-        };
-        
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddHours(1),
-            Issuer = jwtSettings["Issuer"],
-            Audience = jwtSettings["Audience"],
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(secretKey), 
-                SecurityAlgorithms.HmacSha256Signature)
-        };
-        
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
-    }
+  }
 }
 ```
 
-### **2. Accounts Sync Endpoint Implementation**
+#### **3. Update Professional Features Integration**
+```typescript
+// CRITICAL: Migrate professional components to use new JWT endpoints
+export const CounselorDashboard: React.FC = () => {
+  const [dashboard, setDashboard] = useState<CounselorDashboard | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { apiService, tenantId } = useServices();
 
-#### **Complete Sync Controller**
-```csharp
-[ApiController]
-[Route("api/[controller]")]
-[Authorize] // CRITICAL: Ensure authorization is applied
-public class AccountsController : ControllerBase
-{
-    private readonly IDataSyncService _dataSyncService;
-    private readonly ITenantService _tenantService;
-    private readonly ILogger<AccountsController> _logger;
-    
-    public AccountsController(
-        IDataSyncService dataSyncService,
-        ITenantService tenantService,
-        ILogger<AccountsController> logger)
-    {
-        _dataSyncService = dataSyncService;
-        _tenantService = tenantService;
-        _logger = logger;
-    }
-    
-    [HttpPost("sync")]
-    public async Task<IActionResult> SyncData([FromBody] SyncRequest request)
-    {
-        try
-        {
-            // STEP 1: Get user context from JWT claims
-            var userId = GetCurrentUserId();
-            var tenantId = GetCurrentTenantId();
-            
-            _logger.LogInformation($"Sync request from user {userId} in tenant {tenantId}");
-            
-            // STEP 2: Validate tenant access
-            var hasAccess = await _tenantService.ValidateUserTenantAccess(userId, tenantId);
-            if (!hasAccess)
-            {
-                _logger.LogWarning($"Unauthorized tenant access attempt: User {userId}, Tenant {tenantId}");
-                return Forbid("Access denied to tenant");
-            }
-            
-            // STEP 3: Process sync request
-            var syncResult = await _dataSyncService.ProcessSyncRequest(new SyncContext
-            {
-                UserId = userId,
-                TenantId = tenantId,
-                LastSyncTimestamp = request.LastSyncTimestamp,
-                ClientData = request.Data,
-                DeviceId = request.DeviceId
-            });
-            
-            _logger.LogInformation($"Sync completed for user {userId}: {syncResult.ChangesCount} changes");
-            
-            return Ok(new SyncResponse
-            {
-                Success = true,
-                ServerData = syncResult.ServerData,
-                ConflictResolutions = syncResult.ConflictResolutions,
-                LastSyncTimestamp = syncResult.NewTimestamp,
-                ChangesCount = syncResult.ChangesCount
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Sync failed for request: {@Request}", request);
-            return StatusCode(500, new { 
-                success = false, 
-                message = "Sync failed", 
-                error = ex.Message 
-            });
-        }
-    }
-    
-    private string GetCurrentUserId()
-    {
-        return User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-            ?? throw new UnauthorizedAccessException("User ID not found in token");
-    }
-    
-    private string GetCurrentTenantId()
-    {
-        return User.FindFirst("tenant_id")?.Value 
-            ?? throw new UnauthorizedAccessException("Tenant ID not found in token");
-    }
-}
+  useEffect(() => {
+    loadDashboard();
+  }, [tenantId]);
 
-// Data transfer objects
-public class SyncRequest
-{
-    public DateTime? LastSyncTimestamp { get; set; }
-    public object Data { get; set; }
-    public string DeviceId { get; set; }
-}
+  const loadDashboard = async () => {
+    try {
+      setError(null);
+      
+      // CRITICAL CHANGE: Use new professional endpoint
+      const dashboardData = await apiService.getProfessionalDashboard(tenantId);
+      setDashboard(dashboardData);
+    } catch (error) {
+      console.error('Failed to load counselor dashboard:', error);
+      setError('Failed to load dashboard. Please check your connection and try again.');
+    }
+  };
 
-public class SyncResponse
-{
-    public bool Success { get; set; }
-    public object ServerData { get; set; }
-    public List<ConflictResolution> ConflictResolutions { get; set; }
-    public DateTime LastSyncTimestamp { get; set; }
-    public int ChangesCount { get; set; }
-}
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={loadDashboard}
+          className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="counselor-dashboard">
+      {dashboard ? (
+        <div>
+          <h1>Counselor Dashboard</h1>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Total Clients</h3>
+              <p>{dashboard.totalClients}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Active Sessions</h3>
+              <p>{dashboard.activeSessions}</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div>Loading dashboard...</div>
+      )}
+    </div>
+  );
+};
 ```
 
-### **3. Database Service Implementation**
+#### **4. Update WebSocket Connection for JWT Auth**
+```typescript
+// CRITICAL: Update WebSocket to use JWT authentication  
+export class ProfessionalWebSocketService {
+  private connection: HubConnection | null = null;
+  private apiService: ServerApiService;
 
-#### **DataSyncService Implementation**
-```csharp
-public interface IDataSyncService
-{
-    Task<SyncResult> ProcessSyncRequest(SyncContext context);
-}
+  constructor(apiService: ServerApiService) {
+    this.apiService = apiService;
+  }
 
-public class DataSyncService : IDataSyncService
-{
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<DataSyncService> _logger;
-    
-    public DataSyncService(ApplicationDbContext context, ILogger<DataSyncService> logger)
-    {
-        _context = context;
-        _logger = logger;
+  async connect(tenantId: string): Promise<void> {
+    try {
+      // CRITICAL: Get current JWT token for WebSocket auth
+      const token = await this.apiService.getValidToken();
+      
+      this.connection = new HubConnectionBuilder()
+        .withUrl(`${this.apiService.baseUrl}/hub/professional`, {
+          accessTokenFactory: () => token  // ← CRITICAL: JWT auth for WebSocket
+        })
+        .build();
+
+      // Add tenant context to connection
+      this.connection.on('JoinTenant', (message) => {
+        console.log('Joined tenant:', message);
+      });
+
+      await this.connection.start();
+      
+      // Join tenant-specific group
+      await this.connection.invoke('JoinTenant', tenantId);
+      
+      console.log('Professional WebSocket connected with JWT auth');
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
+      throw error;
     }
-    
-    public async Task<SyncResult> ProcessSyncRequest(SyncContext context)
-    {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        
-        try
-        {
-            // STEP 1: Get server changes since last sync
-            var serverChanges = await GetServerChangesSince(context.UserId, context.TenantId, context.LastSyncTimestamp);
-            
-            // STEP 2: Process client changes
-            var conflictResolutions = await ProcessClientChanges(context);
-            
-            // STEP 3: Create sync result
-            var result = new SyncResult
-            {
-                ServerData = serverChanges,
-                ConflictResolutions = conflictResolutions,
-                NewTimestamp = DateTime.UtcNow,
-                ChangesCount = serverChanges.Count + conflictResolutions.Count
-            };
-            
-            await transaction.CommitAsync();
-            return result;
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "Sync transaction failed for user {UserId}", context.UserId);
-            throw;
-        }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.connection) {
+      await this.connection.stop();
+      this.connection = null;
     }
-    
-    private async Task<List<object>> GetServerChangesSince(string userId, string tenantId, DateTime? lastSync)
-    {
-        var timestamp = lastSync ?? DateTime.MinValue;
-        
-        // Get journal entries
-        var journalEntries = await _context.JournalEntries
-            .Where(j => j.UserId == Guid.Parse(userId) && 
-                       j.TenantId == Guid.Parse(tenantId) && 
-                       j.ModifiedAt > timestamp)
-            .Select(j => new {
-                Type = "journal_entry",
-                Id = j.Id,
-                Content = j.Content,
-                CreatedAt = j.CreatedAt,
-                ModifiedAt = j.ModifiedAt
-            })
-            .ToListAsync();
-        
-        // Get insights
-        var insights = await _context.Insights
-            .Where(i => i.UserId == Guid.Parse(userId) && 
-                       i.TenantId == Guid.Parse(tenantId) && 
-                       i.ModifiedAt > timestamp)
-            .Select(i => new {
-                Type = "insight",
-                Id = i.Id,
-                Title = i.Title,
-                Content = i.Content,
-                Category = i.Category,
-                GeneratedAt = i.GeneratedAt,
-                ModifiedAt = i.ModifiedAt
-            })
-            .ToListAsync();
-        
-        var changes = new List<object>();
-        changes.AddRange(journalEntries);
-        changes.AddRange(insights);
-        
-        return changes;
-    }
-    
-    private async Task<List<ConflictResolution>> ProcessClientChanges(SyncContext context)
-    {
-        var resolutions = new List<ConflictResolution>();
-        
-        // Implementation for processing client data changes
-        // Handle conflicts, validate data, update database
-        
-        return resolutions;
-    }
+  }
 }
 ```
-
-### **4. Professional Services Database Integration**
-
-#### **Complete Professional Service Implementation**
-```csharp
-public class ProfessionalService : IProfessionalService
-{
-    private readonly ApplicationDbContext _context;
-    private readonly ILogger<ProfessionalService> _logger;
-    
-    public ProfessionalService(ApplicationDbContext context, ILogger<ProfessionalService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-    
-    public async Task<List<ClientSummary>> GetClientsAsync(string counselorId)
-    {
-        return await _context.CounselorClients
-            .Where(cc => cc.CounselorId == Guid.Parse(counselorId))
-            .Include(cc => cc.Client)
-            .Select(cc => new ClientSummary
-            {
-                Id = cc.ClientId,
-                Name = cc.Client.Name,
-                Email = cc.Client.Email,
-                Status = cc.Status,
-                LastSession = cc.LastSessionDate,
-                SharingPermissions = cc.SharingPermissions
-            })
-            .ToListAsync();
-    }
-    
-    public async Task<CounselorDashboard> GetCounselorDashboardAsync(string counselorId)
-    {
-        var totalClients = await _context.CounselorClients
-            .CountAsync(cc => cc.CounselorId == Guid.Parse(counselorId));
-        
-        var activeSessions = await _context.ProfessionalSessions
-            .CountAsync(ps => ps.CounselorId == Guid.Parse(counselorId) && ps.Status == "active");
-        
-        var thisMonthSessions = await _context.ProfessionalSessions
-            .CountAsync(ps => ps.CounselorId == Guid.Parse(counselorId) && 
-                             ps.StartedAt >= DateTime.UtcNow.AddDays(-30));
-        
-        return new CounselorDashboard
-        {
-            TotalClients = totalClients,
-            ActiveSessions = activeSessions,
-            ThisMonthSessions = thisMonthSessions,
-            FromCache = false
-        };
-    }
-    
-    // Implement other professional service methods...
-}
-```
-
----
-
-## **📋 CRITICAL DATABASE MIGRATIONS**
-
-### **Entity Model Updates**
-```csharp
-// Add to JournalEntry entity
-public class JournalEntry : BaseEntity
-{
-    public Guid TenantId { get; set; } // ADD THIS
-    public string Content { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime ModifiedAt { get; set; } // ADD THIS
-    public Guid UserId { get; set; }
-    
-    public virtual User User { get; set; }
-}
-
-// Add to Insight entity  
-public class Insight : BaseEntity
-{
-    public Guid TenantId { get; set; } // ADD THIS
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public string Category { get; set; }
-    public DateTime GeneratedAt { get; set; }
-    public DateTime ModifiedAt { get; set; } // ADD THIS
-    public Guid UserId { get; set; }
-    
-    public virtual User User { get; set; }
-}
-```
-
-### **Database Migration Command**
-```bash
-# Execute immediately after entity updates
-dotnet ef migrations add AddTenantIdAndModifiedAtToEntities
-dotnet ef database update
-```
-
----
-
-## **🔥 DEPLOYMENT CHECKLIST**
-
-### **Immediate Actions (Next 30 minutes)**
-- [ ] **JWT Configuration Validation**: Verify all JWT settings in appsettings.json
-- [ ] **Database Connection**: Confirm database connection string and accessibility
-- [ ] **Entity Model Updates**: Add TenantId and ModifiedAt properties
-- [ ] **Migration Execution**: Run database migration for new fields
-- [ ] **Service Registration**: Ensure all services are properly registered in Program.cs
-
-### **Testing Validation (Next 30 minutes)**  
-- [ ] **Auth Endpoint Test**: Test `/api/auth/login` returns valid JWT
-- [ ] **Sync Endpoint Test**: Test `/api/accounts/sync` with valid JWT
-- [ ] **Professional APIs Test**: Test counselor dashboard endpoints
-- [ ] **Database Query Test**: Verify tenant isolation works correctly
-- [ ] **Mobile Integration Test**: Test sync from mobile app
-
-### **Production Deployment (Next 60 minutes)**
-- [ ] **Environment Variables**: Set production JWT secrets and database connection
-- [ ] **Service Deployment**: Deploy server with updated authentication
-- [ ] **Health Check Validation**: Verify all endpoints respond correctly
-- [ ] **Mobile App Update**: Ensure mobile app can authenticate and sync
-- [ ] **Monitoring Setup**: Configure logging and alerting for auth failures
 
 ---
 
 ## **⚠️ CRITICAL RISKS & MITIGATION**
 
-### **Risk 1: Authentication Configuration Issues**
-- **Mitigation**: Use environment-specific JWT settings, test with Postman
-- **Fallback**: Implement temporary API key auth if JWT issues persist
+### **Risk 1: JWT Token Format Mismatch** 
+- **Probability**: High (60%) - New JWT implementation may have different claims
+- **Impact**: All API calls fail with 401 errors  
+- **Mitigation**: Validate JWT token structure in development, add comprehensive logging
+- **Escalation**: Direct coordination with server team on JWT payload format
 
-### **Risk 2: Database Migration Failures**
-- **Mitigation**: Backup database before migration, test on staging first
-- **Fallback**: Use in-memory database temporarily while resolving issues
+### **Risk 2: Professional Services Endpoint Changes**
+- **Probability**: Medium (40%) - Professional endpoints may have different routes  
+- **Impact**: Counselor features completely broken
+- **Mitigation**: Test all professional endpoints systematically, prepare fallback UI
+- **Testing**: Validate every professional feature with real server data
 
-### **Risk 3: Mobile-Server Integration Breaks**
-- **Mitigation**: Coordinate with mobile team, test incrementally
-- **Fallback**: Rollback to previous version if critical issues found
-
----
-
-## **📞 COORDINATION REQUIREMENTS**
-
-### **Mobile Team Coordination**
-- **Share JWT Token Example**: Provide sample JWT for mobile testing
-- **API Documentation**: Update Swagger docs with authentication requirements
-- **Error Handling**: Coordinate error response format for 401/403 errors
-- **Testing Support**: Provide test user credentials for integration testing
-
-### **DevOps Coordination**
-- **Environment Variables**: Coordinate JWT secrets and database credentials
-- **Deployment Pipeline**: Ensure CI/CD pipeline includes database migrations
-- **Monitoring Setup**: Configure alerts for authentication failures
-- **SSL/TLS Configuration**: Verify HTTPS is properly configured for JWT
+### **Risk 3: WebSocket Authentication Failures**  
+- **Probability**: Medium (35%) - WebSocket JWT auth is complex
+- **Impact**: Real-time collaboration features non-functional
+- **Mitigation**: Implement WebSocket reconnection logic, fallback to polling
+- **Monitoring**: Add detailed WebSocket connection state logging
 
 ---
 
-**Generated**: August 4th, 2025  
-**Priority**: P0 - CRITICAL PRODUCTION INCIDENT  
-**Target Resolution**: 4 hours  
-**Next Review**: Every 30 minutes until resolved  
-**Escalation**: Technical Lead if no progress in 2 hours
+## **🤝 COORDINATION WITH SERVER TEAM**
+
+### **IMMEDIATE INFORMATION NEEDED (Today)**
+1. **JWT Payload Structure**: Complete JWT claims format with tenant_id location
+2. **New Endpoint Documentation**: Full API documentation for `/sync/*` and `/professional/*`  
+3. **Error Response Format**: Standardized error response structure for new endpoints
+4. **WebSocket Hub URL**: Correct WebSocket endpoint URL for JWT authentication
+5. **Rate Limiting**: API rate limits and retry guidance for mobile clients
+
+### **INFORMATION TO PROVIDE TO SERVER TEAM** 
+1. **Migration Timeline**: When mobile app will switch to new endpoints (today)
+2. **JWT Token Usage**: How mobile app stores, refreshes, and validates JWT tokens
+3. **Device Identification**: Device ID format and usage in API requests  
+4. **Error Scenarios**: What error information mobile app needs for user feedback
+5. **Performance Requirements**: Mobile app response time and payload size needs
+
+---
+
+## **📈 SUCCESS METRICS**
+
+### **CRITICAL SUCCESS CRITERIA (End of Day)**
+- [ ] **Zero 401 Errors**: All API calls authenticate successfully with JWT  
+- [ ] **Sync Success Rate**: >95% success rate for data synchronization operations
+- [ ] **Professional Features**: Complete counselor workflow functional end-to-end
+- [ ] **Response Time**: <2 seconds average for all new endpoint calls
+- [ ] **Error Recovery**: Graceful handling of all authentication and network errors
+
+### **PERFORMANCE TARGETS**
+- **Initial Login**: <1 second for JWT token acquisition  
+- **Data Sync**: <3 seconds for typical user data synchronization
+- **Dashboard Load**: <2 seconds for counselor dashboard with all widgets
+- **WebSocket Connect**: <5 seconds for real-time features to be ready
+- **Memory Usage**: No memory leaks from new API service or WebSocket connections
+
+---
+
+**Generated**: August 5th, 2025  
+**Priority**: P0 - CRITICAL (Blocking all mobile functionality)  
+**Status**: Ready for immediate endpoint migration implementation  
+**Next Review**: End of day - verify all endpoints migrated and functional  
+**Escalation**: If authentication still fails after endpoint migration within 2 hours
