@@ -175,498 +175,554 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Tue 05 Aug 2025 02:46:38 AEST
+## Session Started: Tue 05 Aug 2025 15:23:58 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
 # Daily Brief - Mobile Team  
-## August 5th, 2025 - Critical Endpoint Migration & Server Integration
+## August 5th, 2025 - Critical Cloud Run Deployment Fix & Dockerfile Implementation
 
-### 🚨 **CRITICAL STATUS: ENDPOINT MIGRATION REQUIRED**
-**Current Situation**: Mobile app hitting `api.sociallyfed.com/accounts/sync` with JWT tokens, but server expects Firebase auth  
-**Root Cause**: Authentication mismatch - mobile using JWT, legacy endpoint using Firebase  
-**Impact**: 401 Unauthorized errors blocking all data synchronization  
-**Your Action**: **MIGRATE TO NEW JWT ENDPOINTS** (Option 1 - Recommended by server team)  
+### 🚨 **CRITICAL STATUS: DEPLOYMENT FAILURE - BUILDPACK DETECTION ERROR**
+**Current Situation**: Google Cloud Buildpack incorrectly detecting mobile project as Ruby application  
+**Root Cause**: Buildpack misidentification causing `google.ruby.missing-entrypoint` error  
+**Impact**: Complete deployment failure blocking production release  
+**Your Action**: **IMPLEMENT DOCKERFILE SOLUTION** (Option 1 - Most Reliable)  
 
 ---
 
 ## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
 
-### **🔴 P0 IMMEDIATE PRIORITY (Next 2 Hours) - ENDPOINT MIGRATION**
-1. **🟡 MIGRATE AUTHENTICATION ENDPOINTS**
-   - **CHANGE FROM**: `api.sociallyfed.com/accounts/sync` (Firebase auth)
-   - **CHANGE TO**: `api.sociallyfed.com/sync/sync` (JWT auth)  
-   - Update ServerApiService to use new secure endpoints
-   - Test JWT token flow with new `/sync/*` routes
+### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - DOCKERFILE CREATION**
+1. **🟡 PROJECT STRUCTURE VALIDATION**
+   - Verify you're in correct `/home/ben/Development/sociallyfed-mobile` directory
+   - Confirm `package.json` exists and has correct React scripts
+   - Check for Ruby files (`Gemfile`, `*.rb`) that might confuse buildpack
+   - Validate Node.js project structure and dependencies
 
-2. **🟡 UPDATE PROFESSIONAL SERVICES ENDPOINTS**
-   - Migrate professional features to `/professional/*` routes (JWT auth)
-   - Update WebSocket connections to use JWT authentication
-   - Validate multi-tenant switching with new endpoint structure
+2. **🟡 DOCKERFILE IMPLEMENTATION**
+   - Create production-ready Dockerfile with multi-stage build
+   - Configure Node.js 18 Alpine base image for optimal size
+   - Set up proper port configuration for Cloud Run (PORT=8080)
+   - Implement security best practices and efficient layer caching
 
-### **🟡 INTEGRATION VALIDATION (Hours 2-4) - POST-MIGRATION**
-3. **🔴 END-TO-END SYNC TESTING**
-   - Verify data synchronization works with JWT endpoints
-   - Test conflict resolution and incremental sync
-   - Validate tenant isolation with new authentication flow
+### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-DOCKERFILE**
+3. **🔴 CLOUD RUN DEPLOYMENT TESTING**
+   - Deploy using new Dockerfile approach
+   - Verify container starts and listens on port 8080
+   - Test health checks and application startup
+   - Validate all environment variables and configuration
 
-4. **🔴 PROFESSIONAL FEATURES INTEGRATION**
-   - Test counselor dashboard with live server data
-   - Validate real-time collaboration features
-   - Confirm client management workflows function correctly
-
----
-
-## **📊 DEPENDENCIES BETWEEN MOBILE AND SERVER WORK**
-
-### **✅ COMPLETED BY SERVER TEAM (August 4th)**
-- **JWT Authentication Infrastructure**: Complete validation middleware implemented
-- **New Secure Endpoints**: `/sync/*` and `/professional/*` routes operational  
-- **Dual Auth Strategy**: Legacy Firebase + New JWT auth both working
-- **Multi-tenant Support**: Tenant isolation validated in JWT tokens
-- **Database Services**: Real database operations replacing mock services
-
-### **🔄 MOBILE TEAM DEPENDENCIES (TODAY'S WORK)**
-- **Endpoint Migration**: Switch from `/accounts/sync` → `/sync/sync`
-- **JWT Token Handling**: Update token format and validation
-- **Error Handling**: Adapt to new error response formats  
-- **Professional Routes**: Migrate to JWT-protected professional endpoints
-- **WebSocket Auth**: Update real-time features for JWT authentication
-
-### **🤝 COORDINATION REQUIREMENTS**
-- **Server Team**: JWT_SECRET configuration and token format validation
-- **Mobile Team**: Device ID format and request headers standardization  
-- **Both Teams**: Error response format and retry behavior alignment
+4. **🔴 APPLICATION FUNCTIONALITY VERIFICATION**
+   - Confirm React app serves correctly through Docker container
+   - Test API connectivity with server endpoints
+   - Validate JWT authentication flow through containerized app
+   - Confirm professional features work in production environment
 
 ---
 
-## **🧪 INTEGRATION TESTING REQUIREMENTS**
+## **📊 DEPLOYMENT ARCHITECTURE ANALYSIS**
 
-### **Phase 1: Basic Authentication (Priority 1)**
-```typescript
-// CRITICAL: Test new JWT authentication endpoint
-const authTests = [
-  'POST /api/auth/login → JWT tokens returned',
-  'JWT token validation and refresh mechanics',  
-  'Token expiry handling and automatic refresh',
-  'Error handling for invalid credentials',
-  'Device ID registration and persistence'
-];
+### **🚫 CURRENT FAILURE ANALYSIS**
+```bash
+# ERROR FROM BUILD LOGS:
+Step #1 - "build": google.ruby.missing-entrypoint 0.0.1
+Step #1 - "build": failed to build: for Ruby, an entrypoint must be manually set
 ```
 
-### **Phase 2: Data Synchronization (Priority 1)**  
-```typescript
-// CRITICAL: Test new sync endpoint  
-const syncTests = [
-  'POST /api/sync/sync → Successful data sync',
-  'Incremental sync with lastSyncTimestamp',
-  'Conflict resolution for concurrent changes',
-  'Large data payload handling (>1MB)',
-  'Network interruption and retry logic'
-];
+**Root Cause**: Google Cloud Buildpacks incorrectly detecting project as Ruby instead of Node.js
+**Detection Triggers**: Possible `Gemfile`, `*.rb` files, or missing Node.js indicators
+**Impact**: Complete build failure preventing container creation
+
+### **✅ DOCKERFILE SOLUTION BENEFITS**
+- **Explicit Control**: Define exact build and runtime environment
+- **Predictable Builds**: Same container every time, no buildpack guessing
+- **Optimization**: Multi-stage builds for smaller production images
+- **Security**: Fine-grained control over dependencies and runtime
+- **Reliability**: No dependency on Google's buildpack detection logic
+
+---
+
+## **🧪 PROJECT STRUCTURE VALIDATION CHECKLIST**
+
+### **Step 1: Verify Current Directory and Project Structure**
+```bash
+# CRITICAL: Confirm you're in the right project
+pwd
+# Should show: /home/ben/Development/sociallyfed-mobile
+
+# Check project structure
+ls -la
+# Should show package.json, src/, public/, NOT Gemfile or *.rb files
+
+# Verify React project indicators
+ls -la src/
+ls -la public/
+cat package.json | grep "react"
 ```
 
-### **Phase 3: Professional Services (Priority 2)**
-```typescript  
-// HIGH: Test professional features integration
-const professionalTests = [
-  'GET /api/professional/dashboard → Counselor analytics',
-  'GET /api/professional/clients → Client list with tenant isolation',
-  'WebSocket /hub/professional → Real-time collaboration',
-  'POST /api/professional/sessions → Session management',
-  'Multi-tenant switching with JWT tenant_id claim'
-];
+### **Step 2: Validate package.json Scripts**
+```json
+{
+  "name": "sociallyfed-mobile",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "dependencies": {
+    "react": "^18.x.x",
+    "react-dom": "^18.x.x",
+    "react-scripts": "5.x.x"
+  }
+}
 ```
 
-### **Phase 4: Error Recovery (Priority 2)**
-```typescript
-// HIGH: Test resilience and error handling
-const resilienceTests = [
-  'Server downtime handling and offline mode',
-  'Invalid JWT token recovery flow',  
-  'Rate limiting and backoff strategies',
-  'Network switching (WiFi → Cellular)',
-  'Memory and battery optimization validation'
-];
+### **Step 3: Remove Conflicting Files**
+```bash
+# Check for Ruby files that might confuse buildpack
+find . -name "Gemfile*" -o -name "*.rb" -o -name "Rakefile"
+
+# If found, move them out of the way
+mkdir -p .backup
+mv Gemfile* .backup/ 2>/dev/null || true
+mv *.rb .backup/ 2>/dev/null || true
+```
+
+### **Step 4: Verify Node.js Dependencies**
+```bash
+# Ensure clean dependency state
+rm -rf node_modules package-lock.json
+npm install
+
+# Test local build
+npm run build
+ls -la build/  # Should show compiled React app
 ```
 
 ---
 
-## **🏗️ UNIFIED ARCHITECTURE VALIDATION STEPS**
+## **🏗️ DOCKERFILE IMPLEMENTATION GUIDE**
 
-### **Step 1: Authentication Flow Validation**
-```mermaid
-sequenceDiagram
-    participant Mobile as Mobile App
-    participant Server as Server API  
-    participant DB as Database
-    
-    Mobile->>Server: POST /api/auth/login (email, password)  
-    Server->>DB: Validate user credentials
-    DB-->>Server: User data + tenant info
-    Server-->>Mobile: JWT tokens (access + refresh)
-    Note over Mobile: Store tokens securely
-    
-    Mobile->>Server: POST /api/sync/sync (Bearer JWT)
-    Server->>Server: Validate JWT + extract tenant_id
-    Server->>DB: Query user data filtered by tenant
-    DB-->>Server: Tenant-specific data
-    Server-->>Mobile: Sync response with data
+### **Production-Ready Dockerfile**
+```dockerfile
+# Multi-stage build for optimized production image
+# Stage 1: Build stage
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better Docker layer caching
+COPY package*.json ./
+
+# Install dependencies (including devDependencies for build)
+RUN npm ci --silent
+
+# Copy source code
+COPY . .
+
+# Build the React application
+RUN npm run build
+
+# Stage 2: Production stage
+FROM node:18-alpine AS production
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S reactuser -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Install serve globally to run the built app
+RUN npm install -g serve@14.2.0
+
+# Copy built application from builder stage
+COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+
+# Switch to non-root user
+USER reactuser
+
+# Expose port 8080 (Cloud Run requirement)
+EXPOSE 8080
+
+# Set environment variables
+ENV PORT=8080
+ENV NODE_ENV=production
+
+# Health check for Cloud Run
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+
+# Start the application
+CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
 ```
 
-### **Step 2: Service Integration Validation**
-- **Mobile → ServerApiService**: JWT token management and API communication  
-- **ServerApiService → New Endpoints**: `/sync/*` and `/professional/*` routes
-- **JWT Middleware → Database**: User context extraction with tenant isolation
-- **Professional Services → WebSocket**: Real-time features with JWT auth
+### **Alternative Dockerfile (If serve issues)**
+```dockerfile
+FROM node:18-alpine
 
-### **Step 3: Multi-Tenant Architecture Validation**  
-- **JWT Claims**: Validate `tenant_id` claim extraction and validation
-- **Database Queries**: Confirm all queries filtered by tenant
-- **API Responses**: Verify no cross-tenant data leakage
-- **Professional Isolation**: Test counselor-client data boundaries
+# Install dependencies
+RUN apk add --no-cache \
+    wget \
+    && npm install -g serve@14.2.0
 
-### **Step 4: Performance & Reliability Validation**
-- **Response Times**: All API calls <2 seconds average  
-- **Memory Usage**: No leaks from WebSocket or API service  
-- **Battery Impact**: Background sync optimization
-- **Offline Resilience**: Graceful degradation when server unavailable
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# Expose port
+EXPOSE 8080
+ENV PORT=8080
+
+# Start command
+CMD ["sh", "-c", "serve -s build -l $PORT"]
+```
+
+### **Create .dockerignore for Optimization**
+```dockerignore
+node_modules
+npm-debug.log*
+.git
+.gitignore
+README.md
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage
+.nyc_output
+.DS_Store
+*.tgz
+.backup
+```
+
+---
+
+## **🚀 DEPLOYMENT IMPLEMENTATION STEPS**
+
+### **Step 1: Create Dockerfile**
+```bash
+# Navigate to project root
+cd /home/ben/Development/sociallyfed-mobile
+
+# Create the Dockerfile
+cat > Dockerfile << 'EOF'
+# Multi-stage build for optimized production image
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+RUN npm ci --silent
+
+# Copy source code and build
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Security: Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S reactuser -u 1001
+
+WORKDIR /app
+
+# Install serve globally
+RUN npm install -g serve@14.2.0
+
+# Copy built app with correct ownership
+COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+
+# Switch to non-root user
+USER reactuser
+
+# Cloud Run configuration
+EXPOSE 8080
+ENV PORT=8080
+ENV NODE_ENV=production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+
+# Start application
+CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+EOF
+```
+
+### **Step 2: Create .dockerignore**
+```bash
+cat > .dockerignore << 'EOF'
+node_modules
+npm-debug.log*
+.git
+.gitignore
+README.md
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage
+.nyc_output
+.DS_Store
+*.tgz
+.backup
+EOF
+```
+
+### **Step 3: Validate Local Build**
+```bash
+# Test Docker build locally
+docker build -t sociallyfed-mobile-test .
+
+# Test container runs correctly
+docker run -p 8080:8080 sociallyfed-mobile-test &
+DOCKER_PID=$!
+
+# Wait a moment for startup
+sleep 10
+
+# Test the application responds
+curl -f http://localhost:8080 || echo "FAILED: App not responding"
+
+# Cleanup
+kill $DOCKER_PID 2>/dev/null || true
+docker rm -f $(docker ps -q --filter ancestor=sociallyfed-mobile-test) 2>/dev/null || true
+```
+
+### **Step 4: Deploy to Cloud Run**
+```bash
+# Deploy with Dockerfile
+gcloud run deploy sociallyfed-mobile \
+  --source=. \
+  --platform=managed \
+  --region=us-central1 \
+  --allow-unauthenticated \
+  --memory=1Gi \
+  --cpu=1 \
+  --timeout=300s \
+  --max-instances=20 \
+  --set-env-vars="NODE_ENV=production" \
+  --port=8080
+
+# Monitor deployment
+gcloud run services describe sociallyfed-mobile --region=us-central1
+```
+
+---
+
+## **🔧 TROUBLESHOOTING GUIDE**
+
+### **Common Issues and Solutions**
+
+#### **Issue 1: "serve" Command Not Found**
+```dockerfile
+# Solution: Ensure serve is installed globally in production stage
+RUN npm install -g serve@14.2.0
+
+# Alternative: Use local serve installation
+COPY package*.json ./
+RUN npm ci && npm install serve
+CMD ["npx", "serve", "-s", "build", "-l", "8080"]
+```
+
+#### **Issue 2: Port Binding Issues**
+```dockerfile
+# Ensure PORT environment variable is used
+ENV PORT=8080
+CMD ["sh", "-c", "serve -s build -l $PORT"]
+
+# Alternative with explicit port
+CMD ["serve", "-s", "build", "-l", "8080"]
+```
+
+#### **Issue 3: Build Failures**
+```bash
+# Clear Docker cache and rebuild
+docker system prune -f
+docker build --no-cache -t sociallyfed-mobile .
+
+# Check for missing dependencies
+npm install
+npm run build  # Test local build first
+```
+
+#### **Issue 4: Cloud Run Health Check Failures**
+```dockerfile
+# Add wget for health checks
+RUN apk add --no-cache wget
+
+# Adjust health check timing
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+```
 
 ---
 
 ## **✅ DEFINITION OF DONE FOR TODAY**
 
-### **🎯 MIGRATION SUCCESS CRITERIA**
-- [ ] **Authentication Migration**: Mobile app successfully authenticates using `/api/auth/login`
-- [ ] **Sync Endpoint Migration**: Data sync works via `/api/sync/sync` with JWT  
-- [ ] **Professional Features**: Counselor dashboard loads via `/api/professional/*` routes
-- [ ] **WebSocket Integration**: Real-time features connect with JWT authentication
-- [ ] **Error Handling**: Graceful handling of all authentication and API errors
+### **🎯 DEPLOYMENT SUCCESS CRITERIA**
+- [ ] **Dockerfile Created**: Production-ready multi-stage Dockerfile implemented
+- [ ] **Local Build Success**: Docker container builds and runs locally on port 8080
+- [ ] **Cloud Run Deployment**: Service deploys successfully without buildpack errors
+- [ ] **Health Check Pass**: Container starts and responds to health checks
+- [ ] **Application Functional**: React app serves correctly through Docker container
 
-### **📱 MOBILE APP FUNCTIONALITY**  
-- [ ] **User Login**: Complete authentication flow without 401 errors
-- [ ] **Data Sync**: Successful bidirectional data synchronization  
-- [ ] **Offline Mode**: App remains functional when server unreachable
-- [ ] **Professional Mode**: Counselor features fully operational
-- [ ] **Multi-Tenant**: Seamless switching between tenant contexts
+### **📱 APPLICATION VERIFICATION**  
+- [ ] **Static Assets**: All React components, CSS, and JavaScript load correctly
+- [ ] **API Connectivity**: Can connect to server endpoints from containerized app
+- [ ] **Authentication**: JWT authentication flow works in production environment
+- [ ] **Professional Features**: Counselor dashboard accessible and functional
+- [ ] **Responsive Design**: Mobile interface works correctly in all screen sizes
 
 ### **🔧 TECHNICAL IMPLEMENTATION**
-- [ ] **JWT Token Handling**: Secure storage, refresh, and validation  
-- [ ] **API Service Update**: All endpoints migrated to new routes
-- [ ] **Error Recovery**: Robust retry logic and user feedback
-- [ ] **Performance**: No UI blocking during server communication  
-- [ ] **Security**: No sensitive data exposed in logs or storage
+- [ ] **Multi-stage Build**: Optimized Docker image size (<150MB)
+- [ ] **Security**: Non-root user implementation and secure defaults
+- [ ] **Performance**: Container startup time <30 seconds
+- [ ] **Resource Usage**: Memory usage within Cloud Run limits (1GB)
+- [ ] **Logging**: Proper application logs visible in Cloud Run console
 
 ### **🧪 VALIDATION COMPLETE**
-- [ ] **Integration Tests**: All critical user journeys pass  
-- [ ] **Professional Tests**: Counselor workflows fully functional
-- [ ] **Multi-Tenant Tests**: Tenant isolation validated  
-- [ ] **Resilience Tests**: Error recovery and offline mode work
-- [ ] **Performance Tests**: Response times meet target (<2s)
+- [ ] **Local Testing**: Docker container runs correctly on development machine
+- [ ] **Health Checks**: Application responds correctly to Cloud Run health probes
+- [ ] **Environment Variables**: All production environment variables configured
+- [ ] **Error Handling**: Graceful handling of startup and runtime errors
+- [ ] **Production Ready**: Application fully functional for end users
 
 ### **📊 PRODUCTION READINESS**  
-- [ ] **Build Validation**: Clean build with no errors or critical warnings
-- [ ] **Security Review**: JWT implementation and data handling validated
-- [ ] **Documentation**: API changes documented for team reference  
-- [ ] **Monitoring**: Error tracking and performance metrics active
-- [ ] **Deployment**: Ready for staging/production deployment
-
----
-
-## **🔧 TECHNICAL IMPLEMENTATION GUIDE**
-
-### **Critical Code Changes Required**
-
-#### **1. Update ServerApiService - Endpoint Migration**
-```typescript
-export class ServerApiService {
-  // CHANGE: Update base endpoints from /accounts/* to /sync/* and /professional/*
-  
-  async syncData(lastSyncTimestamp?: Date, data?: any): Promise<SyncResult> {
-    console.log('Starting data sync with new endpoint...');
-    
-    const syncRequest = {
-      lastSyncTimestamp: lastSyncTimestamp?.toISOString(),
-      data: data,
-      deviceId: this.getDeviceId()
-    };
-
-    // CRITICAL CHANGE: Switch from /accounts/sync to /sync/sync
-    const result = await this.makeAuthenticatedRequest<SyncResponse>(
-      '/api/sync/sync',  // ← CHANGED FROM '/api/accounts/sync'
-      {
-        method: 'POST',
-        body: JSON.stringify(syncRequest),
-      }
-    );
-
-    return {
-      success: true,
-      serverData: result.serverData,
-      conflictResolutions: result.conflictResolutions || [],
-      lastSyncTimestamp: new Date(result.lastSyncTimestamp),
-      changesCount: result.changesCount
-    };
-  }
-
-  // CRITICAL: Add professional services methods with new endpoints
-  async getProfessionalDashboard(tenantId: string): Promise<CounselorDashboard> {
-    return await this.makeAuthenticatedRequest<CounselorDashboard>(
-      `/api/professional/dashboard`,  // ← NEW ENDPOINT
-      {
-        method: 'GET',
-        headers: {
-          'X-Tenant-ID': tenantId
-        }
-      }
-    );
-  }
-
-  async getProfessionalClients(tenantId: string): Promise<ClientSummary[]> {
-    return await this.makeAuthenticatedRequest<ClientSummary[]>(
-      `/api/professional/clients`,  // ← NEW ENDPOINT  
-      {
-        method: 'GET',
-        headers: {
-          'X-Tenant-ID': tenantId
-        }
-      }
-    );
-  }
-}
-```
-
-#### **2. Update Authentication Flow**
-```typescript
-// CRITICAL: Ensure JWT tokens are properly formatted for new endpoints
-export class AuthenticationService {
-  async authenticate(email: string, password: string): Promise<AuthResult> {
-    try {
-      // SAME ENDPOINT: /api/auth/login already uses JWT
-      const response = await fetch(`${this.baseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new AuthenticationError(`Authentication failed: ${response.status}`);
-      }
-
-      const authResponse = await response.json();
-      
-      // CRITICAL: Validate JWT token format  
-      if (!this.isValidJWT(authResponse.accessToken)) {
-        throw new AuthenticationError('Invalid JWT token format received');
-      }
-
-      // Store tokens for new endpoint usage
-      this.storeTokens(authResponse.accessToken, authResponse.refreshToken);
-
-      return {
-        success: true,
-        user: authResponse.user,
-        expiresIn: authResponse.expiresIn
-      };
-    } catch (error) {
-      console.error('Authentication failed:', error);
-      throw error;
-    }
-  }
-
-  private isValidJWT(token: string): boolean {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return false;
-      
-      const payload = JSON.parse(atob(parts[1]));
-      return payload.uid && payload.email && payload.tenantId;  // ← CRITICAL: Validate tenant_id claim
-    } catch {
-      return false;
-    }
-  }
-}
-```
-
-#### **3. Update Professional Features Integration**
-```typescript
-// CRITICAL: Migrate professional components to use new JWT endpoints
-export const CounselorDashboard: React.FC = () => {
-  const [dashboard, setDashboard] = useState<CounselorDashboard | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { apiService, tenantId } = useServices();
-
-  useEffect(() => {
-    loadDashboard();
-  }, [tenantId]);
-
-  const loadDashboard = async () => {
-    try {
-      setError(null);
-      
-      // CRITICAL CHANGE: Use new professional endpoint
-      const dashboardData = await apiService.getProfessionalDashboard(tenantId);
-      setDashboard(dashboardData);
-    } catch (error) {
-      console.error('Failed to load counselor dashboard:', error);
-      setError('Failed to load dashboard. Please check your connection and try again.');
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <p className="text-red-600">{error}</p>
-        <button 
-          onClick={loadDashboard}
-          className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="counselor-dashboard">
-      {dashboard ? (
-        <div>
-          <h1>Counselor Dashboard</h1>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <h3>Total Clients</h3>
-              <p>{dashboard.totalClients}</p>
-            </div>
-            <div className="stat-card">
-              <h3>Active Sessions</h3>
-              <p>{dashboard.activeSessions}</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div>Loading dashboard...</div>
-      )}
-    </div>
-  );
-};
-```
-
-#### **4. Update WebSocket Connection for JWT Auth**
-```typescript
-// CRITICAL: Update WebSocket to use JWT authentication  
-export class ProfessionalWebSocketService {
-  private connection: HubConnection | null = null;
-  private apiService: ServerApiService;
-
-  constructor(apiService: ServerApiService) {
-    this.apiService = apiService;
-  }
-
-  async connect(tenantId: string): Promise<void> {
-    try {
-      // CRITICAL: Get current JWT token for WebSocket auth
-      const token = await this.apiService.getValidToken();
-      
-      this.connection = new HubConnectionBuilder()
-        .withUrl(`${this.apiService.baseUrl}/hub/professional`, {
-          accessTokenFactory: () => token  // ← CRITICAL: JWT auth for WebSocket
-        })
-        .build();
-
-      // Add tenant context to connection
-      this.connection.on('JoinTenant', (message) => {
-        console.log('Joined tenant:', message);
-      });
-
-      await this.connection.start();
-      
-      // Join tenant-specific group
-      await this.connection.invoke('JoinTenant', tenantId);
-      
-      console.log('Professional WebSocket connected with JWT auth');
-    } catch (error) {
-      console.error('WebSocket connection failed:', error);
-      throw error;
-    }
-  }
-
-  async disconnect(): Promise<void> {
-    if (this.connection) {
-      await this.connection.stop();
-      this.connection = null;
-    }
-  }
-}
-```
+- [ ] **Monitoring**: Cloud Run metrics and logging operational
+- [ ] **Scaling**: Service can scale up/down based on traffic
+- [ ] **Security**: No sensitive data in container or logs
+- [ ] **Documentation**: Deployment process documented for team
+- [ ] **Rollback Plan**: Previous version available for emergency rollback
 
 ---
 
 ## **⚠️ CRITICAL RISKS & MITIGATION**
 
-### **Risk 1: JWT Token Format Mismatch** 
-- **Probability**: High (60%) - New JWT implementation may have different claims
-- **Impact**: All API calls fail with 401 errors  
-- **Mitigation**: Validate JWT token structure in development, add comprehensive logging
-- **Escalation**: Direct coordination with server team on JWT payload format
+### **Risk 1: Docker Build Complexity** 
+- **Probability**: Medium (30%) - Multi-stage builds can have dependency issues
+- **Impact**: Continued deployment failures
+- **Mitigation**: Test local Docker build first, provide fallback single-stage Dockerfile
+- **Escalation**: Simplify to basic Node.js image if multi-stage fails
 
-### **Risk 2: Professional Services Endpoint Changes**
-- **Probability**: Medium (40%) - Professional endpoints may have different routes  
-- **Impact**: Counselor features completely broken
-- **Mitigation**: Test all professional endpoints systematically, prepare fallback UI
-- **Testing**: Validate every professional feature with real server data
+### **Risk 2: Port Configuration Issues**
+- **Probability**: Low (15%) - Cloud Run port requirements are well documented
+- **Impact**: Container starts but Cloud Run can't route traffic
+- **Mitigation**: Explicit port configuration and health check validation
+- **Testing**: Verify port 8080 binding in local Docker test
 
-### **Risk 3: WebSocket Authentication Failures**  
-- **Probability**: Medium (35%) - WebSocket JWT auth is complex
-- **Impact**: Real-time collaboration features non-functional
-- **Mitigation**: Implement WebSocket reconnection logic, fallback to polling
-- **Monitoring**: Add detailed WebSocket connection state logging
+### **Risk 3: Memory/Resource Limits**  
+- **Probability**: Low (20%) - React build is typically small
+- **Impact**: Container fails to start or gets killed
+- **Mitigation**: Monitor resource usage, optimize Docker image size
+- **Monitoring**: Set up Cloud Run resource monitoring and alerts
 
 ---
 
-## **🤝 COORDINATION WITH SERVER TEAM**
+## **🤝 COORDINATION REQUIREMENTS**
 
-### **IMMEDIATE INFORMATION NEEDED (Today)**
-1. **JWT Payload Structure**: Complete JWT claims format with tenant_id location
-2. **New Endpoint Documentation**: Full API documentation for `/sync/*` and `/professional/*`  
-3. **Error Response Format**: Standardized error response structure for new endpoints
-4. **WebSocket Hub URL**: Correct WebSocket endpoint URL for JWT authentication
-5. **Rate Limiting**: API rate limits and retry guidance for mobile clients
+### **MINIMAL EXTERNAL DEPENDENCIES**
+- **Server Team**: No immediate coordination required for Dockerfile implementation
+- **DevOps**: May need Cloud Run service configuration review
+- **Security**: Docker image security scanning if required by organization
 
-### **INFORMATION TO PROVIDE TO SERVER TEAM** 
-1. **Migration Timeline**: When mobile app will switch to new endpoints (today)
-2. **JWT Token Usage**: How mobile app stores, refreshes, and validates JWT tokens
-3. **Device Identification**: Device ID format and usage in API requests  
-4. **Error Scenarios**: What error information mobile app needs for user feedback
-5. **Performance Requirements**: Mobile app response time and payload size needs
+### **INFORMATION TO TRACK**
+1. **Build Time**: How long Docker build takes for CI/CD planning
+2. **Image Size**: Final container image size for optimization
+3. **Startup Time**: Container cold start time for performance monitoring
+4. **Resource Usage**: Memory and CPU usage patterns in production
+5. **Error Patterns**: Any recurring deployment or runtime issues
 
 ---
 
 ## **📈 SUCCESS METRICS**
 
-### **CRITICAL SUCCESS CRITERIA (End of Day)**
-- [ ] **Zero 401 Errors**: All API calls authenticate successfully with JWT  
-- [ ] **Sync Success Rate**: >95% success rate for data synchronization operations
-- [ ] **Professional Features**: Complete counselor workflow functional end-to-end
-- [ ] **Response Time**: <2 seconds average for all new endpoint calls
-- [ ] **Error Recovery**: Graceful handling of all authentication and network errors
+### **IMMEDIATE SUCCESS CRITERIA (Next 2 Hours)**
+- [ ] **No Buildpack Errors**: Docker build completes without Ruby detection errors
+- [ ] **Successful Deployment**: Cloud Run service shows as "READY" status
+- [ ] **Application Accessible**: React app loads correctly at Cloud Run URL
+- [ ] **Health Checks Pass**: Cloud Run health checks show green status
+- [ ] **Basic Functionality**: User can navigate main application features
 
 ### **PERFORMANCE TARGETS**
-- **Initial Login**: <1 second for JWT token acquisition  
-- **Data Sync**: <3 seconds for typical user data synchronization
-- **Dashboard Load**: <2 seconds for counselor dashboard with all widgets
-- **WebSocket Connect**: <5 seconds for real-time features to be ready
-- **Memory Usage**: No memory leaks from new API service or WebSocket connections
+- **Docker Build Time**: <5 minutes for complete build
+- **Container Startup**: <30 seconds from container start to serving requests
+- **Application Load**: <3 seconds for initial page load
+- **Memory Usage**: <512MB steady state (within 1GB Cloud Run limit)
+- **Image Size**: <150MB final container image
+
+---
+
+## **🔧 COMPLETE IMPLEMENTATION COMMANDS**
+
+### **Quick Implementation Script**
+```bash
+#!/bin/bash
+# Run this script in /home/ben/Development/sociallyfed-mobile
+
+echo "🔍 Validating project structure..."
+pwd
+ls -la package.json || { echo "❌ No package.json found!"; exit 1; }
+
+echo "📦 Cleaning previous builds..."
+rm -rf node_modules package-lock.json build/
+npm install
+npm run build || { echo "❌ Build failed!"; exit 1; }
+
+echo "🐳 Creating Dockerfile..."
+cat > Dockerfile << 'EOF'
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --silent
+COPY . .
+RUN npm run build
+
+FROM node:18-alpine AS production
+RUN addgroup -g 1001 -S nodejs && adduser -S reactuser -u 1001
+WORKDIR /app
+RUN npm install -g serve@14.2.0
+COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+USER reactuser
+EXPOSE 8080
+ENV PORT=8080 NODE_ENV=production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+EOF
+
+echo "🚀 Deploying to Cloud Run..."
+gcloud run deploy sociallyfed-mobile \
+  --source=. \
+  --platform=managed \
+  --region=us-central1 \
+  --allow-unauthenticated \
+  --memory=1Gi \
+  --cpu=1 \
+  --timeout=300s
+
+echo "✅ Deployment complete! Check Cloud Run console for service URL."
+```
 
 ---
 
 **Generated**: August 5th, 2025  
-**Priority**: P0 - CRITICAL (Blocking all mobile functionality)  
-**Status**: Ready for immediate endpoint migration implementation  
-**Next Review**: End of day - verify all endpoints migrated and functional  
-**Escalation**: If authentication still fails after endpoint migration within 2 hours
+**Priority**: P0 - CRITICAL (Blocking production deployment)  
+**Status**: Ready for immediate Dockerfile implementation  
+**Next Review**: 2 hours - verify successful Cloud Run deployment  
+**Escalation**: If Docker build fails, fall back to simpler single-stage Dockerfile
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -1689,489 +1745,545 @@ interface UnifiedProfessionalWorkflow {
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
 # Daily Brief - Mobile Team  
-## August 5th, 2025 - Critical Endpoint Migration & Server Integration
+## August 5th, 2025 - Critical Cloud Run Deployment Fix & Dockerfile Implementation
 
-### 🚨 **CRITICAL STATUS: ENDPOINT MIGRATION REQUIRED**
-**Current Situation**: Mobile app hitting `api.sociallyfed.com/accounts/sync` with JWT tokens, but server expects Firebase auth  
-**Root Cause**: Authentication mismatch - mobile using JWT, legacy endpoint using Firebase  
-**Impact**: 401 Unauthorized errors blocking all data synchronization  
-**Your Action**: **MIGRATE TO NEW JWT ENDPOINTS** (Option 1 - Recommended by server team)  
+### 🚨 **CRITICAL STATUS: DEPLOYMENT FAILURE - BUILDPACK DETECTION ERROR**
+**Current Situation**: Google Cloud Buildpack incorrectly detecting mobile project as Ruby application  
+**Root Cause**: Buildpack misidentification causing `google.ruby.missing-entrypoint` error  
+**Impact**: Complete deployment failure blocking production release  
+**Your Action**: **IMPLEMENT DOCKERFILE SOLUTION** (Option 1 - Most Reliable)  
 
 ---
 
 ## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
 
-### **🔴 P0 IMMEDIATE PRIORITY (Next 2 Hours) - ENDPOINT MIGRATION**
-1. **🟡 MIGRATE AUTHENTICATION ENDPOINTS**
-   - **CHANGE FROM**: `api.sociallyfed.com/accounts/sync` (Firebase auth)
-   - **CHANGE TO**: `api.sociallyfed.com/sync/sync` (JWT auth)  
-   - Update ServerApiService to use new secure endpoints
-   - Test JWT token flow with new `/sync/*` routes
+### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - DOCKERFILE CREATION**
+1. **🟡 PROJECT STRUCTURE VALIDATION**
+   - Verify you're in correct `/home/ben/Development/sociallyfed-mobile` directory
+   - Confirm `package.json` exists and has correct React scripts
+   - Check for Ruby files (`Gemfile`, `*.rb`) that might confuse buildpack
+   - Validate Node.js project structure and dependencies
 
-2. **🟡 UPDATE PROFESSIONAL SERVICES ENDPOINTS**
-   - Migrate professional features to `/professional/*` routes (JWT auth)
-   - Update WebSocket connections to use JWT authentication
-   - Validate multi-tenant switching with new endpoint structure
+2. **🟡 DOCKERFILE IMPLEMENTATION**
+   - Create production-ready Dockerfile with multi-stage build
+   - Configure Node.js 18 Alpine base image for optimal size
+   - Set up proper port configuration for Cloud Run (PORT=8080)
+   - Implement security best practices and efficient layer caching
 
-### **🟡 INTEGRATION VALIDATION (Hours 2-4) - POST-MIGRATION**
-3. **🔴 END-TO-END SYNC TESTING**
-   - Verify data synchronization works with JWT endpoints
-   - Test conflict resolution and incremental sync
-   - Validate tenant isolation with new authentication flow
+### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-DOCKERFILE**
+3. **🔴 CLOUD RUN DEPLOYMENT TESTING**
+   - Deploy using new Dockerfile approach
+   - Verify container starts and listens on port 8080
+   - Test health checks and application startup
+   - Validate all environment variables and configuration
 
-4. **🔴 PROFESSIONAL FEATURES INTEGRATION**
-   - Test counselor dashboard with live server data
-   - Validate real-time collaboration features
-   - Confirm client management workflows function correctly
-
----
-
-## **📊 DEPENDENCIES BETWEEN MOBILE AND SERVER WORK**
-
-### **✅ COMPLETED BY SERVER TEAM (August 4th)**
-- **JWT Authentication Infrastructure**: Complete validation middleware implemented
-- **New Secure Endpoints**: `/sync/*` and `/professional/*` routes operational  
-- **Dual Auth Strategy**: Legacy Firebase + New JWT auth both working
-- **Multi-tenant Support**: Tenant isolation validated in JWT tokens
-- **Database Services**: Real database operations replacing mock services
-
-### **🔄 MOBILE TEAM DEPENDENCIES (TODAY'S WORK)**
-- **Endpoint Migration**: Switch from `/accounts/sync` → `/sync/sync`
-- **JWT Token Handling**: Update token format and validation
-- **Error Handling**: Adapt to new error response formats  
-- **Professional Routes**: Migrate to JWT-protected professional endpoints
-- **WebSocket Auth**: Update real-time features for JWT authentication
-
-### **🤝 COORDINATION REQUIREMENTS**
-- **Server Team**: JWT_SECRET configuration and token format validation
-- **Mobile Team**: Device ID format and request headers standardization  
-- **Both Teams**: Error response format and retry behavior alignment
+4. **🔴 APPLICATION FUNCTIONALITY VERIFICATION**
+   - Confirm React app serves correctly through Docker container
+   - Test API connectivity with server endpoints
+   - Validate JWT authentication flow through containerized app
+   - Confirm professional features work in production environment
 
 ---
 
-## **🧪 INTEGRATION TESTING REQUIREMENTS**
+## **📊 DEPLOYMENT ARCHITECTURE ANALYSIS**
 
-### **Phase 1: Basic Authentication (Priority 1)**
-```typescript
-// CRITICAL: Test new JWT authentication endpoint
-const authTests = [
-  'POST /api/auth/login → JWT tokens returned',
-  'JWT token validation and refresh mechanics',  
-  'Token expiry handling and automatic refresh',
-  'Error handling for invalid credentials',
-  'Device ID registration and persistence'
-];
+### **🚫 CURRENT FAILURE ANALYSIS**
+```bash
+# ERROR FROM BUILD LOGS:
+Step #1 - "build": google.ruby.missing-entrypoint 0.0.1
+Step #1 - "build": failed to build: for Ruby, an entrypoint must be manually set
 ```
 
-### **Phase 2: Data Synchronization (Priority 1)**  
-```typescript
-// CRITICAL: Test new sync endpoint  
-const syncTests = [
-  'POST /api/sync/sync → Successful data sync',
-  'Incremental sync with lastSyncTimestamp',
-  'Conflict resolution for concurrent changes',
-  'Large data payload handling (>1MB)',
-  'Network interruption and retry logic'
-];
+**Root Cause**: Google Cloud Buildpacks incorrectly detecting project as Ruby instead of Node.js
+**Detection Triggers**: Possible `Gemfile`, `*.rb` files, or missing Node.js indicators
+**Impact**: Complete build failure preventing container creation
+
+### **✅ DOCKERFILE SOLUTION BENEFITS**
+- **Explicit Control**: Define exact build and runtime environment
+- **Predictable Builds**: Same container every time, no buildpack guessing
+- **Optimization**: Multi-stage builds for smaller production images
+- **Security**: Fine-grained control over dependencies and runtime
+- **Reliability**: No dependency on Google's buildpack detection logic
+
+---
+
+## **🧪 PROJECT STRUCTURE VALIDATION CHECKLIST**
+
+### **Step 1: Verify Current Directory and Project Structure**
+```bash
+# CRITICAL: Confirm you're in the right project
+pwd
+# Should show: /home/ben/Development/sociallyfed-mobile
+
+# Check project structure
+ls -la
+# Should show package.json, src/, public/, NOT Gemfile or *.rb files
+
+# Verify React project indicators
+ls -la src/
+ls -la public/
+cat package.json | grep "react"
 ```
 
-### **Phase 3: Professional Services (Priority 2)**
-```typescript  
-// HIGH: Test professional features integration
-const professionalTests = [
-  'GET /api/professional/dashboard → Counselor analytics',
-  'GET /api/professional/clients → Client list with tenant isolation',
-  'WebSocket /hub/professional → Real-time collaboration',
-  'POST /api/professional/sessions → Session management',
-  'Multi-tenant switching with JWT tenant_id claim'
-];
+### **Step 2: Validate package.json Scripts**
+```json
+{
+  "name": "sociallyfed-mobile",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "dependencies": {
+    "react": "^18.x.x",
+    "react-dom": "^18.x.x",
+    "react-scripts": "5.x.x"
+  }
+}
 ```
 
-### **Phase 4: Error Recovery (Priority 2)**
-```typescript
-// HIGH: Test resilience and error handling
-const resilienceTests = [
-  'Server downtime handling and offline mode',
-  'Invalid JWT token recovery flow',  
-  'Rate limiting and backoff strategies',
-  'Network switching (WiFi → Cellular)',
-  'Memory and battery optimization validation'
-];
+### **Step 3: Remove Conflicting Files**
+```bash
+# Check for Ruby files that might confuse buildpack
+find . -name "Gemfile*" -o -name "*.rb" -o -name "Rakefile"
+
+# If found, move them out of the way
+mkdir -p .backup
+mv Gemfile* .backup/ 2>/dev/null || true
+mv *.rb .backup/ 2>/dev/null || true
+```
+
+### **Step 4: Verify Node.js Dependencies**
+```bash
+# Ensure clean dependency state
+rm -rf node_modules package-lock.json
+npm install
+
+# Test local build
+npm run build
+ls -la build/  # Should show compiled React app
 ```
 
 ---
 
-## **🏗️ UNIFIED ARCHITECTURE VALIDATION STEPS**
+## **🏗️ DOCKERFILE IMPLEMENTATION GUIDE**
 
-### **Step 1: Authentication Flow Validation**
-```mermaid
-sequenceDiagram
-    participant Mobile as Mobile App
-    participant Server as Server API  
-    participant DB as Database
-    
-    Mobile->>Server: POST /api/auth/login (email, password)  
-    Server->>DB: Validate user credentials
-    DB-->>Server: User data + tenant info
-    Server-->>Mobile: JWT tokens (access + refresh)
-    Note over Mobile: Store tokens securely
-    
-    Mobile->>Server: POST /api/sync/sync (Bearer JWT)
-    Server->>Server: Validate JWT + extract tenant_id
-    Server->>DB: Query user data filtered by tenant
-    DB-->>Server: Tenant-specific data
-    Server-->>Mobile: Sync response with data
+### **Production-Ready Dockerfile**
+```dockerfile
+# Multi-stage build for optimized production image
+# Stage 1: Build stage
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better Docker layer caching
+COPY package*.json ./
+
+# Install dependencies (including devDependencies for build)
+RUN npm ci --silent
+
+# Copy source code
+COPY . .
+
+# Build the React application
+RUN npm run build
+
+# Stage 2: Production stage
+FROM node:18-alpine AS production
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S reactuser -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Install serve globally to run the built app
+RUN npm install -g serve@14.2.0
+
+# Copy built application from builder stage
+COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+
+# Switch to non-root user
+USER reactuser
+
+# Expose port 8080 (Cloud Run requirement)
+EXPOSE 8080
+
+# Set environment variables
+ENV PORT=8080
+ENV NODE_ENV=production
+
+# Health check for Cloud Run
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+
+# Start the application
+CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
 ```
 
-### **Step 2: Service Integration Validation**
-- **Mobile → ServerApiService**: JWT token management and API communication  
-- **ServerApiService → New Endpoints**: `/sync/*` and `/professional/*` routes
-- **JWT Middleware → Database**: User context extraction with tenant isolation
-- **Professional Services → WebSocket**: Real-time features with JWT auth
+### **Alternative Dockerfile (If serve issues)**
+```dockerfile
+FROM node:18-alpine
 
-### **Step 3: Multi-Tenant Architecture Validation**  
-- **JWT Claims**: Validate `tenant_id` claim extraction and validation
-- **Database Queries**: Confirm all queries filtered by tenant
-- **API Responses**: Verify no cross-tenant data leakage
-- **Professional Isolation**: Test counselor-client data boundaries
+# Install dependencies
+RUN apk add --no-cache \
+    wget \
+    && npm install -g serve@14.2.0
 
-### **Step 4: Performance & Reliability Validation**
-- **Response Times**: All API calls <2 seconds average  
-- **Memory Usage**: No leaks from WebSocket or API service  
-- **Battery Impact**: Background sync optimization
-- **Offline Resilience**: Graceful degradation when server unavailable
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# Expose port
+EXPOSE 8080
+ENV PORT=8080
+
+# Start command
+CMD ["sh", "-c", "serve -s build -l $PORT"]
+```
+
+### **Create .dockerignore for Optimization**
+```dockerignore
+node_modules
+npm-debug.log*
+.git
+.gitignore
+README.md
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage
+.nyc_output
+.DS_Store
+*.tgz
+.backup
+```
+
+---
+
+## **🚀 DEPLOYMENT IMPLEMENTATION STEPS**
+
+### **Step 1: Create Dockerfile**
+```bash
+# Navigate to project root
+cd /home/ben/Development/sociallyfed-mobile
+
+# Create the Dockerfile
+cat > Dockerfile << 'EOF'
+# Multi-stage build for optimized production image
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+RUN npm ci --silent
+
+# Copy source code and build
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Security: Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S reactuser -u 1001
+
+WORKDIR /app
+
+# Install serve globally
+RUN npm install -g serve@14.2.0
+
+# Copy built app with correct ownership
+COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+
+# Switch to non-root user
+USER reactuser
+
+# Cloud Run configuration
+EXPOSE 8080
+ENV PORT=8080
+ENV NODE_ENV=production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+
+# Start application
+CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+EOF
+```
+
+### **Step 2: Create .dockerignore**
+```bash
+cat > .dockerignore << 'EOF'
+node_modules
+npm-debug.log*
+.git
+.gitignore
+README.md
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage
+.nyc_output
+.DS_Store
+*.tgz
+.backup
+EOF
+```
+
+### **Step 3: Validate Local Build**
+```bash
+# Test Docker build locally
+docker build -t sociallyfed-mobile-test .
+
+# Test container runs correctly
+docker run -p 8080:8080 sociallyfed-mobile-test &
+DOCKER_PID=$!
+
+# Wait a moment for startup
+sleep 10
+
+# Test the application responds
+curl -f http://localhost:8080 || echo "FAILED: App not responding"
+
+# Cleanup
+kill $DOCKER_PID 2>/dev/null || true
+docker rm -f $(docker ps -q --filter ancestor=sociallyfed-mobile-test) 2>/dev/null || true
+```
+
+### **Step 4: Deploy to Cloud Run**
+```bash
+# Deploy with Dockerfile
+gcloud run deploy sociallyfed-mobile \
+  --source=. \
+  --platform=managed \
+  --region=us-central1 \
+  --allow-unauthenticated \
+  --memory=1Gi \
+  --cpu=1 \
+  --timeout=300s \
+  --max-instances=20 \
+  --set-env-vars="NODE_ENV=production" \
+  --port=8080
+
+# Monitor deployment
+gcloud run services describe sociallyfed-mobile --region=us-central1
+```
+
+---
+
+## **🔧 TROUBLESHOOTING GUIDE**
+
+### **Common Issues and Solutions**
+
+#### **Issue 1: "serve" Command Not Found**
+```dockerfile
+# Solution: Ensure serve is installed globally in production stage
+RUN npm install -g serve@14.2.0
+
+# Alternative: Use local serve installation
+COPY package*.json ./
+RUN npm ci && npm install serve
+CMD ["npx", "serve", "-s", "build", "-l", "8080"]
+```
+
+#### **Issue 2: Port Binding Issues**
+```dockerfile
+# Ensure PORT environment variable is used
+ENV PORT=8080
+CMD ["sh", "-c", "serve -s build -l $PORT"]
+
+# Alternative with explicit port
+CMD ["serve", "-s", "build", "-l", "8080"]
+```
+
+#### **Issue 3: Build Failures**
+```bash
+# Clear Docker cache and rebuild
+docker system prune -f
+docker build --no-cache -t sociallyfed-mobile .
+
+# Check for missing dependencies
+npm install
+npm run build  # Test local build first
+```
+
+#### **Issue 4: Cloud Run Health Check Failures**
+```dockerfile
+# Add wget for health checks
+RUN apk add --no-cache wget
+
+# Adjust health check timing
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+```
 
 ---
 
 ## **✅ DEFINITION OF DONE FOR TODAY**
 
-### **🎯 MIGRATION SUCCESS CRITERIA**
-- [ ] **Authentication Migration**: Mobile app successfully authenticates using `/api/auth/login`
-- [ ] **Sync Endpoint Migration**: Data sync works via `/api/sync/sync` with JWT  
-- [ ] **Professional Features**: Counselor dashboard loads via `/api/professional/*` routes
-- [ ] **WebSocket Integration**: Real-time features connect with JWT authentication
-- [ ] **Error Handling**: Graceful handling of all authentication and API errors
+### **🎯 DEPLOYMENT SUCCESS CRITERIA**
+- [ ] **Dockerfile Created**: Production-ready multi-stage Dockerfile implemented
+- [ ] **Local Build Success**: Docker container builds and runs locally on port 8080
+- [ ] **Cloud Run Deployment**: Service deploys successfully without buildpack errors
+- [ ] **Health Check Pass**: Container starts and responds to health checks
+- [ ] **Application Functional**: React app serves correctly through Docker container
 
-### **📱 MOBILE APP FUNCTIONALITY**  
-- [ ] **User Login**: Complete authentication flow without 401 errors
-- [ ] **Data Sync**: Successful bidirectional data synchronization  
-- [ ] **Offline Mode**: App remains functional when server unreachable
-- [ ] **Professional Mode**: Counselor features fully operational
-- [ ] **Multi-Tenant**: Seamless switching between tenant contexts
+### **📱 APPLICATION VERIFICATION**  
+- [ ] **Static Assets**: All React components, CSS, and JavaScript load correctly
+- [ ] **API Connectivity**: Can connect to server endpoints from containerized app
+- [ ] **Authentication**: JWT authentication flow works in production environment
+- [ ] **Professional Features**: Counselor dashboard accessible and functional
+- [ ] **Responsive Design**: Mobile interface works correctly in all screen sizes
 
 ### **🔧 TECHNICAL IMPLEMENTATION**
-- [ ] **JWT Token Handling**: Secure storage, refresh, and validation  
-- [ ] **API Service Update**: All endpoints migrated to new routes
-- [ ] **Error Recovery**: Robust retry logic and user feedback
-- [ ] **Performance**: No UI blocking during server communication  
-- [ ] **Security**: No sensitive data exposed in logs or storage
+- [ ] **Multi-stage Build**: Optimized Docker image size (<150MB)
+- [ ] **Security**: Non-root user implementation and secure defaults
+- [ ] **Performance**: Container startup time <30 seconds
+- [ ] **Resource Usage**: Memory usage within Cloud Run limits (1GB)
+- [ ] **Logging**: Proper application logs visible in Cloud Run console
 
 ### **🧪 VALIDATION COMPLETE**
-- [ ] **Integration Tests**: All critical user journeys pass  
-- [ ] **Professional Tests**: Counselor workflows fully functional
-- [ ] **Multi-Tenant Tests**: Tenant isolation validated  
-- [ ] **Resilience Tests**: Error recovery and offline mode work
-- [ ] **Performance Tests**: Response times meet target (<2s)
+- [ ] **Local Testing**: Docker container runs correctly on development machine
+- [ ] **Health Checks**: Application responds correctly to Cloud Run health probes
+- [ ] **Environment Variables**: All production environment variables configured
+- [ ] **Error Handling**: Graceful handling of startup and runtime errors
+- [ ] **Production Ready**: Application fully functional for end users
 
 ### **📊 PRODUCTION READINESS**  
-- [ ] **Build Validation**: Clean build with no errors or critical warnings
-- [ ] **Security Review**: JWT implementation and data handling validated
-- [ ] **Documentation**: API changes documented for team reference  
-- [ ] **Monitoring**: Error tracking and performance metrics active
-- [ ] **Deployment**: Ready for staging/production deployment
-
----
-
-## **🔧 TECHNICAL IMPLEMENTATION GUIDE**
-
-### **Critical Code Changes Required**
-
-#### **1. Update ServerApiService - Endpoint Migration**
-```typescript
-export class ServerApiService {
-  // CHANGE: Update base endpoints from /accounts/* to /sync/* and /professional/*
-  
-  async syncData(lastSyncTimestamp?: Date, data?: any): Promise<SyncResult> {
-    console.log('Starting data sync with new endpoint...');
-    
-    const syncRequest = {
-      lastSyncTimestamp: lastSyncTimestamp?.toISOString(),
-      data: data,
-      deviceId: this.getDeviceId()
-    };
-
-    // CRITICAL CHANGE: Switch from /accounts/sync to /sync/sync
-    const result = await this.makeAuthenticatedRequest<SyncResponse>(
-      '/api/sync/sync',  // ← CHANGED FROM '/api/accounts/sync'
-      {
-        method: 'POST',
-        body: JSON.stringify(syncRequest),
-      }
-    );
-
-    return {
-      success: true,
-      serverData: result.serverData,
-      conflictResolutions: result.conflictResolutions || [],
-      lastSyncTimestamp: new Date(result.lastSyncTimestamp),
-      changesCount: result.changesCount
-    };
-  }
-
-  // CRITICAL: Add professional services methods with new endpoints
-  async getProfessionalDashboard(tenantId: string): Promise<CounselorDashboard> {
-    return await this.makeAuthenticatedRequest<CounselorDashboard>(
-      `/api/professional/dashboard`,  // ← NEW ENDPOINT
-      {
-        method: 'GET',
-        headers: {
-          'X-Tenant-ID': tenantId
-        }
-      }
-    );
-  }
-
-  async getProfessionalClients(tenantId: string): Promise<ClientSummary[]> {
-    return await this.makeAuthenticatedRequest<ClientSummary[]>(
-      `/api/professional/clients`,  // ← NEW ENDPOINT  
-      {
-        method: 'GET',
-        headers: {
-          'X-Tenant-ID': tenantId
-        }
-      }
-    );
-  }
-}
-```
-
-#### **2. Update Authentication Flow**
-```typescript
-// CRITICAL: Ensure JWT tokens are properly formatted for new endpoints
-export class AuthenticationService {
-  async authenticate(email: string, password: string): Promise<AuthResult> {
-    try {
-      // SAME ENDPOINT: /api/auth/login already uses JWT
-      const response = await fetch(`${this.baseUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new AuthenticationError(`Authentication failed: ${response.status}`);
-      }
-
-      const authResponse = await response.json();
-      
-      // CRITICAL: Validate JWT token format  
-      if (!this.isValidJWT(authResponse.accessToken)) {
-        throw new AuthenticationError('Invalid JWT token format received');
-      }
-
-      // Store tokens for new endpoint usage
-      this.storeTokens(authResponse.accessToken, authResponse.refreshToken);
-
-      return {
-        success: true,
-        user: authResponse.user,
-        expiresIn: authResponse.expiresIn
-      };
-    } catch (error) {
-      console.error('Authentication failed:', error);
-      throw error;
-    }
-  }
-
-  private isValidJWT(token: string): boolean {
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return false;
-      
-      const payload = JSON.parse(atob(parts[1]));
-      return payload.uid && payload.email && payload.tenantId;  // ← CRITICAL: Validate tenant_id claim
-    } catch {
-      return false;
-    }
-  }
-}
-```
-
-#### **3. Update Professional Features Integration**
-```typescript
-// CRITICAL: Migrate professional components to use new JWT endpoints
-export const CounselorDashboard: React.FC = () => {
-  const [dashboard, setDashboard] = useState<CounselorDashboard | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { apiService, tenantId } = useServices();
-
-  useEffect(() => {
-    loadDashboard();
-  }, [tenantId]);
-
-  const loadDashboard = async () => {
-    try {
-      setError(null);
-      
-      // CRITICAL CHANGE: Use new professional endpoint
-      const dashboardData = await apiService.getProfessionalDashboard(tenantId);
-      setDashboard(dashboardData);
-    } catch (error) {
-      console.error('Failed to load counselor dashboard:', error);
-      setError('Failed to load dashboard. Please check your connection and try again.');
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <p className="text-red-600">{error}</p>
-        <button 
-          onClick={loadDashboard}
-          className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="counselor-dashboard">
-      {dashboard ? (
-        <div>
-          <h1>Counselor Dashboard</h1>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <h3>Total Clients</h3>
-              <p>{dashboard.totalClients}</p>
-            </div>
-            <div className="stat-card">
-              <h3>Active Sessions</h3>
-              <p>{dashboard.activeSessions}</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div>Loading dashboard...</div>
-      )}
-    </div>
-  );
-};
-```
-
-#### **4. Update WebSocket Connection for JWT Auth**
-```typescript
-// CRITICAL: Update WebSocket to use JWT authentication  
-export class ProfessionalWebSocketService {
-  private connection: HubConnection | null = null;
-  private apiService: ServerApiService;
-
-  constructor(apiService: ServerApiService) {
-    this.apiService = apiService;
-  }
-
-  async connect(tenantId: string): Promise<void> {
-    try {
-      // CRITICAL: Get current JWT token for WebSocket auth
-      const token = await this.apiService.getValidToken();
-      
-      this.connection = new HubConnectionBuilder()
-        .withUrl(`${this.apiService.baseUrl}/hub/professional`, {
-          accessTokenFactory: () => token  // ← CRITICAL: JWT auth for WebSocket
-        })
-        .build();
-
-      // Add tenant context to connection
-      this.connection.on('JoinTenant', (message) => {
-        console.log('Joined tenant:', message);
-      });
-
-      await this.connection.start();
-      
-      // Join tenant-specific group
-      await this.connection.invoke('JoinTenant', tenantId);
-      
-      console.log('Professional WebSocket connected with JWT auth');
-    } catch (error) {
-      console.error('WebSocket connection failed:', error);
-      throw error;
-    }
-  }
-
-  async disconnect(): Promise<void> {
-    if (this.connection) {
-      await this.connection.stop();
-      this.connection = null;
-    }
-  }
-}
-```
+- [ ] **Monitoring**: Cloud Run metrics and logging operational
+- [ ] **Scaling**: Service can scale up/down based on traffic
+- [ ] **Security**: No sensitive data in container or logs
+- [ ] **Documentation**: Deployment process documented for team
+- [ ] **Rollback Plan**: Previous version available for emergency rollback
 
 ---
 
 ## **⚠️ CRITICAL RISKS & MITIGATION**
 
-### **Risk 1: JWT Token Format Mismatch** 
-- **Probability**: High (60%) - New JWT implementation may have different claims
-- **Impact**: All API calls fail with 401 errors  
-- **Mitigation**: Validate JWT token structure in development, add comprehensive logging
-- **Escalation**: Direct coordination with server team on JWT payload format
+### **Risk 1: Docker Build Complexity** 
+- **Probability**: Medium (30%) - Multi-stage builds can have dependency issues
+- **Impact**: Continued deployment failures
+- **Mitigation**: Test local Docker build first, provide fallback single-stage Dockerfile
+- **Escalation**: Simplify to basic Node.js image if multi-stage fails
 
-### **Risk 2: Professional Services Endpoint Changes**
-- **Probability**: Medium (40%) - Professional endpoints may have different routes  
-- **Impact**: Counselor features completely broken
-- **Mitigation**: Test all professional endpoints systematically, prepare fallback UI
-- **Testing**: Validate every professional feature with real server data
+### **Risk 2: Port Configuration Issues**
+- **Probability**: Low (15%) - Cloud Run port requirements are well documented
+- **Impact**: Container starts but Cloud Run can't route traffic
+- **Mitigation**: Explicit port configuration and health check validation
+- **Testing**: Verify port 8080 binding in local Docker test
 
-### **Risk 3: WebSocket Authentication Failures**  
-- **Probability**: Medium (35%) - WebSocket JWT auth is complex
-- **Impact**: Real-time collaboration features non-functional
-- **Mitigation**: Implement WebSocket reconnection logic, fallback to polling
-- **Monitoring**: Add detailed WebSocket connection state logging
+### **Risk 3: Memory/Resource Limits**  
+- **Probability**: Low (20%) - React build is typically small
+- **Impact**: Container fails to start or gets killed
+- **Mitigation**: Monitor resource usage, optimize Docker image size
+- **Monitoring**: Set up Cloud Run resource monitoring and alerts
 
 ---
 
-## **🤝 COORDINATION WITH SERVER TEAM**
+## **🤝 COORDINATION REQUIREMENTS**
 
-### **IMMEDIATE INFORMATION NEEDED (Today)**
-1. **JWT Payload Structure**: Complete JWT claims format with tenant_id location
-2. **New Endpoint Documentation**: Full API documentation for `/sync/*` and `/professional/*`  
-3. **Error Response Format**: Standardized error response structure for new endpoints
-4. **WebSocket Hub URL**: Correct WebSocket endpoint URL for JWT authentication
-5. **Rate Limiting**: API rate limits and retry guidance for mobile clients
+### **MINIMAL EXTERNAL DEPENDENCIES**
+- **Server Team**: No immediate coordination required for Dockerfile implementation
+- **DevOps**: May need Cloud Run service configuration review
+- **Security**: Docker image security scanning if required by organization
 
-### **INFORMATION TO PROVIDE TO SERVER TEAM** 
-1. **Migration Timeline**: When mobile app will switch to new endpoints (today)
-2. **JWT Token Usage**: How mobile app stores, refreshes, and validates JWT tokens
-3. **Device Identification**: Device ID format and usage in API requests  
-4. **Error Scenarios**: What error information mobile app needs for user feedback
-5. **Performance Requirements**: Mobile app response time and payload size needs
+### **INFORMATION TO TRACK**
+1. **Build Time**: How long Docker build takes for CI/CD planning
+2. **Image Size**: Final container image size for optimization
+3. **Startup Time**: Container cold start time for performance monitoring
+4. **Resource Usage**: Memory and CPU usage patterns in production
+5. **Error Patterns**: Any recurring deployment or runtime issues
 
 ---
 
 ## **📈 SUCCESS METRICS**
 
-### **CRITICAL SUCCESS CRITERIA (End of Day)**
-- [ ] **Zero 401 Errors**: All API calls authenticate successfully with JWT  
-- [ ] **Sync Success Rate**: >95% success rate for data synchronization operations
-- [ ] **Professional Features**: Complete counselor workflow functional end-to-end
-- [ ] **Response Time**: <2 seconds average for all new endpoint calls
-- [ ] **Error Recovery**: Graceful handling of all authentication and network errors
+### **IMMEDIATE SUCCESS CRITERIA (Next 2 Hours)**
+- [ ] **No Buildpack Errors**: Docker build completes without Ruby detection errors
+- [ ] **Successful Deployment**: Cloud Run service shows as "READY" status
+- [ ] **Application Accessible**: React app loads correctly at Cloud Run URL
+- [ ] **Health Checks Pass**: Cloud Run health checks show green status
+- [ ] **Basic Functionality**: User can navigate main application features
 
 ### **PERFORMANCE TARGETS**
-- **Initial Login**: <1 second for JWT token acquisition  
-- **Data Sync**: <3 seconds for typical user data synchronization
-- **Dashboard Load**: <2 seconds for counselor dashboard with all widgets
-- **WebSocket Connect**: <5 seconds for real-time features to be ready
-- **Memory Usage**: No memory leaks from new API service or WebSocket connections
+- **Docker Build Time**: <5 minutes for complete build
+- **Container Startup**: <30 seconds from container start to serving requests
+- **Application Load**: <3 seconds for initial page load
+- **Memory Usage**: <512MB steady state (within 1GB Cloud Run limit)
+- **Image Size**: <150MB final container image
+
+---
+
+## **🔧 COMPLETE IMPLEMENTATION COMMANDS**
+
+### **Quick Implementation Script**
+```bash
+#!/bin/bash
+# Run this script in /home/ben/Development/sociallyfed-mobile
+
+echo "🔍 Validating project structure..."
+pwd
+ls -la package.json || { echo "❌ No package.json found!"; exit 1; }
+
+echo "📦 Cleaning previous builds..."
+rm -rf node_modules package-lock.json build/
+npm install
+npm run build || { echo "❌ Build failed!"; exit 1; }
+
+echo "🐳 Creating Dockerfile..."
+cat > Dockerfile << 'EOF'
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --silent
+COPY . .
+RUN npm run build
+
+FROM node:18-alpine AS production
+RUN addgroup -g 1001 -S nodejs && adduser -S reactuser -u 1001
+WORKDIR /app
+RUN npm install -g serve@14.2.0
+COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+USER reactuser
+EXPOSE 8080
+ENV PORT=8080 NODE_ENV=production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+EOF
+
+echo "🚀 Deploying to Cloud Run..."
+gcloud run deploy sociallyfed-mobile \
+  --source=. \
+  --platform=managed \
+  --region=us-central1 \
+  --allow-unauthenticated \
+  --memory=1Gi \
+  --cpu=1 \
+  --timeout=300s
+
+echo "✅ Deployment complete! Check Cloud Run console for service URL."
+```
 
 ---
 
 **Generated**: August 5th, 2025  
-**Priority**: P0 - CRITICAL (Blocking all mobile functionality)  
-**Status**: Ready for immediate endpoint migration implementation  
-**Next Review**: End of day - verify all endpoints migrated and functional  
-**Escalation**: If authentication still fails after endpoint migration within 2 hours
+**Priority**: P0 - CRITICAL (Blocking production deployment)  
+**Status**: Ready for immediate Dockerfile implementation  
+**Next Review**: 2 hours - verify successful Cloud Run deployment  
+**Escalation**: If Docker build fails, fall back to simpler single-stage Dockerfile
