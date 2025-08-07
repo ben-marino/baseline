@@ -175,335 +175,358 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Tue 05 Aug 2025 15:23:58 AEST
+## Session Started: Thu 07 Aug 2025 16:05:23 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
 # Daily Brief - Mobile Team  
-## August 5th, 2025 - Critical Cloud Run Deployment Fix & Dockerfile Implementation
+## August 8th, 2025 - Mobile API URL Configuration Update
 
-### 🚨 **CRITICAL STATUS: DEPLOYMENT FAILURE - BUILDPACK DETECTION ERROR**
-**Current Situation**: Google Cloud Buildpack incorrectly detecting mobile project as Ruby application  
-**Root Cause**: Buildpack misidentification causing `google.ruby.missing-entrypoint` error  
-**Impact**: Complete deployment failure blocking production release  
-**Your Action**: **IMPLEMENT DOCKERFILE SOLUTION** (Option 1 - Most Reliable)  
+### 🚨 **CRITICAL STATUS: MOBILE APP POINTING TO WRONG SERVER URL**
+**Current Situation**: Mobile app making API calls to `api.sociallyfed.com` instead of operational server  
+**Root Cause**: API configuration pointing to old/non-functional server endpoint  
+**Impact**: 401 Unauthorized errors, sync failures, professional services non-functional  
+**Your Action**: **UPDATE MOBILE API CONFIGURATION** (Critical P0 Priority)  
 
 ---
 
 ## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
 
-### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - DOCKERFILE CREATION**
-1. **🟡 PROJECT STRUCTURE VALIDATION**
-   - Verify you're in correct `/home/ben/Development/sociallyfed-mobile` directory
-   - Confirm `package.json` exists and has correct React scripts
-   - Check for Ruby files (`Gemfile`, `*.rb`) that might confuse buildpack
-   - Validate Node.js project structure and dependencies
+### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - API URL UPDATE**
 
-2. **🟡 DOCKERFILE IMPLEMENTATION**
-   - Create production-ready Dockerfile with multi-stage build
-   - Configure Node.js 18 Alpine base image for optimal size
-   - Set up proper port configuration for Cloud Run (PORT=8080)
-   - Implement security best practices and efficient layer caching
+1. **🟡 API CONFIGURATION DISCOVERY**
+   - Locate API URL configuration in mobile app codebase
+   - Identify environment variables or config files with server endpoints
+   - Find all references to `api.sociallyfed.com` domain
+   - Validate current API service configuration files
 
-### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-DOCKERFILE**
-3. **🔴 CLOUD RUN DEPLOYMENT TESTING**
-   - Deploy using new Dockerfile approach
-   - Verify container starts and listens on port 8080
-   - Test health checks and application startup
-   - Validate all environment variables and configuration
+2. **🟡 SERVER URL UPDATE IMPLEMENTATION**
+   - Update API configuration from `api.sociallyfed.com` to working server
+   - Configure correct endpoint: `https://sociallyfed-server-512204327023.us-central1.run.app`
+   - Validate environment variables and build configuration
+   - Ensure CORS and authentication headers are correctly configured
 
-4. **🔴 APPLICATION FUNCTIONALITY VERIFICATION**
-   - Confirm React app serves correctly through Docker container
-   - Test API connectivity with server endpoints
-   - Validate JWT authentication flow through containerized app
-   - Confirm professional features work in production environment
+### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-CONFIGURATION**
 
----
+3. **🔴 MOBILE APP REDEPLOYMENT**
+   - Rebuild mobile app with updated API configuration
+   - Deploy updated mobile app to Google Cloud Run
+   - Verify new deployment uses correct server endpoint
+   - Test API connectivity with operational server
 
-## **📊 DEPLOYMENT ARCHITECTURE ANALYSIS**
-
-### **🚫 CURRENT FAILURE ANALYSIS**
-```bash
-# ERROR FROM BUILD LOGS:
-Step #1 - "build": google.ruby.missing-entrypoint 0.0.1
-Step #1 - "build": failed to build: for Ruby, an entrypoint must be manually set
-```
-
-**Root Cause**: Google Cloud Buildpacks incorrectly detecting project as Ruby instead of Node.js
-**Detection Triggers**: Possible `Gemfile`, `*.rb` files, or missing Node.js indicators
-**Impact**: Complete build failure preventing container creation
-
-### **✅ DOCKERFILE SOLUTION BENEFITS**
-- **Explicit Control**: Define exact build and runtime environment
-- **Predictable Builds**: Same container every time, no buildpack guessing
-- **Optimization**: Multi-stage builds for smaller production images
-- **Security**: Fine-grained control over dependencies and runtime
-- **Reliability**: No dependency on Google's buildpack detection logic
+4. **🔴 INTEGRATION FUNCTIONALITY VERIFICATION**
+   - Confirm mobile app connects to working server successfully
+   - Validate authentication flow with correct JWT endpoints
+   - Test sync operations and professional services integration
+   - Verify end-to-end user workflow functionality
 
 ---
 
-## **🧪 PROJECT STRUCTURE VALIDATION CHECKLIST**
+## **📊 CURRENT SYSTEM STATUS ANALYSIS**
 
-### **Step 1: Verify Current Directory and Project Structure**
+### **✅ SERVER APPLICATION - FULLY OPERATIONAL**
 ```bash
-# CRITICAL: Confirm you're in the right project
-pwd
-# Should show: /home/ben/Development/sociallyfed-mobile
-
-# Check project structure
-ls -la
-# Should show package.json, src/, public/, NOT Gemfile or *.rb files
-
-# Verify React project indicators
-ls -la src/
-ls -la public/
-cat package.json | grep "react"
+# SERVER STATUS: WORKING CORRECTLY
+Server URL: https://sociallyfed-server-512204327023.us-central1.run.app
+Health Check: ✅ /health returns 200 OK "Healthy"
+Authentication: ✅ JWT validation working (proper 401 responses)
+API Endpoints: ✅ /api/accounts/sync functional with authentication
+Status: Ready for mobile integration
 ```
 
-### **Step 2: Validate package.json Scripts**
-```json
-{
-  "name": "sociallyfed-mobile",
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "dependencies": {
-    "react": "^18.x.x",
-    "react-dom": "^18.x.x",
-    "react-scripts": "5.x.x"
-  }
-}
-```
-
-### **Step 3: Remove Conflicting Files**
+### **🚫 MOBILE APPLICATION - CONFIGURATION MISMATCH**
 ```bash
-# Check for Ruby files that might confuse buildpack
-find . -name "Gemfile*" -o -name "*.rb" -o -name "Rakefile"
-
-# If found, move them out of the way
-mkdir -p .backup
-mv Gemfile* .backup/ 2>/dev/null || true
-mv *.rb .backup/ 2>/dev/null || true
+# MOBILE STATUS: POINTING TO WRONG SERVER
+Current Mobile URL: https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app
+API Configuration: ❌ api.sociallyfed.com (NON-FUNCTIONAL)
+Correct API URL: ✅ sociallyfed-server-512204327023.us-central1.run.app
+Error Pattern: 401 Unauthorized from wrong server endpoint
+Status: Needs API URL reconfiguration
 ```
 
-### **Step 4: Verify Node.js Dependencies**
-```bash
-# Ensure clean dependency state
-rm -rf node_modules package-lock.json
-npm install
-
-# Test local build
-npm run build
-ls -la build/  # Should show compiled React app
-```
+### **🟡 INTEGRATION STATUS - BLOCKED BY CONFIGURATION**
+- **Mobile → Server**: ❌ Calling wrong server endpoint (api.sociallyfed.com)
+- **Authentication Flow**: ❌ 401 errors from incorrect server
+- **Professional Services**: ❌ Unavailable due to wrong API configuration
+- **Sync Operations**: ❌ Failing due to server endpoint mismatch
 
 ---
 
-## **🏗️ DOCKERFILE IMPLEMENTATION GUIDE**
+## **🧪 API CONFIGURATION UPDATE STRATEGY**
 
-### **Production-Ready Dockerfile**
-```dockerfile
-# Multi-stage build for optimized production image
-# Stage 1: Build stage
-FROM node:18-alpine AS builder
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files first for better Docker layer caching
-COPY package*.json ./
-
-# Install dependencies (including devDependencies for build)
-RUN npm ci --silent
-
-# Copy source code
-COPY . .
-
-# Build the React application
-RUN npm run build
-
-# Stage 2: Production stage
-FROM node:18-alpine AS production
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S reactuser -u 1001
-
-# Set working directory
-WORKDIR /app
-
-# Install serve globally to run the built app
-RUN npm install -g serve@14.2.0
-
-# Copy built application from builder stage
-COPY --from=builder --chown=reactuser:nodejs /app/build ./build
-
-# Switch to non-root user
-USER reactuser
-
-# Expose port 8080 (Cloud Run requirement)
-EXPOSE 8080
-
-# Set environment variables
-ENV PORT=8080
-ENV NODE_ENV=production
-
-# Health check for Cloud Run
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
-
-# Start the application
-CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
-```
-
-### **Alternative Dockerfile (If serve issues)**
-```dockerfile
-FROM node:18-alpine
-
-# Install dependencies
-RUN apk add --no-cache \
-    wget \
-    && npm install -g serve@14.2.0
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy source and build
-COPY . .
-RUN npm run build
-
-# Expose port
-EXPOSE 8080
-ENV PORT=8080
-
-# Start command
-CMD ["sh", "-c", "serve -s build -l $PORT"]
-```
-
-### **Create .dockerignore for Optimization**
-```dockerignore
-node_modules
-npm-debug.log*
-.git
-.gitignore
-README.md
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-coverage
-.nyc_output
-.DS_Store
-*.tgz
-.backup
-```
-
----
-
-## **🚀 DEPLOYMENT IMPLEMENTATION STEPS**
-
-### **Step 1: Create Dockerfile**
+### **Step 1: Locate API Configuration Files**
 ```bash
-# Navigate to project root
+# Navigate to mobile project
 cd /home/ben/Development/sociallyfed-mobile
 
-# Create the Dockerfile
-cat > Dockerfile << 'EOF'
-# Multi-stage build for optimized production image
-FROM node:18-alpine AS builder
+# Search for current API configuration
+echo "🔍 Searching for API URL configuration..."
 
-WORKDIR /app
+# Check environment files
+ls -la .env* 2>/dev/null || echo "No .env files found"
+grep -r "api.sociallyfed.com" . 2>/dev/null || echo "No direct references to api.sociallyfed.com"
+grep -r "REACT_APP_API" . 2>/dev/null || echo "No REACT_APP_API variables found"
+grep -r "API_URL" . 2>/dev/null || echo "No API_URL variables found"
 
-# Copy package files first for better caching
-COPY package*.json ./
-RUN npm ci --silent
+# Check source code for API configuration
+find src/ -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | xargs grep -l "api\." 2>/dev/null
+find src/ -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
 
-# Copy source code and build
-COPY . .
-RUN npm run build
+# Check package.json for any API-related scripts or config
+grep -i "api\|server\|url" package.json 2>/dev/null || echo "No API references in package.json"
+```
 
-# Production stage
-FROM node:18-alpine AS production
+### **Step 2: Identify API Service Configuration**
+```bash
+# Look for common API configuration patterns
+echo "🔍 Checking common API service patterns..."
 
-# Security: Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S reactuser -u 1001
+# Check for API service files
+cat src/services/api.js 2>/dev/null || echo "No src/services/api.js"
+cat src/services/apiService.js 2>/dev/null || echo "No src/services/apiService.js"
+cat src/config/api.js 2>/dev/null || echo "No src/config/api.js"
+cat src/utils/api.js 2>/dev/null || echo "No src/utils/api.js"
 
-WORKDIR /app
+# Check for environment configuration
+cat src/config/environment.js 2>/dev/null || echo "No src/config/environment.js"
+cat src/config/config.js 2>/dev/null || echo "No src/config/config.js"
 
-# Install serve globally
-RUN npm install -g serve@14.2.0
+# Check for axios or fetch configuration
+grep -r "baseURL\|base_url" src/ 2>/dev/null
+grep -r "fetch.*api" src/ 2>/dev/null | head -5
+grep -r "axios" src/ 2>/dev/null | head -5
+```
 
-# Copy built app with correct ownership
-COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+### **Step 3: Update API Configuration**
+```bash
+# CRITICAL: Update API URL configuration
 
-# Switch to non-root user
-USER reactuser
-
-# Cloud Run configuration
-EXPOSE 8080
-ENV PORT=8080
-ENV NODE_ENV=production
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
-
-# Start application
-CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+# Option A: Environment Variable Approach
+echo "🔧 Creating production environment configuration..."
+cat > .env.production << 'EOF'
+# Production API Configuration
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
 EOF
+
+# Option B: Direct Configuration File Update (if found)
+# This will be updated based on what we find in Step 1-2
+
+# Create backup of current configuration
+find . -name "*.env*" -exec cp {} {}.backup \; 2>/dev/null || true
 ```
 
-### **Step 2: Create .dockerignore**
+### **Step 4: Validate Configuration Changes**
 ```bash
-cat > .dockerignore << 'EOF'
-node_modules
-npm-debug.log*
-.git
-.gitignore
-README.md
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-coverage
-.nyc_output
-.DS_Store
-*.tgz
-.backup
+# CRITICAL: Ensure configuration is properly set
+
+# Check if environment variables are being used
+grep -r "process.env.REACT_APP_API" src/ 2>/dev/null
+
+# Look for hardcoded API URLs that need updating
+grep -r "https://api\." src/ 2>/dev/null
+grep -r "api\.sociallyfed\.com" src/ 2>/dev/null
+
+# Verify the configuration approach
+echo "📋 Configuration Summary:"
+echo "Current working server: https://sociallyfed-server-512204327023.us-central1.run.app"
+echo "Environment file created: .env.production"
+echo "Next step: Identify how mobile app reads API configuration"
+```
+
+---
+
+## **🚀 MOBILE APP UPDATE IMPLEMENTATION**
+
+### **Step 1: API Configuration Discovery and Update**
+```bash
+# Complete API configuration discovery script
+cd /home/ben/Development/sociallyfed-mobile
+
+echo "🔍 STEP 1: API Configuration Discovery"
+
+# Create comprehensive search for API configuration
+cat > find-api-config.sh << 'EOF'
+#!/bin/bash
+echo "=== SEARCHING FOR API CONFIGURATION ==="
+
+echo "1. Environment Files:"
+find . -name ".env*" -type f 2>/dev/null | while read file; do
+    echo "  $file:"
+    grep -i "api\|server\|url" "$file" 2>/dev/null | head -5
+done
+
+echo -e "\n2. Source Files with API References:"
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
+xargs grep -l -i "api\." 2>/dev/null | head -10
+
+echo -e "\n3. API Service Files:"
+find src/ -type f -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
+
+echo -e "\n4. Base URL Configurations:"
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
+xargs grep -n "baseURL\|base_url\|API_URL" 2>/dev/null | head -10
+
+echo -e "\n5. Fetch/Axios Configurations:"
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
+xargs grep -n -A2 -B2 "fetch.*api\|axios.*api" 2>/dev/null | head -15
+
+echo -e "\n6. Package.json API References:"
+grep -n -i "api\|server\|url" package.json 2>/dev/null
 EOF
+
+chmod +x find-api-config.sh
+./find-api-config.sh
 ```
 
-### **Step 3: Validate Local Build**
-```bash
-# Test Docker build locally
-docker build -t sociallyfed-mobile-test .
+### **Step 2: Create Updated API Configuration**
+```javascript
+// Example API service configuration update
+// This will be customized based on findings from Step 1
 
-# Test container runs correctly
-docker run -p 8080:8080 sociallyfed-mobile-test &
-DOCKER_PID=$!
+// src/services/apiService.js - EXAMPLE CONFIGURATION
+const API_CONFIG = {
+  // OLD: baseURL: 'https://api.sociallyfed.com',
+  baseURL: process.env.REACT_APP_API_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app',
+  apiPrefix: '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+};
 
-# Wait a moment for startup
-sleep 10
+// Updated API service class
+class ApiService {
+  constructor() {
+    this.baseURL = API_CONFIG.baseURL;
+    this.apiURL = `${this.baseURL}${API_CONFIG.apiPrefix}`;
+  }
+  
+  async request(endpoint, options = {}) {
+    const url = `${this.apiURL}${endpoint}`;
+    const config = {
+      ...options,
+      headers: {
+        ...API_CONFIG.headers,
+        ...options.headers,
+      },
+      timeout: API_CONFIG.timeout,
+    };
+    
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`API request failed: ${url}`, error);
+      throw error;
+    }
+  }
+  
+  // Account sync with proper endpoint
+  async syncAccount(syncData) {
+    return this.request('/accounts/sync', {
+      method: 'POST',
+      body: JSON.stringify(syncData),
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`,
+      },
+    });
+  }
+  
+  getAuthToken() {
+    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  }
+}
 
-# Test the application responds
-curl -f http://localhost:8080 || echo "FAILED: App not responding"
-
-# Cleanup
-kill $DOCKER_PID 2>/dev/null || true
-docker rm -f $(docker ps -q --filter ancestor=sociallyfed-mobile-test) 2>/dev/null || true
+export default new ApiService();
 ```
 
-### **Step 4: Deploy to Cloud Run**
+### **Step 3: Environment Configuration Setup**
 ```bash
-# Deploy with Dockerfile
+# Create all necessary environment configurations
+echo "🔧 STEP 3: Environment Configuration Setup"
+
+# Production environment
+cat > .env.production << 'EOF'
+# Production API Configuration - Updated August 8th, 2025
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENVIRONMENT=production
+
+# Feature flags
+REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
+REACT_APP_DEBUG_MODE=false
+EOF
+
+# Development environment (for future use)
+cat > .env.development << 'EOF'
+# Development API Configuration
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENVIRONMENT=development
+
+# Feature flags
+REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
+REACT_APP_DEBUG_MODE=true
+EOF
+
+# Local environment template
+cat > .env.local.example << 'EOF'
+# Local Development API Configuration (Copy to .env.local)
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_API_BASE_URL=http://localhost:5000/api
+REACT_APP_SERVER_URL=http://localhost:5000
+REACT_APP_ENVIRONMENT=local
+REACT_APP_DEBUG_MODE=true
+EOF
+
+echo "✅ Environment files created successfully"
+ls -la .env*
+```
+
+### **Step 4: Build and Deploy Updated Mobile App**
+```bash
+# CRITICAL: Build and deploy with new API configuration
+echo "🚀 STEP 4: Building and deploying updated mobile app"
+
+# Clean previous builds
+rm -rf build/ node_modules/.cache/ 2>/dev/null || true
+
+# Install dependencies (if needed)
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing dependencies..."
+    npm install
+fi
+
+# Build with production configuration
+echo "🔨 Building mobile app with updated API configuration..."
+NODE_ENV=production npm run build
+
+# Verify build includes correct API URL
+echo "🔍 Verifying build configuration..."
+if [ -d "build" ]; then
+    # Check if environment variables are properly embedded
+    grep -r "sociallyfed-server-512204327023" build/ 2>/dev/null && echo "✅ Correct server URL found in build" || echo "⚠️ Server URL may not be embedded"
+    
+    # Check build size
+    BUILD_SIZE=$(du -sh build/ | cut -f1)
+    echo "📊 Build size: $BUILD_SIZE"
+else
+    echo "❌ Build failed - build directory not found"
+    exit 1
+fi
+
+# Deploy to Google Cloud Run
+echo "🚀 Deploying to Google Cloud Run..."
 gcloud run deploy sociallyfed-mobile \
   --source=. \
   --platform=managed \
@@ -513,216 +536,497 @@ gcloud run deploy sociallyfed-mobile \
   --cpu=1 \
   --timeout=300s \
   --max-instances=20 \
-  --set-env-vars="NODE_ENV=production" \
   --port=8080
 
-# Monitor deployment
-gcloud run services describe sociallyfed-mobile --region=us-central1
+# Wait for deployment
+echo "⏱️ Waiting for deployment to complete..."
+sleep 60
+
+# Get mobile app URL
+MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
+echo "📱 Mobile app deployed at: $MOBILE_URL"
 ```
 
 ---
 
-## **🔧 TROUBLESHOOTING GUIDE**
+## **🔧 INTEGRATION TESTING & VALIDATION**
 
-### **Common Issues and Solutions**
-
-#### **Issue 1: "serve" Command Not Found**
-```dockerfile
-# Solution: Ensure serve is installed globally in production stage
-RUN npm install -g serve@14.2.0
-
-# Alternative: Use local serve installation
-COPY package*.json ./
-RUN npm ci && npm install serve
-CMD ["npx", "serve", "-s", "build", "-l", "8080"]
-```
-
-#### **Issue 2: Port Binding Issues**
-```dockerfile
-# Ensure PORT environment variable is used
-ENV PORT=8080
-CMD ["sh", "-c", "serve -s build -l $PORT"]
-
-# Alternative with explicit port
-CMD ["serve", "-s", "build", "-l", "8080"]
-```
-
-#### **Issue 3: Build Failures**
+### **Phase 1: API Connectivity Validation**
 ```bash
-# Clear Docker cache and rebuild
-docker system prune -f
-docker build --no-cache -t sociallyfed-mobile .
+# Test mobile-server connectivity with correct URLs
+echo "🧪 PHASE 1: API Connectivity Testing"
 
-# Check for missing dependencies
-npm install
-npm run build  # Test local build first
+MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
+SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
+
+echo "📱 Mobile URL: $MOBILE_URL"
+echo "🖥️  Server URL: $SERVER_URL"
+
+# Test mobile app loads
+echo "1. Testing mobile app availability:"
+curl -s -o /dev/null -w "Mobile App Status: %{http_code} (Response Time: %{time_total}s)\n" "$MOBILE_URL"
+
+# Test server health
+echo "2. Testing server health:"
+curl -s -o /dev/null -w "Server Health Status: %{http_code} (Response Time: %{time_total}s)\n" "$SERVER_URL/health"
+
+# Test API endpoint
+echo "3. Testing API endpoint:"
+curl -s -o /dev/null -w "API Sync Status: %{http_code} (Response Time: %{time_total}s)\n" \
+  -X POST "$SERVER_URL/api/accounts/sync" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"test"}'
+
+# Test CORS configuration
+echo "4. Testing CORS configuration:"
+curl -s -o /dev/null -w "CORS Preflight Status: %{http_code}\n" \
+  -X OPTIONS "$SERVER_URL/api/accounts/sync" \
+  -H "Origin: $MOBILE_URL" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type,Authorization"
 ```
 
-#### **Issue 4: Cloud Run Health Check Failures**
-```dockerfile
-# Add wget for health checks
-RUN apk add --no-cache wget
+### **Phase 2: Browser Integration Testing**
+```javascript
+// Browser console test script to validate API connectivity
+// Run this in the mobile app's browser console
 
-# Adjust health check timing
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+// Test API configuration update
+const testApiConfiguration = async () => {
+  console.log('🧪 Testing API Configuration Update');
+  
+  // Expected new server URL
+  const expectedServerUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
+  
+  // Test 1: Check if environment variables are loaded correctly
+  console.log('1. Environment Variables:');
+  console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+  console.log('REACT_APP_API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
+  
+  // Test 2: Check current API service configuration
+  console.log('2. API Service Configuration:');
+  if (window.apiService) {
+    console.log('API Base URL:', window.apiService.baseURL);
+    console.log('API URL:', window.apiService.apiURL);
+  }
+  
+  // Test 3: Test health endpoint
+  console.log('3. Testing Server Health:');
+  try {
+    const healthResponse = await fetch(`${expectedServerUrl}/health`);
+    console.log('Health Check Status:', healthResponse.status);
+    const healthData = await healthResponse.text();
+    console.log('Health Response:', healthData);
+  } catch (error) {
+    console.error('Health check failed:', error);
+  }
+  
+  // Test 4: Test API endpoint (expect 401 without auth)
+  console.log('4. Testing API Endpoint:');
+  try {
+    const apiResponse = await fetch(`${expectedServerUrl}/api/accounts/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'test' })
+    });
+    console.log('API Sync Status:', apiResponse.status);
+    console.log('Expected: 401 (Unauthorized without token)');
+  } catch (error) {
+    console.error('API test failed:', error);
+  }
+  
+  console.log('✅ API Configuration Test Complete');
+};
+
+// Run the test
+testApiConfiguration();
+```
+
+### **Phase 3: Authentication Flow Validation**
+```typescript
+// Authentication flow test with correct server endpoint
+interface AuthTestResult {
+  step: string;
+  success: boolean;
+  details: string;
+  timestamp: Date;
+}
+
+class AuthenticationFlowTest {
+  private serverUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
+  private results: AuthTestResult[] = [];
+  
+  async runAuthenticationTest(): Promise<AuthTestResult[]> {
+    console.log('🔐 Starting Authentication Flow Test');
+    
+    // Test 1: Server connectivity
+    await this.testStep('Server Connectivity', async () => {
+      const response = await fetch(`${this.serverUrl}/health`);
+      if (!response.ok) throw new Error(`Health check failed: ${response.status}`);
+      return 'Server is accessible and healthy';
+    });
+    
+    // Test 2: API endpoint structure
+    await this.testStep('API Endpoint Structure', async () => {
+      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'test' })
+      });
+      
+      if (response.status === 401) {
+        return 'API endpoint correctly requires authentication (401)';
+      } else if (response.status === 404) {
+        throw new Error('API endpoint not found (404) - check server deployment');
+      } else {
+        return `Unexpected response: ${response.status}`;
+      }
+    });
+    
+    // Test 3: CORS configuration
+    await this.testStep('CORS Configuration', async () => {
+      const mobileUrl = window.location.origin;
+      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': mobileUrl,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Content-Type,Authorization'
+        }
+      });
+      
+      if (response.ok) {
+        return 'CORS configuration allows mobile app origin';
+      } else {
+        throw new Error(`CORS check failed: ${response.status}`);
+      }
+    });
+    
+    // Test 4: Professional services endpoint
+    await this.testStep('Professional Services', async () => {
+      const response = await fetch(`${this.serverUrl}/api/integration-test/professional-services`);
+      if (response.status === 401 || response.status === 403) {
+        return 'Professional services endpoint exists and requires authentication';
+      } else if (response.status === 404) {
+        throw new Error('Professional services endpoint not found');
+      } else {
+        return `Professional services response: ${response.status}`;
+      }
+    });
+    
+    return this.results;
+  }
+  
+  private async testStep(stepName: string, testFunction: () => Promise<string>): Promise<void> {
+    try {
+      const details = await testFunction();
+      this.results.push({
+        step: stepName,
+        success: true,
+        details,
+        timestamp: new Date()
+      });
+      console.log(`✅ ${stepName}: ${details}`);
+    } catch (error) {
+      this.results.push({
+        step: stepName,
+        success: false,
+        details: error.message,
+        timestamp: new Date()
+      });
+      console.error(`❌ ${stepName}: ${error.message}`);
+    }
+  }
+}
+
+// Run authentication test
+// const authTest = new AuthenticationFlowTest();
+// authTest.runAuthenticationTest().then(results => {
+//   console.table(results);
+// });
+```
+
+---
+
+## **📊 TROUBLESHOOTING GUIDE**
+
+### **Common Configuration Issues and Solutions**
+
+#### **Issue 1: Environment Variables Not Loading**
+```bash
+# Check if environment variables are properly configured
+echo "Current environment:"
+printenv | grep REACT_APP
+
+# Verify .env files are in correct location
+ls -la .env*
+
+# Rebuild with explicit environment
+NODE_ENV=production REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
+```
+
+#### **Issue 2: API Service Still Using Old URL**
+```javascript
+// Check if API service is reading environment variables correctly
+console.log('Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  API_URL_FROM_SERVICE: apiService?.baseURL
+});
+
+// Manually update API service if needed
+if (window.apiService) {
+  window.apiService.baseURL = 'https://sociallyfed-server-512204327023.us-central1.run.app';
+  window.apiService.apiURL = 'https://sociallyfed-server-512204327023.us-central1.run.app/api';
+  console.log('API service updated manually');
+}
+```
+
+#### **Issue 3: Build Not Including Environment Variables**
+```bash
+# Verify environment variables are available at build time
+echo "Build-time environment:"
+env | grep REACT_APP
+
+# Force environment variable in build command
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
+
+# Check if variables are embedded in build
+grep -r "sociallyfed-server-512204327023" build/ || echo "Environment variables not embedded"
+```
+
+#### **Issue 4: CORS Issues After URL Update**
+```javascript
+// Test CORS configuration with new server URL
+const testCORS = async () => {
+  try {
+    const response = await fetch('https://sociallyfed-server-512204327023.us-central1.run.app/api/accounts/sync', {
+      method: 'OPTIONS',
+      headers: {
+        'Origin': window.location.origin,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Content-Type,Authorization'
+      }
+    });
+    console.log('CORS test result:', response.status);
+  } catch (error) {
+    console.error('CORS test failed:', error);
+  }
+};
 ```
 
 ---
 
 ## **✅ DEFINITION OF DONE FOR TODAY**
 
-### **🎯 DEPLOYMENT SUCCESS CRITERIA**
-- [ ] **Dockerfile Created**: Production-ready multi-stage Dockerfile implemented
-- [ ] **Local Build Success**: Docker container builds and runs locally on port 8080
-- [ ] **Cloud Run Deployment**: Service deploys successfully without buildpack errors
-- [ ] **Health Check Pass**: Container starts and responds to health checks
-- [ ] **Application Functional**: React app serves correctly through Docker container
+### **🎯 API CONFIGURATION UPDATE SUCCESS CRITERIA**
+- [ ] **Configuration Located**: API URL configuration files identified and updated
+- [ ] **Environment Variables**: Production environment configured with correct server URL
+- [ ] **Mobile App Rebuilt**: New build includes updated API configuration  
+- [ ] **Deployment Success**: Updated mobile app deployed to Google Cloud Run
+- [ ] **API Connectivity**: Mobile app successfully connects to working server
 
-### **📱 APPLICATION VERIFICATION**  
-- [ ] **Static Assets**: All React components, CSS, and JavaScript load correctly
-- [ ] **API Connectivity**: Can connect to server endpoints from containerized app
-- [ ] **Authentication**: JWT authentication flow works in production environment
-- [ ] **Professional Features**: Counselor dashboard accessible and functional
-- [ ] **Responsive Design**: Mobile interface works correctly in all screen sizes
+### **📱 MOBILE-SERVER INTEGRATION VERIFICATION**
+- [ ] **Endpoint Connectivity**: Mobile app calls correct server URL (sociallyfed-server-512204327023.us-central1.run.app)
+- [ ] **Authentication Ready**: API calls receive proper 401 responses (not connection errors)
+- [ ] **Sync Endpoint**: /api/accounts/sync endpoint accessible from mobile app
+- [ ] **Professional Services**: Professional API endpoints discoverable and protected
+- [ ] **Error Resolution**: No more calls to old api.sociallyfed.com endpoint
 
-### **🔧 TECHNICAL IMPLEMENTATION**
-- [ ] **Multi-stage Build**: Optimized Docker image size (<150MB)
-- [ ] **Security**: Non-root user implementation and secure defaults
-- [ ] **Performance**: Container startup time <30 seconds
-- [ ] **Resource Usage**: Memory usage within Cloud Run limits (1GB)
-- [ ] **Logging**: Proper application logs visible in Cloud Run console
+### **🔧 TECHNICAL IMPLEMENTATION COMPLETE**
+- [ ] **Environment Configuration**: All REACT_APP_* variables configured correctly
+- [ ] **Build Validation**: Production build includes correct API URLs
+- [ ] **CORS Configuration**: Mobile app origin allowed by server CORS policy
+- [ ] **API Service Update**: Mobile API service class configured with correct endpoints
+- [ ] **Browser Console Clean**: No 401 errors from wrong server URL in network tab
 
-### **🧪 VALIDATION COMPLETE**
-- [ ] **Local Testing**: Docker container runs correctly on development machine
-- [ ] **Health Checks**: Application responds correctly to Cloud Run health probes
-- [ ] **Environment Variables**: All production environment variables configured
-- [ ] **Error Handling**: Graceful handling of startup and runtime errors
-- [ ] **Production Ready**: Application fully functional for end users
+### **🧪 INTEGRATION TESTING VALIDATED**
+- [ ] **Health Check Access**: Mobile app can reach server /health endpoint
+- [ ] **API Endpoint Access**: Mobile app can reach /api/* endpoints with proper authentication
+- [ ] **Professional Endpoints**: Professional services endpoints accessible (with authentication)
+- [ ] **CORS Validation**: Cross-origin requests properly configured and working
+- [ ] **Authentication Flow Ready**: Ready for JWT token implementation and testing
 
-### **📊 PRODUCTION READINESS**  
-- [ ] **Monitoring**: Cloud Run metrics and logging operational
-- [ ] **Scaling**: Service can scale up/down based on traffic
-- [ ] **Security**: No sensitive data in container or logs
-- [ ] **Documentation**: Deployment process documented for team
-- [ ] **Rollback Plan**: Previous version available for emergency rollback
+### **📊 PRODUCTION READINESS CONFIRMED**
+- [ ] **Mobile App Updated**: New deployment live with correct API configuration
+- [ ] **Server Connectivity**: Both services can communicate successfully
+- [ ] **Configuration Documented**: API URL update process documented for future reference
+- [ ] **Environment Variables**: Production and development environments properly configured
+- [ ] **Integration Foundation**: Mobile-server integration foundation established
 
 ---
 
 ## **⚠️ CRITICAL RISKS & MITIGATION**
 
-### **Risk 1: Docker Build Complexity** 
-- **Probability**: Medium (30%) - Multi-stage builds can have dependency issues
-- **Impact**: Continued deployment failures
-- **Mitigation**: Test local Docker build first, provide fallback single-stage Dockerfile
-- **Escalation**: Simplify to basic Node.js image if multi-stage fails
+### **Risk 1: Configuration Not Taking Effect**
+- **Probability**: Medium (40%) - React environment variables can be tricky
+- **Impact**: Mobile app continues calling wrong server endpoint
+- **Mitigation**: Multiple verification steps, manual build with explicit environment variables
+- **Escalation**: Direct code modification if environment variables fail
+- **Timeline**: Must resolve API configuration within 1 hour
 
-### **Risk 2: Port Configuration Issues**
-- **Probability**: Low (15%) - Cloud Run port requirements are well documented
-- **Impact**: Container starts but Cloud Run can't route traffic
-- **Mitigation**: Explicit port configuration and health check validation
-- **Testing**: Verify port 8080 binding in local Docker test
+### **Risk 2: Build Process Issues**
+- **Probability**: Low (25%) - Build process is generally stable
+- **Impact**: Could prevent deployment of updated configuration
+- **Mitigation**: Clean build process, dependency validation, fallback build commands
+- **Escalation**: Manual file updates and simplified build if needed
+- **Timeline**: Build issues must be resolved within 30 minutes
 
-### **Risk 3: Memory/Resource Limits**  
-- **Probability**: Low (20%) - React build is typically small
-- **Impact**: Container fails to start or gets killed
-- **Mitigation**: Monitor resource usage, optimize Docker image size
-- **Monitoring**: Set up Cloud Run resource monitoring and alerts
+### **Risk 3: CORS Configuration Problems**
+- **Probability**: Low (20%) - Server appears to have CORS configured
+- **Impact**: Browser blocks API calls even with correct URL
+- **Mitigation**: CORS testing, server configuration verification
+- **Escalation**: Coordinate with server team for CORS policy updates
+- **Timeline**: CORS issues should be minimal given server status
 
 ---
 
 ## **🤝 COORDINATION REQUIREMENTS**
 
-### **MINIMAL EXTERNAL DEPENDENCIES**
-- **Server Team**: No immediate coordination required for Dockerfile implementation
-- **DevOps**: May need Cloud Run service configuration review
-- **Security**: Docker image security scanning if required by organization
+### **IMMEDIATE PRIORITIES**
+- **Mobile Team**: Focus on API configuration discovery and update
+- **Server Team**: Standby for any CORS or endpoint configuration questions
+- **DevOps**: Monitor Cloud Run deployments and performance
 
-### **INFORMATION TO TRACK**
-1. **Build Time**: How long Docker build takes for CI/CD planning
-2. **Image Size**: Final container image size for optimization
-3. **Startup Time**: Container cold start time for performance monitoring
-4. **Resource Usage**: Memory and CPU usage patterns in production
-5. **Error Patterns**: Any recurring deployment or runtime issues
-
----
-
-## **📈 SUCCESS METRICS**
-
-### **IMMEDIATE SUCCESS CRITERIA (Next 2 Hours)**
-- [ ] **No Buildpack Errors**: Docker build completes without Ruby detection errors
-- [ ] **Successful Deployment**: Cloud Run service shows as "READY" status
-- [ ] **Application Accessible**: React app loads correctly at Cloud Run URL
-- [ ] **Health Checks Pass**: Cloud Run health checks show green status
-- [ ] **Basic Functionality**: User can navigate main application features
-
-### **PERFORMANCE TARGETS**
-- **Docker Build Time**: <5 minutes for complete build
-- **Container Startup**: <30 seconds from container start to serving requests
-- **Application Load**: <3 seconds for initial page load
-- **Memory Usage**: <512MB steady state (within 1GB Cloud Run limit)
-- **Image Size**: <150MB final container image
+### **SUCCESS METRICS TRACKING**
+1. **Configuration Update Time**: Target <1 hour for complete API URL update
+2. **Mobile App Deployment**: Target <30 minutes for rebuild and redeploy
+3. **Integration Test Success**: >95% success rate for mobile-server API calls
+4. **Error Resolution**: 100% elimination of calls to old api.sociallyfed.com
+5. **Authentication Readiness**: Proper 401 responses instead of connection errors
 
 ---
 
-## **🔧 COMPLETE IMPLEMENTATION COMMANDS**
+## **🔧 COMPLETE API UPDATE SCRIPT**
 
-### **Quick Implementation Script**
+### **One-Command Mobile API Update**
 ```bash
 #!/bin/bash
-# Run this script in /home/ben/Development/sociallyfed-mobile
+# Complete mobile API URL update script - run in /home/ben/Development/sociallyfed-mobile
 
-echo "🔍 Validating project structure..."
-pwd
-ls -la package.json || { echo "❌ No package.json found!"; exit 1; }
+echo "🚨 Starting Mobile API URL Configuration Update..."
 
-echo "📦 Cleaning previous builds..."
-rm -rf node_modules package-lock.json build/
-npm install
-npm run build || { echo "❌ Build failed!"; exit 1; }
+# Step 1: Backup current configuration
+echo "💾 Creating configuration backup..."
+find . -name ".env*" -exec cp {} {}.backup \; 2>/dev/null || echo "No existing env files to backup"
 
-echo "🐳 Creating Dockerfile..."
-cat > Dockerfile << 'EOF'
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --silent
-COPY . .
-RUN npm run build
-
-FROM node:18-alpine AS production
-RUN addgroup -g 1001 -S nodejs && adduser -S reactuser -u 1001
-WORKDIR /app
-RUN npm install -g serve@14.2.0
-COPY --from=builder --chown=reactuser:nodejs /app/build ./build
-USER reactuser
-EXPOSE 8080
-ENV PORT=8080 NODE_ENV=production
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
-CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+# Step 2: Create production environment configuration
+echo "🔧 Creating production API configuration..."
+cat > .env.production << 'EOF'
+# Production API Configuration - Updated August 8th, 2025
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENVIRONMENT=production
+REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
+REACT_APP_DEBUG_MODE=false
 EOF
 
-echo "🚀 Deploying to Cloud Run..."
+# Step 3: Search and report current API configuration
+echo "🔍 Analyzing current API configuration..."
+echo "Current environment files:"
+ls -la .env* 2>/dev/null || echo "No .env files found"
+
+echo "Searching for API configuration in source code..."
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) \
+  -exec grep -l "api\." {} \; 2>/dev/null | head -5
+
+# Step 4: Clean and rebuild
+echo "🧹 Cleaning previous build..."
+rm -rf build/ node_modules/.cache/ 2>/dev/null || true
+
+# Step 5: Build with new configuration
+echo "🔨 Building with updated API configuration..."
+NODE_ENV=production npm run build
+
+# Step 6: Verify configuration in build
+echo "🔍 Verifying API URL in build..."
+if grep -r "sociallyfed-server-512204327023" build/ >/dev/null 2>&1; then
+    echo "✅ Correct server URL found in build"
+else
+    echo "⚠️ Server URL not found in build - check environment variable embedding"
+fi
+
+# Step 7: Deploy to Cloud Run
+echo "🚀 Deploying updated mobile app..."
 gcloud run deploy sociallyfed-mobile \
   --source=. \
   --platform=managed \
   --region=us-central1 \
   --allow-unauthenticated \
   --memory=1Gi \
-  --cpu=1 \
-  --timeout=300s
+  --timeout=300s \
+  --port=8080
 
-echo "✅ Deployment complete! Check Cloud Run console for service URL."
+# Step 8: Test connectivity
+echo "⏱️ Waiting for deployment and testing connectivity..."
+sleep 60
+
+MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
+SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
+
+echo "🧪 Testing connectivity..."
+echo "Mobile App: $MOBILE_URL"
+echo "Server API: $SERVER_URL"
+
+# Test mobile app
+curl -s -o /dev/null -w "Mobile App Status: %{http_code}\n" "$MOBILE_URL"
+
+# Test server API
+curl -s -o /dev/null -w "Server Health: %{http_code}\n" "$SERVER_URL/health"
+
+# Test API endpoint (expect 401)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SERVER_URL/api/accounts/sync" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"test"}')
+
+if [ "$HTTP_CODE" = "401" ]; then
+    echo "✅ API endpoint working (401 expected without authentication)"
+else
+    echo "⚠️ API endpoint returned: $HTTP_CODE"
+fi
+
+echo "🎉 Mobile API URL update complete!"
+echo ""
+echo "📱 Mobile URL: $MOBILE_URL"
+echo "🖥️  Server URL: $SERVER_URL"
+echo ""
+echo "Next Steps:"
+echo "1. Open mobile app in browser and check Network tab"
+echo "2. Verify API calls go to correct server URL"
+echo "3. Test authentication and sync functionality"
+echo "4. Validate professional services integration"
 ```
 
 ---
 
-**Generated**: August 5th, 2025  
-**Priority**: P0 - CRITICAL (Blocking production deployment)  
-**Status**: Ready for immediate Dockerfile implementation  
-**Next Review**: 2 hours - verify successful Cloud Run deployment  
-**Escalation**: If Docker build fails, fall back to simpler single-stage Dockerfile
+## **📈 SUCCESS VALIDATION CHECKLIST**
+
+### **IMMEDIATE VALIDATION (Next 15 minutes)**
+- [ ] Mobile app rebuild completes successfully
+- [ ] Environment variables configured correctly
+- [ ] Cloud Run deployment succeeds
+- [ ] Mobile app loads without configuration errors
+
+### **API CONNECTIVITY VALIDATION (Next 30 minutes)**
+- [ ] Mobile app calls correct server URL
+- [ ] No more 401 errors from api.sociallyfed.com
+- [ ] Server API endpoints accessible
+- [ ] CORS configuration working
+
+### **INTEGRATION READINESS (Next 1 hour)**
+- [ ] Authentication endpoints discoverable
+- [ ] Professional services endpoints accessible
+- [ ] Sync functionality ready for testing
+- [ ] Complete mobile-server communication established
+
+---
+
+**Generated**: August 8th, 2025  
+**Priority**: P0 - CRITICAL (Fixing mobile-server connectivity)  
+**Status**: Ready for immediate API configuration update  
+**Timeline**: API URL update within 1 hour, full connectivity validation within 2 hours  
+**Success Target**: Mobile app successfully communicating with operational server
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -1745,329 +2049,352 @@ interface UnifiedProfessionalWorkflow {
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
 # Daily Brief - Mobile Team  
-## August 5th, 2025 - Critical Cloud Run Deployment Fix & Dockerfile Implementation
+## August 8th, 2025 - Mobile API URL Configuration Update
 
-### 🚨 **CRITICAL STATUS: DEPLOYMENT FAILURE - BUILDPACK DETECTION ERROR**
-**Current Situation**: Google Cloud Buildpack incorrectly detecting mobile project as Ruby application  
-**Root Cause**: Buildpack misidentification causing `google.ruby.missing-entrypoint` error  
-**Impact**: Complete deployment failure blocking production release  
-**Your Action**: **IMPLEMENT DOCKERFILE SOLUTION** (Option 1 - Most Reliable)  
+### 🚨 **CRITICAL STATUS: MOBILE APP POINTING TO WRONG SERVER URL**
+**Current Situation**: Mobile app making API calls to `api.sociallyfed.com` instead of operational server  
+**Root Cause**: API configuration pointing to old/non-functional server endpoint  
+**Impact**: 401 Unauthorized errors, sync failures, professional services non-functional  
+**Your Action**: **UPDATE MOBILE API CONFIGURATION** (Critical P0 Priority)  
 
 ---
 
 ## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
 
-### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - DOCKERFILE CREATION**
-1. **🟡 PROJECT STRUCTURE VALIDATION**
-   - Verify you're in correct `/home/ben/Development/sociallyfed-mobile` directory
-   - Confirm `package.json` exists and has correct React scripts
-   - Check for Ruby files (`Gemfile`, `*.rb`) that might confuse buildpack
-   - Validate Node.js project structure and dependencies
+### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - API URL UPDATE**
 
-2. **🟡 DOCKERFILE IMPLEMENTATION**
-   - Create production-ready Dockerfile with multi-stage build
-   - Configure Node.js 18 Alpine base image for optimal size
-   - Set up proper port configuration for Cloud Run (PORT=8080)
-   - Implement security best practices and efficient layer caching
+1. **🟡 API CONFIGURATION DISCOVERY**
+   - Locate API URL configuration in mobile app codebase
+   - Identify environment variables or config files with server endpoints
+   - Find all references to `api.sociallyfed.com` domain
+   - Validate current API service configuration files
 
-### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-DOCKERFILE**
-3. **🔴 CLOUD RUN DEPLOYMENT TESTING**
-   - Deploy using new Dockerfile approach
-   - Verify container starts and listens on port 8080
-   - Test health checks and application startup
-   - Validate all environment variables and configuration
+2. **🟡 SERVER URL UPDATE IMPLEMENTATION**
+   - Update API configuration from `api.sociallyfed.com` to working server
+   - Configure correct endpoint: `https://sociallyfed-server-512204327023.us-central1.run.app`
+   - Validate environment variables and build configuration
+   - Ensure CORS and authentication headers are correctly configured
 
-4. **🔴 APPLICATION FUNCTIONALITY VERIFICATION**
-   - Confirm React app serves correctly through Docker container
-   - Test API connectivity with server endpoints
-   - Validate JWT authentication flow through containerized app
-   - Confirm professional features work in production environment
+### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-CONFIGURATION**
 
----
+3. **🔴 MOBILE APP REDEPLOYMENT**
+   - Rebuild mobile app with updated API configuration
+   - Deploy updated mobile app to Google Cloud Run
+   - Verify new deployment uses correct server endpoint
+   - Test API connectivity with operational server
 
-## **📊 DEPLOYMENT ARCHITECTURE ANALYSIS**
-
-### **🚫 CURRENT FAILURE ANALYSIS**
-```bash
-# ERROR FROM BUILD LOGS:
-Step #1 - "build": google.ruby.missing-entrypoint 0.0.1
-Step #1 - "build": failed to build: for Ruby, an entrypoint must be manually set
-```
-
-**Root Cause**: Google Cloud Buildpacks incorrectly detecting project as Ruby instead of Node.js
-**Detection Triggers**: Possible `Gemfile`, `*.rb` files, or missing Node.js indicators
-**Impact**: Complete build failure preventing container creation
-
-### **✅ DOCKERFILE SOLUTION BENEFITS**
-- **Explicit Control**: Define exact build and runtime environment
-- **Predictable Builds**: Same container every time, no buildpack guessing
-- **Optimization**: Multi-stage builds for smaller production images
-- **Security**: Fine-grained control over dependencies and runtime
-- **Reliability**: No dependency on Google's buildpack detection logic
+4. **🔴 INTEGRATION FUNCTIONALITY VERIFICATION**
+   - Confirm mobile app connects to working server successfully
+   - Validate authentication flow with correct JWT endpoints
+   - Test sync operations and professional services integration
+   - Verify end-to-end user workflow functionality
 
 ---
 
-## **🧪 PROJECT STRUCTURE VALIDATION CHECKLIST**
+## **📊 CURRENT SYSTEM STATUS ANALYSIS**
 
-### **Step 1: Verify Current Directory and Project Structure**
+### **✅ SERVER APPLICATION - FULLY OPERATIONAL**
 ```bash
-# CRITICAL: Confirm you're in the right project
-pwd
-# Should show: /home/ben/Development/sociallyfed-mobile
-
-# Check project structure
-ls -la
-# Should show package.json, src/, public/, NOT Gemfile or *.rb files
-
-# Verify React project indicators
-ls -la src/
-ls -la public/
-cat package.json | grep "react"
+# SERVER STATUS: WORKING CORRECTLY
+Server URL: https://sociallyfed-server-512204327023.us-central1.run.app
+Health Check: ✅ /health returns 200 OK "Healthy"
+Authentication: ✅ JWT validation working (proper 401 responses)
+API Endpoints: ✅ /api/accounts/sync functional with authentication
+Status: Ready for mobile integration
 ```
 
-### **Step 2: Validate package.json Scripts**
-```json
-{
-  "name": "sociallyfed-mobile",
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "dependencies": {
-    "react": "^18.x.x",
-    "react-dom": "^18.x.x",
-    "react-scripts": "5.x.x"
-  }
-}
-```
-
-### **Step 3: Remove Conflicting Files**
+### **🚫 MOBILE APPLICATION - CONFIGURATION MISMATCH**
 ```bash
-# Check for Ruby files that might confuse buildpack
-find . -name "Gemfile*" -o -name "*.rb" -o -name "Rakefile"
-
-# If found, move them out of the way
-mkdir -p .backup
-mv Gemfile* .backup/ 2>/dev/null || true
-mv *.rb .backup/ 2>/dev/null || true
+# MOBILE STATUS: POINTING TO WRONG SERVER
+Current Mobile URL: https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app
+API Configuration: ❌ api.sociallyfed.com (NON-FUNCTIONAL)
+Correct API URL: ✅ sociallyfed-server-512204327023.us-central1.run.app
+Error Pattern: 401 Unauthorized from wrong server endpoint
+Status: Needs API URL reconfiguration
 ```
 
-### **Step 4: Verify Node.js Dependencies**
-```bash
-# Ensure clean dependency state
-rm -rf node_modules package-lock.json
-npm install
-
-# Test local build
-npm run build
-ls -la build/  # Should show compiled React app
-```
+### **🟡 INTEGRATION STATUS - BLOCKED BY CONFIGURATION**
+- **Mobile → Server**: ❌ Calling wrong server endpoint (api.sociallyfed.com)
+- **Authentication Flow**: ❌ 401 errors from incorrect server
+- **Professional Services**: ❌ Unavailable due to wrong API configuration
+- **Sync Operations**: ❌ Failing due to server endpoint mismatch
 
 ---
 
-## **🏗️ DOCKERFILE IMPLEMENTATION GUIDE**
+## **🧪 API CONFIGURATION UPDATE STRATEGY**
 
-### **Production-Ready Dockerfile**
-```dockerfile
-# Multi-stage build for optimized production image
-# Stage 1: Build stage
-FROM node:18-alpine AS builder
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files first for better Docker layer caching
-COPY package*.json ./
-
-# Install dependencies (including devDependencies for build)
-RUN npm ci --silent
-
-# Copy source code
-COPY . .
-
-# Build the React application
-RUN npm run build
-
-# Stage 2: Production stage
-FROM node:18-alpine AS production
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S reactuser -u 1001
-
-# Set working directory
-WORKDIR /app
-
-# Install serve globally to run the built app
-RUN npm install -g serve@14.2.0
-
-# Copy built application from builder stage
-COPY --from=builder --chown=reactuser:nodejs /app/build ./build
-
-# Switch to non-root user
-USER reactuser
-
-# Expose port 8080 (Cloud Run requirement)
-EXPOSE 8080
-
-# Set environment variables
-ENV PORT=8080
-ENV NODE_ENV=production
-
-# Health check for Cloud Run
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
-
-# Start the application
-CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
-```
-
-### **Alternative Dockerfile (If serve issues)**
-```dockerfile
-FROM node:18-alpine
-
-# Install dependencies
-RUN apk add --no-cache \
-    wget \
-    && npm install -g serve@14.2.0
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy source and build
-COPY . .
-RUN npm run build
-
-# Expose port
-EXPOSE 8080
-ENV PORT=8080
-
-# Start command
-CMD ["sh", "-c", "serve -s build -l $PORT"]
-```
-
-### **Create .dockerignore for Optimization**
-```dockerignore
-node_modules
-npm-debug.log*
-.git
-.gitignore
-README.md
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-coverage
-.nyc_output
-.DS_Store
-*.tgz
-.backup
-```
-
----
-
-## **🚀 DEPLOYMENT IMPLEMENTATION STEPS**
-
-### **Step 1: Create Dockerfile**
+### **Step 1: Locate API Configuration Files**
 ```bash
-# Navigate to project root
+# Navigate to mobile project
 cd /home/ben/Development/sociallyfed-mobile
 
-# Create the Dockerfile
-cat > Dockerfile << 'EOF'
-# Multi-stage build for optimized production image
-FROM node:18-alpine AS builder
+# Search for current API configuration
+echo "🔍 Searching for API URL configuration..."
 
-WORKDIR /app
+# Check environment files
+ls -la .env* 2>/dev/null || echo "No .env files found"
+grep -r "api.sociallyfed.com" . 2>/dev/null || echo "No direct references to api.sociallyfed.com"
+grep -r "REACT_APP_API" . 2>/dev/null || echo "No REACT_APP_API variables found"
+grep -r "API_URL" . 2>/dev/null || echo "No API_URL variables found"
 
-# Copy package files first for better caching
-COPY package*.json ./
-RUN npm ci --silent
+# Check source code for API configuration
+find src/ -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | xargs grep -l "api\." 2>/dev/null
+find src/ -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
 
-# Copy source code and build
-COPY . .
-RUN npm run build
+# Check package.json for any API-related scripts or config
+grep -i "api\|server\|url" package.json 2>/dev/null || echo "No API references in package.json"
+```
 
-# Production stage
-FROM node:18-alpine AS production
+### **Step 2: Identify API Service Configuration**
+```bash
+# Look for common API configuration patterns
+echo "🔍 Checking common API service patterns..."
 
-# Security: Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S reactuser -u 1001
+# Check for API service files
+cat src/services/api.js 2>/dev/null || echo "No src/services/api.js"
+cat src/services/apiService.js 2>/dev/null || echo "No src/services/apiService.js"
+cat src/config/api.js 2>/dev/null || echo "No src/config/api.js"
+cat src/utils/api.js 2>/dev/null || echo "No src/utils/api.js"
 
-WORKDIR /app
+# Check for environment configuration
+cat src/config/environment.js 2>/dev/null || echo "No src/config/environment.js"
+cat src/config/config.js 2>/dev/null || echo "No src/config/config.js"
 
-# Install serve globally
-RUN npm install -g serve@14.2.0
+# Check for axios or fetch configuration
+grep -r "baseURL\|base_url" src/ 2>/dev/null
+grep -r "fetch.*api" src/ 2>/dev/null | head -5
+grep -r "axios" src/ 2>/dev/null | head -5
+```
 
-# Copy built app with correct ownership
-COPY --from=builder --chown=reactuser:nodejs /app/build ./build
+### **Step 3: Update API Configuration**
+```bash
+# CRITICAL: Update API URL configuration
 
-# Switch to non-root user
-USER reactuser
-
-# Cloud Run configuration
-EXPOSE 8080
-ENV PORT=8080
-ENV NODE_ENV=production
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
-
-# Start application
-CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+# Option A: Environment Variable Approach
+echo "🔧 Creating production environment configuration..."
+cat > .env.production << 'EOF'
+# Production API Configuration
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
 EOF
+
+# Option B: Direct Configuration File Update (if found)
+# This will be updated based on what we find in Step 1-2
+
+# Create backup of current configuration
+find . -name "*.env*" -exec cp {} {}.backup \; 2>/dev/null || true
 ```
 
-### **Step 2: Create .dockerignore**
+### **Step 4: Validate Configuration Changes**
 ```bash
-cat > .dockerignore << 'EOF'
-node_modules
-npm-debug.log*
-.git
-.gitignore
-README.md
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-coverage
-.nyc_output
-.DS_Store
-*.tgz
-.backup
+# CRITICAL: Ensure configuration is properly set
+
+# Check if environment variables are being used
+grep -r "process.env.REACT_APP_API" src/ 2>/dev/null
+
+# Look for hardcoded API URLs that need updating
+grep -r "https://api\." src/ 2>/dev/null
+grep -r "api\.sociallyfed\.com" src/ 2>/dev/null
+
+# Verify the configuration approach
+echo "📋 Configuration Summary:"
+echo "Current working server: https://sociallyfed-server-512204327023.us-central1.run.app"
+echo "Environment file created: .env.production"
+echo "Next step: Identify how mobile app reads API configuration"
+```
+
+---
+
+## **🚀 MOBILE APP UPDATE IMPLEMENTATION**
+
+### **Step 1: API Configuration Discovery and Update**
+```bash
+# Complete API configuration discovery script
+cd /home/ben/Development/sociallyfed-mobile
+
+echo "🔍 STEP 1: API Configuration Discovery"
+
+# Create comprehensive search for API configuration
+cat > find-api-config.sh << 'EOF'
+#!/bin/bash
+echo "=== SEARCHING FOR API CONFIGURATION ==="
+
+echo "1. Environment Files:"
+find . -name ".env*" -type f 2>/dev/null | while read file; do
+    echo "  $file:"
+    grep -i "api\|server\|url" "$file" 2>/dev/null | head -5
+done
+
+echo -e "\n2. Source Files with API References:"
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
+xargs grep -l -i "api\." 2>/dev/null | head -10
+
+echo -e "\n3. API Service Files:"
+find src/ -type f -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
+
+echo -e "\n4. Base URL Configurations:"
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
+xargs grep -n "baseURL\|base_url\|API_URL" 2>/dev/null | head -10
+
+echo -e "\n5. Fetch/Axios Configurations:"
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
+xargs grep -n -A2 -B2 "fetch.*api\|axios.*api" 2>/dev/null | head -15
+
+echo -e "\n6. Package.json API References:"
+grep -n -i "api\|server\|url" package.json 2>/dev/null
 EOF
+
+chmod +x find-api-config.sh
+./find-api-config.sh
 ```
 
-### **Step 3: Validate Local Build**
-```bash
-# Test Docker build locally
-docker build -t sociallyfed-mobile-test .
+### **Step 2: Create Updated API Configuration**
+```javascript
+// Example API service configuration update
+// This will be customized based on findings from Step 1
 
-# Test container runs correctly
-docker run -p 8080:8080 sociallyfed-mobile-test &
-DOCKER_PID=$!
+// src/services/apiService.js - EXAMPLE CONFIGURATION
+const API_CONFIG = {
+  // OLD: baseURL: 'https://api.sociallyfed.com',
+  baseURL: process.env.REACT_APP_API_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app',
+  apiPrefix: '/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+};
 
-# Wait a moment for startup
-sleep 10
+// Updated API service class
+class ApiService {
+  constructor() {
+    this.baseURL = API_CONFIG.baseURL;
+    this.apiURL = `${this.baseURL}${API_CONFIG.apiPrefix}`;
+  }
+  
+  async request(endpoint, options = {}) {
+    const url = `${this.apiURL}${endpoint}`;
+    const config = {
+      ...options,
+      headers: {
+        ...API_CONFIG.headers,
+        ...options.headers,
+      },
+      timeout: API_CONFIG.timeout,
+    };
+    
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`API request failed: ${url}`, error);
+      throw error;
+    }
+  }
+  
+  // Account sync with proper endpoint
+  async syncAccount(syncData) {
+    return this.request('/accounts/sync', {
+      method: 'POST',
+      body: JSON.stringify(syncData),
+      headers: {
+        'Authorization': `Bearer ${this.getAuthToken()}`,
+      },
+    });
+  }
+  
+  getAuthToken() {
+    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  }
+}
 
-# Test the application responds
-curl -f http://localhost:8080 || echo "FAILED: App not responding"
-
-# Cleanup
-kill $DOCKER_PID 2>/dev/null || true
-docker rm -f $(docker ps -q --filter ancestor=sociallyfed-mobile-test) 2>/dev/null || true
+export default new ApiService();
 ```
 
-### **Step 4: Deploy to Cloud Run**
+### **Step 3: Environment Configuration Setup**
 ```bash
-# Deploy with Dockerfile
+# Create all necessary environment configurations
+echo "🔧 STEP 3: Environment Configuration Setup"
+
+# Production environment
+cat > .env.production << 'EOF'
+# Production API Configuration - Updated August 8th, 2025
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENVIRONMENT=production
+
+# Feature flags
+REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
+REACT_APP_DEBUG_MODE=false
+EOF
+
+# Development environment (for future use)
+cat > .env.development << 'EOF'
+# Development API Configuration
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENVIRONMENT=development
+
+# Feature flags
+REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
+REACT_APP_DEBUG_MODE=true
+EOF
+
+# Local environment template
+cat > .env.local.example << 'EOF'
+# Local Development API Configuration (Copy to .env.local)
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_API_BASE_URL=http://localhost:5000/api
+REACT_APP_SERVER_URL=http://localhost:5000
+REACT_APP_ENVIRONMENT=local
+REACT_APP_DEBUG_MODE=true
+EOF
+
+echo "✅ Environment files created successfully"
+ls -la .env*
+```
+
+### **Step 4: Build and Deploy Updated Mobile App**
+```bash
+# CRITICAL: Build and deploy with new API configuration
+echo "🚀 STEP 4: Building and deploying updated mobile app"
+
+# Clean previous builds
+rm -rf build/ node_modules/.cache/ 2>/dev/null || true
+
+# Install dependencies (if needed)
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing dependencies..."
+    npm install
+fi
+
+# Build with production configuration
+echo "🔨 Building mobile app with updated API configuration..."
+NODE_ENV=production npm run build
+
+# Verify build includes correct API URL
+echo "🔍 Verifying build configuration..."
+if [ -d "build" ]; then
+    # Check if environment variables are properly embedded
+    grep -r "sociallyfed-server-512204327023" build/ 2>/dev/null && echo "✅ Correct server URL found in build" || echo "⚠️ Server URL may not be embedded"
+    
+    # Check build size
+    BUILD_SIZE=$(du -sh build/ | cut -f1)
+    echo "📊 Build size: $BUILD_SIZE"
+else
+    echo "❌ Build failed - build directory not found"
+    exit 1
+fi
+
+# Deploy to Google Cloud Run
+echo "🚀 Deploying to Google Cloud Run..."
 gcloud run deploy sociallyfed-mobile \
   --source=. \
   --platform=managed \
@@ -2077,213 +2404,494 @@ gcloud run deploy sociallyfed-mobile \
   --cpu=1 \
   --timeout=300s \
   --max-instances=20 \
-  --set-env-vars="NODE_ENV=production" \
   --port=8080
 
-# Monitor deployment
-gcloud run services describe sociallyfed-mobile --region=us-central1
+# Wait for deployment
+echo "⏱️ Waiting for deployment to complete..."
+sleep 60
+
+# Get mobile app URL
+MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
+echo "📱 Mobile app deployed at: $MOBILE_URL"
 ```
 
 ---
 
-## **🔧 TROUBLESHOOTING GUIDE**
+## **🔧 INTEGRATION TESTING & VALIDATION**
 
-### **Common Issues and Solutions**
-
-#### **Issue 1: "serve" Command Not Found**
-```dockerfile
-# Solution: Ensure serve is installed globally in production stage
-RUN npm install -g serve@14.2.0
-
-# Alternative: Use local serve installation
-COPY package*.json ./
-RUN npm ci && npm install serve
-CMD ["npx", "serve", "-s", "build", "-l", "8080"]
-```
-
-#### **Issue 2: Port Binding Issues**
-```dockerfile
-# Ensure PORT environment variable is used
-ENV PORT=8080
-CMD ["sh", "-c", "serve -s build -l $PORT"]
-
-# Alternative with explicit port
-CMD ["serve", "-s", "build", "-l", "8080"]
-```
-
-#### **Issue 3: Build Failures**
+### **Phase 1: API Connectivity Validation**
 ```bash
-# Clear Docker cache and rebuild
-docker system prune -f
-docker build --no-cache -t sociallyfed-mobile .
+# Test mobile-server connectivity with correct URLs
+echo "🧪 PHASE 1: API Connectivity Testing"
 
-# Check for missing dependencies
-npm install
-npm run build  # Test local build first
+MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
+SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
+
+echo "📱 Mobile URL: $MOBILE_URL"
+echo "🖥️  Server URL: $SERVER_URL"
+
+# Test mobile app loads
+echo "1. Testing mobile app availability:"
+curl -s -o /dev/null -w "Mobile App Status: %{http_code} (Response Time: %{time_total}s)\n" "$MOBILE_URL"
+
+# Test server health
+echo "2. Testing server health:"
+curl -s -o /dev/null -w "Server Health Status: %{http_code} (Response Time: %{time_total}s)\n" "$SERVER_URL/health"
+
+# Test API endpoint
+echo "3. Testing API endpoint:"
+curl -s -o /dev/null -w "API Sync Status: %{http_code} (Response Time: %{time_total}s)\n" \
+  -X POST "$SERVER_URL/api/accounts/sync" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"test"}'
+
+# Test CORS configuration
+echo "4. Testing CORS configuration:"
+curl -s -o /dev/null -w "CORS Preflight Status: %{http_code}\n" \
+  -X OPTIONS "$SERVER_URL/api/accounts/sync" \
+  -H "Origin: $MOBILE_URL" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type,Authorization"
 ```
 
-#### **Issue 4: Cloud Run Health Check Failures**
-```dockerfile
-# Add wget for health checks
-RUN apk add --no-cache wget
+### **Phase 2: Browser Integration Testing**
+```javascript
+// Browser console test script to validate API connectivity
+// Run this in the mobile app's browser console
 
-# Adjust health check timing
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+// Test API configuration update
+const testApiConfiguration = async () => {
+  console.log('🧪 Testing API Configuration Update');
+  
+  // Expected new server URL
+  const expectedServerUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
+  
+  // Test 1: Check if environment variables are loaded correctly
+  console.log('1. Environment Variables:');
+  console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+  console.log('REACT_APP_API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
+  
+  // Test 2: Check current API service configuration
+  console.log('2. API Service Configuration:');
+  if (window.apiService) {
+    console.log('API Base URL:', window.apiService.baseURL);
+    console.log('API URL:', window.apiService.apiURL);
+  }
+  
+  // Test 3: Test health endpoint
+  console.log('3. Testing Server Health:');
+  try {
+    const healthResponse = await fetch(`${expectedServerUrl}/health`);
+    console.log('Health Check Status:', healthResponse.status);
+    const healthData = await healthResponse.text();
+    console.log('Health Response:', healthData);
+  } catch (error) {
+    console.error('Health check failed:', error);
+  }
+  
+  // Test 4: Test API endpoint (expect 401 without auth)
+  console.log('4. Testing API Endpoint:');
+  try {
+    const apiResponse = await fetch(`${expectedServerUrl}/api/accounts/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'test' })
+    });
+    console.log('API Sync Status:', apiResponse.status);
+    console.log('Expected: 401 (Unauthorized without token)');
+  } catch (error) {
+    console.error('API test failed:', error);
+  }
+  
+  console.log('✅ API Configuration Test Complete');
+};
+
+// Run the test
+testApiConfiguration();
+```
+
+### **Phase 3: Authentication Flow Validation**
+```typescript
+// Authentication flow test with correct server endpoint
+interface AuthTestResult {
+  step: string;
+  success: boolean;
+  details: string;
+  timestamp: Date;
+}
+
+class AuthenticationFlowTest {
+  private serverUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
+  private results: AuthTestResult[] = [];
+  
+  async runAuthenticationTest(): Promise<AuthTestResult[]> {
+    console.log('🔐 Starting Authentication Flow Test');
+    
+    // Test 1: Server connectivity
+    await this.testStep('Server Connectivity', async () => {
+      const response = await fetch(`${this.serverUrl}/health`);
+      if (!response.ok) throw new Error(`Health check failed: ${response.status}`);
+      return 'Server is accessible and healthy';
+    });
+    
+    // Test 2: API endpoint structure
+    await this.testStep('API Endpoint Structure', async () => {
+      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'test' })
+      });
+      
+      if (response.status === 401) {
+        return 'API endpoint correctly requires authentication (401)';
+      } else if (response.status === 404) {
+        throw new Error('API endpoint not found (404) - check server deployment');
+      } else {
+        return `Unexpected response: ${response.status}`;
+      }
+    });
+    
+    // Test 3: CORS configuration
+    await this.testStep('CORS Configuration', async () => {
+      const mobileUrl = window.location.origin;
+      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': mobileUrl,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Content-Type,Authorization'
+        }
+      });
+      
+      if (response.ok) {
+        return 'CORS configuration allows mobile app origin';
+      } else {
+        throw new Error(`CORS check failed: ${response.status}`);
+      }
+    });
+    
+    // Test 4: Professional services endpoint
+    await this.testStep('Professional Services', async () => {
+      const response = await fetch(`${this.serverUrl}/api/integration-test/professional-services`);
+      if (response.status === 401 || response.status === 403) {
+        return 'Professional services endpoint exists and requires authentication';
+      } else if (response.status === 404) {
+        throw new Error('Professional services endpoint not found');
+      } else {
+        return `Professional services response: ${response.status}`;
+      }
+    });
+    
+    return this.results;
+  }
+  
+  private async testStep(stepName: string, testFunction: () => Promise<string>): Promise<void> {
+    try {
+      const details = await testFunction();
+      this.results.push({
+        step: stepName,
+        success: true,
+        details,
+        timestamp: new Date()
+      });
+      console.log(`✅ ${stepName}: ${details}`);
+    } catch (error) {
+      this.results.push({
+        step: stepName,
+        success: false,
+        details: error.message,
+        timestamp: new Date()
+      });
+      console.error(`❌ ${stepName}: ${error.message}`);
+    }
+  }
+}
+
+// Run authentication test
+// const authTest = new AuthenticationFlowTest();
+// authTest.runAuthenticationTest().then(results => {
+//   console.table(results);
+// });
+```
+
+---
+
+## **📊 TROUBLESHOOTING GUIDE**
+
+### **Common Configuration Issues and Solutions**
+
+#### **Issue 1: Environment Variables Not Loading**
+```bash
+# Check if environment variables are properly configured
+echo "Current environment:"
+printenv | grep REACT_APP
+
+# Verify .env files are in correct location
+ls -la .env*
+
+# Rebuild with explicit environment
+NODE_ENV=production REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
+```
+
+#### **Issue 2: API Service Still Using Old URL**
+```javascript
+// Check if API service is reading environment variables correctly
+console.log('Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  API_URL_FROM_SERVICE: apiService?.baseURL
+});
+
+// Manually update API service if needed
+if (window.apiService) {
+  window.apiService.baseURL = 'https://sociallyfed-server-512204327023.us-central1.run.app';
+  window.apiService.apiURL = 'https://sociallyfed-server-512204327023.us-central1.run.app/api';
+  console.log('API service updated manually');
+}
+```
+
+#### **Issue 3: Build Not Including Environment Variables**
+```bash
+# Verify environment variables are available at build time
+echo "Build-time environment:"
+env | grep REACT_APP
+
+# Force environment variable in build command
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
+
+# Check if variables are embedded in build
+grep -r "sociallyfed-server-512204327023" build/ || echo "Environment variables not embedded"
+```
+
+#### **Issue 4: CORS Issues After URL Update**
+```javascript
+// Test CORS configuration with new server URL
+const testCORS = async () => {
+  try {
+    const response = await fetch('https://sociallyfed-server-512204327023.us-central1.run.app/api/accounts/sync', {
+      method: 'OPTIONS',
+      headers: {
+        'Origin': window.location.origin,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Content-Type,Authorization'
+      }
+    });
+    console.log('CORS test result:', response.status);
+  } catch (error) {
+    console.error('CORS test failed:', error);
+  }
+};
 ```
 
 ---
 
 ## **✅ DEFINITION OF DONE FOR TODAY**
 
-### **🎯 DEPLOYMENT SUCCESS CRITERIA**
-- [ ] **Dockerfile Created**: Production-ready multi-stage Dockerfile implemented
-- [ ] **Local Build Success**: Docker container builds and runs locally on port 8080
-- [ ] **Cloud Run Deployment**: Service deploys successfully without buildpack errors
-- [ ] **Health Check Pass**: Container starts and responds to health checks
-- [ ] **Application Functional**: React app serves correctly through Docker container
+### **🎯 API CONFIGURATION UPDATE SUCCESS CRITERIA**
+- [ ] **Configuration Located**: API URL configuration files identified and updated
+- [ ] **Environment Variables**: Production environment configured with correct server URL
+- [ ] **Mobile App Rebuilt**: New build includes updated API configuration  
+- [ ] **Deployment Success**: Updated mobile app deployed to Google Cloud Run
+- [ ] **API Connectivity**: Mobile app successfully connects to working server
 
-### **📱 APPLICATION VERIFICATION**  
-- [ ] **Static Assets**: All React components, CSS, and JavaScript load correctly
-- [ ] **API Connectivity**: Can connect to server endpoints from containerized app
-- [ ] **Authentication**: JWT authentication flow works in production environment
-- [ ] **Professional Features**: Counselor dashboard accessible and functional
-- [ ] **Responsive Design**: Mobile interface works correctly in all screen sizes
+### **📱 MOBILE-SERVER INTEGRATION VERIFICATION**
+- [ ] **Endpoint Connectivity**: Mobile app calls correct server URL (sociallyfed-server-512204327023.us-central1.run.app)
+- [ ] **Authentication Ready**: API calls receive proper 401 responses (not connection errors)
+- [ ] **Sync Endpoint**: /api/accounts/sync endpoint accessible from mobile app
+- [ ] **Professional Services**: Professional API endpoints discoverable and protected
+- [ ] **Error Resolution**: No more calls to old api.sociallyfed.com endpoint
 
-### **🔧 TECHNICAL IMPLEMENTATION**
-- [ ] **Multi-stage Build**: Optimized Docker image size (<150MB)
-- [ ] **Security**: Non-root user implementation and secure defaults
-- [ ] **Performance**: Container startup time <30 seconds
-- [ ] **Resource Usage**: Memory usage within Cloud Run limits (1GB)
-- [ ] **Logging**: Proper application logs visible in Cloud Run console
+### **🔧 TECHNICAL IMPLEMENTATION COMPLETE**
+- [ ] **Environment Configuration**: All REACT_APP_* variables configured correctly
+- [ ] **Build Validation**: Production build includes correct API URLs
+- [ ] **CORS Configuration**: Mobile app origin allowed by server CORS policy
+- [ ] **API Service Update**: Mobile API service class configured with correct endpoints
+- [ ] **Browser Console Clean**: No 401 errors from wrong server URL in network tab
 
-### **🧪 VALIDATION COMPLETE**
-- [ ] **Local Testing**: Docker container runs correctly on development machine
-- [ ] **Health Checks**: Application responds correctly to Cloud Run health probes
-- [ ] **Environment Variables**: All production environment variables configured
-- [ ] **Error Handling**: Graceful handling of startup and runtime errors
-- [ ] **Production Ready**: Application fully functional for end users
+### **🧪 INTEGRATION TESTING VALIDATED**
+- [ ] **Health Check Access**: Mobile app can reach server /health endpoint
+- [ ] **API Endpoint Access**: Mobile app can reach /api/* endpoints with proper authentication
+- [ ] **Professional Endpoints**: Professional services endpoints accessible (with authentication)
+- [ ] **CORS Validation**: Cross-origin requests properly configured and working
+- [ ] **Authentication Flow Ready**: Ready for JWT token implementation and testing
 
-### **📊 PRODUCTION READINESS**  
-- [ ] **Monitoring**: Cloud Run metrics and logging operational
-- [ ] **Scaling**: Service can scale up/down based on traffic
-- [ ] **Security**: No sensitive data in container or logs
-- [ ] **Documentation**: Deployment process documented for team
-- [ ] **Rollback Plan**: Previous version available for emergency rollback
+### **📊 PRODUCTION READINESS CONFIRMED**
+- [ ] **Mobile App Updated**: New deployment live with correct API configuration
+- [ ] **Server Connectivity**: Both services can communicate successfully
+- [ ] **Configuration Documented**: API URL update process documented for future reference
+- [ ] **Environment Variables**: Production and development environments properly configured
+- [ ] **Integration Foundation**: Mobile-server integration foundation established
 
 ---
 
 ## **⚠️ CRITICAL RISKS & MITIGATION**
 
-### **Risk 1: Docker Build Complexity** 
-- **Probability**: Medium (30%) - Multi-stage builds can have dependency issues
-- **Impact**: Continued deployment failures
-- **Mitigation**: Test local Docker build first, provide fallback single-stage Dockerfile
-- **Escalation**: Simplify to basic Node.js image if multi-stage fails
+### **Risk 1: Configuration Not Taking Effect**
+- **Probability**: Medium (40%) - React environment variables can be tricky
+- **Impact**: Mobile app continues calling wrong server endpoint
+- **Mitigation**: Multiple verification steps, manual build with explicit environment variables
+- **Escalation**: Direct code modification if environment variables fail
+- **Timeline**: Must resolve API configuration within 1 hour
 
-### **Risk 2: Port Configuration Issues**
-- **Probability**: Low (15%) - Cloud Run port requirements are well documented
-- **Impact**: Container starts but Cloud Run can't route traffic
-- **Mitigation**: Explicit port configuration and health check validation
-- **Testing**: Verify port 8080 binding in local Docker test
+### **Risk 2: Build Process Issues**
+- **Probability**: Low (25%) - Build process is generally stable
+- **Impact**: Could prevent deployment of updated configuration
+- **Mitigation**: Clean build process, dependency validation, fallback build commands
+- **Escalation**: Manual file updates and simplified build if needed
+- **Timeline**: Build issues must be resolved within 30 minutes
 
-### **Risk 3: Memory/Resource Limits**  
-- **Probability**: Low (20%) - React build is typically small
-- **Impact**: Container fails to start or gets killed
-- **Mitigation**: Monitor resource usage, optimize Docker image size
-- **Monitoring**: Set up Cloud Run resource monitoring and alerts
+### **Risk 3: CORS Configuration Problems**
+- **Probability**: Low (20%) - Server appears to have CORS configured
+- **Impact**: Browser blocks API calls even with correct URL
+- **Mitigation**: CORS testing, server configuration verification
+- **Escalation**: Coordinate with server team for CORS policy updates
+- **Timeline**: CORS issues should be minimal given server status
 
 ---
 
 ## **🤝 COORDINATION REQUIREMENTS**
 
-### **MINIMAL EXTERNAL DEPENDENCIES**
-- **Server Team**: No immediate coordination required for Dockerfile implementation
-- **DevOps**: May need Cloud Run service configuration review
-- **Security**: Docker image security scanning if required by organization
+### **IMMEDIATE PRIORITIES**
+- **Mobile Team**: Focus on API configuration discovery and update
+- **Server Team**: Standby for any CORS or endpoint configuration questions
+- **DevOps**: Monitor Cloud Run deployments and performance
 
-### **INFORMATION TO TRACK**
-1. **Build Time**: How long Docker build takes for CI/CD planning
-2. **Image Size**: Final container image size for optimization
-3. **Startup Time**: Container cold start time for performance monitoring
-4. **Resource Usage**: Memory and CPU usage patterns in production
-5. **Error Patterns**: Any recurring deployment or runtime issues
-
----
-
-## **📈 SUCCESS METRICS**
-
-### **IMMEDIATE SUCCESS CRITERIA (Next 2 Hours)**
-- [ ] **No Buildpack Errors**: Docker build completes without Ruby detection errors
-- [ ] **Successful Deployment**: Cloud Run service shows as "READY" status
-- [ ] **Application Accessible**: React app loads correctly at Cloud Run URL
-- [ ] **Health Checks Pass**: Cloud Run health checks show green status
-- [ ] **Basic Functionality**: User can navigate main application features
-
-### **PERFORMANCE TARGETS**
-- **Docker Build Time**: <5 minutes for complete build
-- **Container Startup**: <30 seconds from container start to serving requests
-- **Application Load**: <3 seconds for initial page load
-- **Memory Usage**: <512MB steady state (within 1GB Cloud Run limit)
-- **Image Size**: <150MB final container image
+### **SUCCESS METRICS TRACKING**
+1. **Configuration Update Time**: Target <1 hour for complete API URL update
+2. **Mobile App Deployment**: Target <30 minutes for rebuild and redeploy
+3. **Integration Test Success**: >95% success rate for mobile-server API calls
+4. **Error Resolution**: 100% elimination of calls to old api.sociallyfed.com
+5. **Authentication Readiness**: Proper 401 responses instead of connection errors
 
 ---
 
-## **🔧 COMPLETE IMPLEMENTATION COMMANDS**
+## **🔧 COMPLETE API UPDATE SCRIPT**
 
-### **Quick Implementation Script**
+### **One-Command Mobile API Update**
 ```bash
 #!/bin/bash
-# Run this script in /home/ben/Development/sociallyfed-mobile
+# Complete mobile API URL update script - run in /home/ben/Development/sociallyfed-mobile
 
-echo "🔍 Validating project structure..."
-pwd
-ls -la package.json || { echo "❌ No package.json found!"; exit 1; }
+echo "🚨 Starting Mobile API URL Configuration Update..."
 
-echo "📦 Cleaning previous builds..."
-rm -rf node_modules package-lock.json build/
-npm install
-npm run build || { echo "❌ Build failed!"; exit 1; }
+# Step 1: Backup current configuration
+echo "💾 Creating configuration backup..."
+find . -name ".env*" -exec cp {} {}.backup \; 2>/dev/null || echo "No existing env files to backup"
 
-echo "🐳 Creating Dockerfile..."
-cat > Dockerfile << 'EOF'
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --silent
-COPY . .
-RUN npm run build
-
-FROM node:18-alpine AS production
-RUN addgroup -g 1001 -S nodejs && adduser -S reactuser -u 1001
-WORKDIR /app
-RUN npm install -g serve@14.2.0
-COPY --from=builder --chown=reactuser:nodejs /app/build ./build
-USER reactuser
-EXPOSE 8080
-ENV PORT=8080 NODE_ENV=production
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
-CMD ["serve", "-s", "build", "-l", "8080", "--no-clipboard"]
+# Step 2: Create production environment configuration
+echo "🔧 Creating production API configuration..."
+cat > .env.production << 'EOF'
+# Production API Configuration - Updated August 8th, 2025
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
+REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENVIRONMENT=production
+REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
+REACT_APP_DEBUG_MODE=false
 EOF
 
-echo "🚀 Deploying to Cloud Run..."
+# Step 3: Search and report current API configuration
+echo "🔍 Analyzing current API configuration..."
+echo "Current environment files:"
+ls -la .env* 2>/dev/null || echo "No .env files found"
+
+echo "Searching for API configuration in source code..."
+find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) \
+  -exec grep -l "api\." {} \; 2>/dev/null | head -5
+
+# Step 4: Clean and rebuild
+echo "🧹 Cleaning previous build..."
+rm -rf build/ node_modules/.cache/ 2>/dev/null || true
+
+# Step 5: Build with new configuration
+echo "🔨 Building with updated API configuration..."
+NODE_ENV=production npm run build
+
+# Step 6: Verify configuration in build
+echo "🔍 Verifying API URL in build..."
+if grep -r "sociallyfed-server-512204327023" build/ >/dev/null 2>&1; then
+    echo "✅ Correct server URL found in build"
+else
+    echo "⚠️ Server URL not found in build - check environment variable embedding"
+fi
+
+# Step 7: Deploy to Cloud Run
+echo "🚀 Deploying updated mobile app..."
 gcloud run deploy sociallyfed-mobile \
   --source=. \
   --platform=managed \
   --region=us-central1 \
   --allow-unauthenticated \
   --memory=1Gi \
-  --cpu=1 \
-  --timeout=300s
+  --timeout=300s \
+  --port=8080
 
-echo "✅ Deployment complete! Check Cloud Run console for service URL."
+# Step 8: Test connectivity
+echo "⏱️ Waiting for deployment and testing connectivity..."
+sleep 60
+
+MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
+SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
+
+echo "🧪 Testing connectivity..."
+echo "Mobile App: $MOBILE_URL"
+echo "Server API: $SERVER_URL"
+
+# Test mobile app
+curl -s -o /dev/null -w "Mobile App Status: %{http_code}\n" "$MOBILE_URL"
+
+# Test server API
+curl -s -o /dev/null -w "Server Health: %{http_code}\n" "$SERVER_URL/health"
+
+# Test API endpoint (expect 401)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SERVER_URL/api/accounts/sync" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"test"}')
+
+if [ "$HTTP_CODE" = "401" ]; then
+    echo "✅ API endpoint working (401 expected without authentication)"
+else
+    echo "⚠️ API endpoint returned: $HTTP_CODE"
+fi
+
+echo "🎉 Mobile API URL update complete!"
+echo ""
+echo "📱 Mobile URL: $MOBILE_URL"
+echo "🖥️  Server URL: $SERVER_URL"
+echo ""
+echo "Next Steps:"
+echo "1. Open mobile app in browser and check Network tab"
+echo "2. Verify API calls go to correct server URL"
+echo "3. Test authentication and sync functionality"
+echo "4. Validate professional services integration"
 ```
 
 ---
 
-**Generated**: August 5th, 2025  
-**Priority**: P0 - CRITICAL (Blocking production deployment)  
-**Status**: Ready for immediate Dockerfile implementation  
-**Next Review**: 2 hours - verify successful Cloud Run deployment  
-**Escalation**: If Docker build fails, fall back to simpler single-stage Dockerfile
+## **📈 SUCCESS VALIDATION CHECKLIST**
+
+### **IMMEDIATE VALIDATION (Next 15 minutes)**
+- [ ] Mobile app rebuild completes successfully
+- [ ] Environment variables configured correctly
+- [ ] Cloud Run deployment succeeds
+- [ ] Mobile app loads without configuration errors
+
+### **API CONNECTIVITY VALIDATION (Next 30 minutes)**
+- [ ] Mobile app calls correct server URL
+- [ ] No more 401 errors from api.sociallyfed.com
+- [ ] Server API endpoints accessible
+- [ ] CORS configuration working
+
+### **INTEGRATION READINESS (Next 1 hour)**
+- [ ] Authentication endpoints discoverable
+- [ ] Professional services endpoints accessible
+- [ ] Sync functionality ready for testing
+- [ ] Complete mobile-server communication established
+
+---
+
+**Generated**: August 8th, 2025  
+**Priority**: P0 - CRITICAL (Fixing mobile-server connectivity)  
+**Status**: Ready for immediate API configuration update  
+**Timeline**: API URL update within 1 hour, full connectivity validation within 2 hours  
+**Success Target**: Mobile app successfully communicating with operational server
