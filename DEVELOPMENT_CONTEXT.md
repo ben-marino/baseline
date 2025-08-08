@@ -175,858 +175,544 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Thu 07 Aug 2025 16:05:23 AEST
+## Session Started: Sat 09 Aug 2025 04:01:50 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - Mobile Team  
-## August 8th, 2025 - Mobile API URL Configuration Update
+# Daily Brief - Authentication Fix Sprint
+## Date: 2025-08-08
+## Priority: P0 CRITICAL - Authentication Flow Recovery
 
-### 🚨 **CRITICAL STATUS: MOBILE APP POINTING TO WRONG SERVER URL**
-**Current Situation**: Mobile app making API calls to `api.sociallyfed.com` instead of operational server  
-**Root Cause**: API configuration pointing to old/non-functional server endpoint  
-**Impact**: 401 Unauthorized errors, sync failures, professional services non-functional  
-**Your Action**: **UPDATE MOBILE API CONFIGURATION** (Critical P0 Priority)  
+### Executive Summary
+The mobile app is receiving 401 Unauthorized errors when attempting to sync with the server despite both services being operational. The root causes appear to be CORS configuration, token management, and platform identification mismatches. Today's sprint will systematically address each authentication layer to restore mobile-server connectivity.
 
 ---
 
-## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
+## Today's Implementation Priorities
 
-### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - API URL UPDATE**
+### Priority 1: CORS Configuration Fix (CRITICAL)
+**Objective**: Enable cross-origin requests from mobile app to server
+**Time Estimate**: 1-2 hours
+**Blocking**: All API communications
 
-1. **🟡 API CONFIGURATION DISCOVERY**
-   - Locate API URL configuration in mobile app codebase
-   - Identify environment variables or config files with server endpoints
-   - Find all references to `api.sociallyfed.com` domain
-   - Validate current API service configuration files
+### Priority 2: Authentication Token Flow (CRITICAL)
+**Objective**: Establish proper JWT token generation and validation pipeline
+**Time Estimate**: 2-3 hours
+**Blocking**: All authenticated operations
 
-2. **🟡 SERVER URL UPDATE IMPLEMENTATION**
-   - Update API configuration from `api.sociallyfed.com` to working server
-   - Configure correct endpoint: `https://sociallyfed-server-512204327023.us-central1.run.app`
-   - Validate environment variables and build configuration
-   - Ensure CORS and authentication headers are correctly configured
+### Priority 3: Platform Parameter Correction (HIGH)
+**Objective**: Ensure mobile app correctly identifies itself to server
+**Time Estimate**: 30 minutes
+**Impact**: Request validation and audit trails
 
-### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-CONFIGURATION**
+### Priority 4: Firebase-to-JWT Token Exchange (HIGH)
+**Objective**: Implement proper token exchange mechanism
+**Time Estimate**: 2 hours
+**Impact**: User authentication flow
 
-3. **🔴 MOBILE APP REDEPLOYMENT**
-   - Rebuild mobile app with updated API configuration
-   - Deploy updated mobile app to Google Cloud Run
-   - Verify new deployment uses correct server endpoint
-   - Test API connectivity with operational server
-
-4. **🔴 INTEGRATION FUNCTIONALITY VERIFICATION**
-   - Confirm mobile app connects to working server successfully
-   - Validate authentication flow with correct JWT endpoints
-   - Test sync operations and professional services integration
-   - Verify end-to-end user workflow functionality
+### Priority 5: Debugging & Monitoring Setup (MEDIUM)
+**Objective**: Add comprehensive logging for authentication flow
+**Time Estimate**: 1 hour
+**Impact**: Future troubleshooting capability
 
 ---
 
-## **📊 CURRENT SYSTEM STATUS ANALYSIS**
+## Specific Features to Build
 
-### **✅ SERVER APPLICATION - FULLY OPERATIONAL**
-```bash
-# SERVER STATUS: WORKING CORRECTLY
-Server URL: https://sociallyfed-server-512204327023.us-central1.run.app
-Health Check: ✅ /health returns 200 OK "Healthy"
-Authentication: ✅ JWT validation working (proper 401 responses)
-API Endpoints: ✅ /api/accounts/sync functional with authentication
-Status: Ready for mobile integration
-```
-
-### **🚫 MOBILE APPLICATION - CONFIGURATION MISMATCH**
-```bash
-# MOBILE STATUS: POINTING TO WRONG SERVER
-Current Mobile URL: https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app
-API Configuration: ❌ api.sociallyfed.com (NON-FUNCTIONAL)
-Correct API URL: ✅ sociallyfed-server-512204327023.us-central1.run.app
-Error Pattern: 401 Unauthorized from wrong server endpoint
-Status: Needs API URL reconfiguration
-```
-
-### **🟡 INTEGRATION STATUS - BLOCKED BY CONFIGURATION**
-- **Mobile → Server**: ❌ Calling wrong server endpoint (api.sociallyfed.com)
-- **Authentication Flow**: ❌ 401 errors from incorrect server
-- **Professional Services**: ❌ Unavailable due to wrong API configuration
-- **Sync Operations**: ❌ Failing due to server endpoint mismatch
-
----
-
-## **🧪 API CONFIGURATION UPDATE STRATEGY**
-
-### **Step 1: Locate API Configuration Files**
-```bash
-# Navigate to mobile project
-cd /home/ben/Development/sociallyfed-mobile
-
-# Search for current API configuration
-echo "🔍 Searching for API URL configuration..."
-
-# Check environment files
-ls -la .env* 2>/dev/null || echo "No .env files found"
-grep -r "api.sociallyfed.com" . 2>/dev/null || echo "No direct references to api.sociallyfed.com"
-grep -r "REACT_APP_API" . 2>/dev/null || echo "No REACT_APP_API variables found"
-grep -r "API_URL" . 2>/dev/null || echo "No API_URL variables found"
-
-# Check source code for API configuration
-find src/ -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | xargs grep -l "api\." 2>/dev/null
-find src/ -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
-
-# Check package.json for any API-related scripts or config
-grep -i "api\|server\|url" package.json 2>/dev/null || echo "No API references in package.json"
-```
-
-### **Step 2: Identify API Service Configuration**
-```bash
-# Look for common API configuration patterns
-echo "🔍 Checking common API service patterns..."
-
-# Check for API service files
-cat src/services/api.js 2>/dev/null || echo "No src/services/api.js"
-cat src/services/apiService.js 2>/dev/null || echo "No src/services/apiService.js"
-cat src/config/api.js 2>/dev/null || echo "No src/config/api.js"
-cat src/utils/api.js 2>/dev/null || echo "No src/utils/api.js"
-
-# Check for environment configuration
-cat src/config/environment.js 2>/dev/null || echo "No src/config/environment.js"
-cat src/config/config.js 2>/dev/null || echo "No src/config/config.js"
-
-# Check for axios or fetch configuration
-grep -r "baseURL\|base_url" src/ 2>/dev/null
-grep -r "fetch.*api" src/ 2>/dev/null | head -5
-grep -r "axios" src/ 2>/dev/null | head -5
-```
-
-### **Step 3: Update API Configuration**
-```bash
-# CRITICAL: Update API URL configuration
-
-# Option A: Environment Variable Approach
-echo "🔧 Creating production environment configuration..."
-cat > .env.production << 'EOF'
-# Production API Configuration
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-EOF
-
-# Option B: Direct Configuration File Update (if found)
-# This will be updated based on what we find in Step 1-2
-
-# Create backup of current configuration
-find . -name "*.env*" -exec cp {} {}.backup \; 2>/dev/null || true
-```
-
-### **Step 4: Validate Configuration Changes**
-```bash
-# CRITICAL: Ensure configuration is properly set
-
-# Check if environment variables are being used
-grep -r "process.env.REACT_APP_API" src/ 2>/dev/null
-
-# Look for hardcoded API URLs that need updating
-grep -r "https://api\." src/ 2>/dev/null
-grep -r "api\.sociallyfed\.com" src/ 2>/dev/null
-
-# Verify the configuration approach
-echo "📋 Configuration Summary:"
-echo "Current working server: https://sociallyfed-server-512204327023.us-central1.run.app"
-echo "Environment file created: .env.production"
-echo "Next step: Identify how mobile app reads API configuration"
-```
-
----
-
-## **🚀 MOBILE APP UPDATE IMPLEMENTATION**
-
-### **Step 1: API Configuration Discovery and Update**
-```bash
-# Complete API configuration discovery script
-cd /home/ben/Development/sociallyfed-mobile
-
-echo "🔍 STEP 1: API Configuration Discovery"
-
-# Create comprehensive search for API configuration
-cat > find-api-config.sh << 'EOF'
-#!/bin/bash
-echo "=== SEARCHING FOR API CONFIGURATION ==="
-
-echo "1. Environment Files:"
-find . -name ".env*" -type f 2>/dev/null | while read file; do
-    echo "  $file:"
-    grep -i "api\|server\|url" "$file" 2>/dev/null | head -5
-done
-
-echo -e "\n2. Source Files with API References:"
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
-xargs grep -l -i "api\." 2>/dev/null | head -10
-
-echo -e "\n3. API Service Files:"
-find src/ -type f -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
-
-echo -e "\n4. Base URL Configurations:"
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
-xargs grep -n "baseURL\|base_url\|API_URL" 2>/dev/null | head -10
-
-echo -e "\n5. Fetch/Axios Configurations:"
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
-xargs grep -n -A2 -B2 "fetch.*api\|axios.*api" 2>/dev/null | head -15
-
-echo -e "\n6. Package.json API References:"
-grep -n -i "api\|server\|url" package.json 2>/dev/null
-EOF
-
-chmod +x find-api-config.sh
-./find-api-config.sh
-```
-
-### **Step 2: Create Updated API Configuration**
-```javascript
-// Example API service configuration update
-// This will be customized based on findings from Step 1
-
-// src/services/apiService.js - EXAMPLE CONFIGURATION
-const API_CONFIG = {
-  // OLD: baseURL: 'https://api.sociallyfed.com',
-  baseURL: process.env.REACT_APP_API_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app',
-  apiPrefix: '/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-};
-
-// Updated API service class
-class ApiService {
-  constructor() {
-    this.baseURL = API_CONFIG.baseURL;
-    this.apiURL = `${this.baseURL}${API_CONFIG.apiPrefix}`;
-  }
-  
-  async request(endpoint, options = {}) {
-    const url = `${this.apiURL}${endpoint}`;
-    const config = {
-      ...options,
-      headers: {
-        ...API_CONFIG.headers,
-        ...options.headers,
-      },
-      timeout: API_CONFIG.timeout,
-    };
-    
-    try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error(`API request failed: ${url}`, error);
-      throw error;
+### 1. CORS Middleware Configuration (Server-side)
+```csharp
+// File: server/Program.cs or Startup.cs
+public class CorsConfiguration
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("SociallyFedMobilePolicy",
+                policy =>
+                {
+                    policy.WithOrigins(
+                        "https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app",
+                        "http://localhost:3000", // Development
+                        "http://localhost:19006" // Expo development
+                    )
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials()
+                    .WithExposedHeaders("Authorization", "Content-Type");
+                });
+        });
     }
-  }
-  
-  // Account sync with proper endpoint
-  async syncAccount(syncData) {
-    return this.request('/accounts/sync', {
-      method: 'POST',
-      body: JSON.stringify(syncData),
-      headers: {
-        'Authorization': `Bearer ${this.getAuthToken()}`,
-      },
-    });
-  }
-  
-  getAuthToken() {
-    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-  }
 }
-
-export default new ApiService();
 ```
 
-### **Step 3: Environment Configuration Setup**
-```bash
-# Create all necessary environment configurations
-echo "🔧 STEP 3: Environment Configuration Setup"
-
-# Production environment
-cat > .env.production << 'EOF'
-# Production API Configuration - Updated August 8th, 2025
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_ENVIRONMENT=production
-
-# Feature flags
-REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
-REACT_APP_DEBUG_MODE=false
-EOF
-
-# Development environment (for future use)
-cat > .env.development << 'EOF'
-# Development API Configuration
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_ENVIRONMENT=development
-
-# Feature flags
-REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
-REACT_APP_DEBUG_MODE=true
-EOF
-
-# Local environment template
-cat > .env.local.example << 'EOF'
-# Local Development API Configuration (Copy to .env.local)
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_API_BASE_URL=http://localhost:5000/api
-REACT_APP_SERVER_URL=http://localhost:5000
-REACT_APP_ENVIRONMENT=local
-REACT_APP_DEBUG_MODE=true
-EOF
-
-echo "✅ Environment files created successfully"
-ls -la .env*
-```
-
-### **Step 4: Build and Deploy Updated Mobile App**
-```bash
-# CRITICAL: Build and deploy with new API configuration
-echo "🚀 STEP 4: Building and deploying updated mobile app"
-
-# Clean previous builds
-rm -rf build/ node_modules/.cache/ 2>/dev/null || true
-
-# Install dependencies (if needed)
-if [ ! -d "node_modules" ]; then
-    echo "📦 Installing dependencies..."
-    npm install
-fi
-
-# Build with production configuration
-echo "🔨 Building mobile app with updated API configuration..."
-NODE_ENV=production npm run build
-
-# Verify build includes correct API URL
-echo "🔍 Verifying build configuration..."
-if [ -d "build" ]; then
-    # Check if environment variables are properly embedded
-    grep -r "sociallyfed-server-512204327023" build/ 2>/dev/null && echo "✅ Correct server URL found in build" || echo "⚠️ Server URL may not be embedded"
-    
-    # Check build size
-    BUILD_SIZE=$(du -sh build/ | cut -f1)
-    echo "📊 Build size: $BUILD_SIZE"
-else
-    echo "❌ Build failed - build directory not found"
-    exit 1
-fi
-
-# Deploy to Google Cloud Run
-echo "🚀 Deploying to Google Cloud Run..."
-gcloud run deploy sociallyfed-mobile \
-  --source=. \
-  --platform=managed \
-  --region=us-central1 \
-  --allow-unauthenticated \
-  --memory=1Gi \
-  --cpu=1 \
-  --timeout=300s \
-  --max-instances=20 \
-  --port=8080
-
-# Wait for deployment
-echo "⏱️ Waiting for deployment to complete..."
-sleep 60
-
-# Get mobile app URL
-MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
-echo "📱 Mobile app deployed at: $MOBILE_URL"
-```
-
----
-
-## **🔧 INTEGRATION TESTING & VALIDATION**
-
-### **Phase 1: API Connectivity Validation**
-```bash
-# Test mobile-server connectivity with correct URLs
-echo "🧪 PHASE 1: API Connectivity Testing"
-
-MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
-SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
-
-echo "📱 Mobile URL: $MOBILE_URL"
-echo "🖥️  Server URL: $SERVER_URL"
-
-# Test mobile app loads
-echo "1. Testing mobile app availability:"
-curl -s -o /dev/null -w "Mobile App Status: %{http_code} (Response Time: %{time_total}s)\n" "$MOBILE_URL"
-
-# Test server health
-echo "2. Testing server health:"
-curl -s -o /dev/null -w "Server Health Status: %{http_code} (Response Time: %{time_total}s)\n" "$SERVER_URL/health"
-
-# Test API endpoint
-echo "3. Testing API endpoint:"
-curl -s -o /dev/null -w "API Sync Status: %{http_code} (Response Time: %{time_total}s)\n" \
-  -X POST "$SERVER_URL/api/accounts/sync" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"test"}'
-
-# Test CORS configuration
-echo "4. Testing CORS configuration:"
-curl -s -o /dev/null -w "CORS Preflight Status: %{http_code}\n" \
-  -X OPTIONS "$SERVER_URL/api/accounts/sync" \
-  -H "Origin: $MOBILE_URL" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: Content-Type,Authorization"
-```
-
-### **Phase 2: Browser Integration Testing**
-```javascript
-// Browser console test script to validate API connectivity
-// Run this in the mobile app's browser console
-
-// Test API configuration update
-const testApiConfiguration = async () => {
-  console.log('🧪 Testing API Configuration Update');
-  
-  // Expected new server URL
-  const expectedServerUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
-  
-  // Test 1: Check if environment variables are loaded correctly
-  console.log('1. Environment Variables:');
-  console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-  console.log('REACT_APP_API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
-  
-  // Test 2: Check current API service configuration
-  console.log('2. API Service Configuration:');
-  if (window.apiService) {
-    console.log('API Base URL:', window.apiService.baseURL);
-    console.log('API URL:', window.apiService.apiURL);
-  }
-  
-  // Test 3: Test health endpoint
-  console.log('3. Testing Server Health:');
-  try {
-    const healthResponse = await fetch(`${expectedServerUrl}/health`);
-    console.log('Health Check Status:', healthResponse.status);
-    const healthData = await healthResponse.text();
-    console.log('Health Response:', healthData);
-  } catch (error) {
-    console.error('Health check failed:', error);
-  }
-  
-  // Test 4: Test API endpoint (expect 401 without auth)
-  console.log('4. Testing API Endpoint:');
-  try {
-    const apiResponse = await fetch(`${expectedServerUrl}/api/accounts/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: 'test' })
-    });
-    console.log('API Sync Status:', apiResponse.status);
-    console.log('Expected: 401 (Unauthorized without token)');
-  } catch (error) {
-    console.error('API test failed:', error);
-  }
-  
-  console.log('✅ API Configuration Test Complete');
-};
-
-// Run the test
-testApiConfiguration();
-```
-
-### **Phase 3: Authentication Flow Validation**
+### 2. Authentication Service Enhancement (Mobile-side)
 ```typescript
-// Authentication flow test with correct server endpoint
-interface AuthTestResult {
-  step: string;
-  success: boolean;
-  details: string;
-  timestamp: Date;
-}
-
-class AuthenticationFlowTest {
-  private serverUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
-  private results: AuthTestResult[] = [];
-  
-  async runAuthenticationTest(): Promise<AuthTestResult[]> {
-    console.log('🔐 Starting Authentication Flow Test');
+// File: mobile/src/services/AuthenticationService.ts
+export class AuthenticationService {
+    private jwtToken: string | null = null;
+    private tokenExpiry: Date | null = null;
     
-    // Test 1: Server connectivity
-    await this.testStep('Server Connectivity', async () => {
-      const response = await fetch(`${this.serverUrl}/health`);
-      if (!response.ok) throw new Error(`Health check failed: ${response.status}`);
-      return 'Server is accessible and healthy';
-    });
-    
-    // Test 2: API endpoint structure
-    await this.testStep('API Endpoint Structure', async () => {
-      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'test' })
-      });
-      
-      if (response.status === 401) {
-        return 'API endpoint correctly requires authentication (401)';
-      } else if (response.status === 404) {
-        throw new Error('API endpoint not found (404) - check server deployment');
-      } else {
-        return `Unexpected response: ${response.status}`;
-      }
-    });
-    
-    // Test 3: CORS configuration
-    await this.testStep('CORS Configuration', async () => {
-      const mobileUrl = window.location.origin;
-      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
-        method: 'OPTIONS',
-        headers: {
-          'Origin': mobileUrl,
-          'Access-Control-Request-Method': 'POST',
-          'Access-Control-Request-Headers': 'Content-Type,Authorization'
+    async authenticateWithFirebase(firebaseUser: any): Promise<string> {
+        try {
+            // Step 1: Get Firebase ID token
+            const firebaseToken = await firebaseUser.getIdToken();
+            
+            // Step 2: Exchange for server JWT
+            const response = await fetch(`${this.baseUrl}/api/auth/exchange`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    firebaseToken,
+                    platform: 'mobile', // Correct platform identifier
+                    deviceInfo: {
+                        platform: Platform.OS,
+                        version: Platform.Version,
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Token exchange failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            this.jwtToken = data.token;
+            this.tokenExpiry = new Date(data.expiry);
+            
+            // Store token securely
+            await SecureStore.setItemAsync('jwt_token', this.jwtToken);
+            await SecureStore.setItemAsync('token_expiry', data.expiry);
+            
+            return this.jwtToken;
+        } catch (error) {
+            console.error('Authentication failed:', error);
+            throw error;
         }
-      });
-      
-      if (response.ok) {
-        return 'CORS configuration allows mobile app origin';
-      } else {
-        throw new Error(`CORS check failed: ${response.status}`);
-      }
-    });
-    
-    // Test 4: Professional services endpoint
-    await this.testStep('Professional Services', async () => {
-      const response = await fetch(`${this.serverUrl}/api/integration-test/professional-services`);
-      if (response.status === 401 || response.status === 403) {
-        return 'Professional services endpoint exists and requires authentication';
-      } else if (response.status === 404) {
-        throw new Error('Professional services endpoint not found');
-      } else {
-        return `Professional services response: ${response.status}`;
-      }
-    });
-    
-    return this.results;
-  }
-  
-  private async testStep(stepName: string, testFunction: () => Promise<string>): Promise<void> {
-    try {
-      const details = await testFunction();
-      this.results.push({
-        step: stepName,
-        success: true,
-        details,
-        timestamp: new Date()
-      });
-      console.log(`✅ ${stepName}: ${details}`);
-    } catch (error) {
-      this.results.push({
-        step: stepName,
-        success: false,
-        details: error.message,
-        timestamp: new Date()
-      });
-      console.error(`❌ ${stepName}: ${error.message}`);
     }
-  }
-}
-
-// Run authentication test
-// const authTest = new AuthenticationFlowTest();
-// authTest.runAuthenticationTest().then(results => {
-//   console.table(results);
-// });
-```
-
----
-
-## **📊 TROUBLESHOOTING GUIDE**
-
-### **Common Configuration Issues and Solutions**
-
-#### **Issue 1: Environment Variables Not Loading**
-```bash
-# Check if environment variables are properly configured
-echo "Current environment:"
-printenv | grep REACT_APP
-
-# Verify .env files are in correct location
-ls -la .env*
-
-# Rebuild with explicit environment
-NODE_ENV=production REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
-```
-
-#### **Issue 2: API Service Still Using Old URL**
-```javascript
-// Check if API service is reading environment variables correctly
-console.log('Environment check:', {
-  NODE_ENV: process.env.NODE_ENV,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
-  API_URL_FROM_SERVICE: apiService?.baseURL
-});
-
-// Manually update API service if needed
-if (window.apiService) {
-  window.apiService.baseURL = 'https://sociallyfed-server-512204327023.us-central1.run.app';
-  window.apiService.apiURL = 'https://sociallyfed-server-512204327023.us-central1.run.app/api';
-  console.log('API service updated manually');
+    
+    async getValidToken(): Promise<string | null> {
+        // Check if token exists and is not expired
+        if (this.jwtToken && this.tokenExpiry && this.tokenExpiry > new Date()) {
+            return this.jwtToken;
+        }
+        
+        // Try to refresh token
+        return await this.refreshToken();
+    }
+    
+    private async refreshToken(): Promise<string | null> {
+        // Implementation for token refresh
+        const storedToken = await SecureStore.getItemAsync('jwt_token');
+        const storedExpiry = await SecureStore.getItemAsync('token_expiry');
+        
+        if (storedToken && storedExpiry) {
+            const expiry = new Date(storedExpiry);
+            if (expiry > new Date()) {
+                this.jwtToken = storedToken;
+                this.tokenExpiry = expiry;
+                return storedToken;
+            }
+        }
+        
+        // Token expired or not found - need to re-authenticate
+        return null;
+    }
 }
 ```
 
-#### **Issue 3: Build Not Including Environment Variables**
-```bash
-# Verify environment variables are available at build time
-echo "Build-time environment:"
-env | grep REACT_APP
-
-# Force environment variable in build command
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
-
-# Check if variables are embedded in build
-grep -r "sociallyfed-server-512204327023" build/ || echo "Environment variables not embedded"
+### 3. API Request Interceptor (Mobile-side)
+```typescript
+// File: mobile/src/services/ApiInterceptor.ts
+export class ApiInterceptor {
+    private authService: AuthenticationService;
+    
+    constructor(authService: AuthenticationService) {
+        this.authService = authService;
+    }
+    
+    async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
+        const token = await this.authService.getValidToken();
+        
+        if (!token) {
+            throw new Error('No valid authentication token available');
+        }
+        
+        const enhancedOptions: RequestInit = {
+            ...options,
+            headers: {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'X-Platform': 'mobile',
+                'X-App-Version': Constants.manifest?.version || '1.0.0',
+            }
+        };
+        
+        console.log(`[API] Request to: ${url}`);
+        console.log(`[API] Headers:`, enhancedOptions.headers);
+        
+        const response = await fetch(url, enhancedOptions);
+        
+        console.log(`[API] Response status: ${response.status}`);
+        
+        if (response.status === 401) {
+            console.log('[API] Token expired, attempting refresh...');
+            // Try to refresh token once
+            const newToken = await this.authService.refreshToken();
+            if (newToken) {
+                enhancedOptions.headers['Authorization'] = `Bearer ${newToken}`;
+                return fetch(url, enhancedOptions);
+            }
+        }
+        
+        return response;
+    }
+}
 ```
 
-#### **Issue 4: CORS Issues After URL Update**
-```javascript
-// Test CORS configuration with new server URL
-const testCORS = async () => {
-  try {
-    const response = await fetch('https://sociallyfed-server-512204327023.us-central1.run.app/api/accounts/sync', {
-      method: 'OPTIONS',
-      headers: {
-        'Origin': window.location.origin,
-        'Access-Control-Request-Method': 'POST',
-        'Access-Control-Request-Headers': 'Content-Type,Authorization'
-      }
-    });
-    console.log('CORS test result:', response.status);
-  } catch (error) {
-    console.error('CORS test failed:', error);
-  }
-};
+### 4. Sync Service Update (Mobile-side)
+```typescript
+// File: mobile/src/services/ServerApiService.ts
+export class ServerApiService {
+    private apiInterceptor: ApiInterceptor;
+    
+    async syncAccount(userId: string, platform: string = 'mobile'): Promise<any> {
+        const syncData = {
+            timestamp: new Date().toISOString(),
+            level: "INFO",
+            module: "ApplicationLifecycle",
+            message: `Syncing user data`,
+            platform: platform, // Use correct platform identifier
+            userId: userId,
+            offset: 600 // timezone offset
+        };
+        
+        try {
+            const response = await this.apiInterceptor.makeAuthenticatedRequest(
+                `${this.baseUrl}/api/accounts/sync`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify(syncData)
+                }
+            );
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[Sync] Failed: ${response.status} - ${errorText}`);
+                throw new Error(`Sync failed: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('[Sync] Error:', error);
+            throw error;
+        }
+    }
+}
+```
+
+### 5. Token Exchange Endpoint (Server-side)
+```csharp
+// File: server/Controllers/AuthController.cs
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
+{
+    private readonly IFirebaseAuth _firebaseAuth;
+    private readonly IJwtService _jwtService;
+    private readonly ILogger<AuthController> _logger;
+    
+    [HttpPost("exchange")]
+    public async Task<IActionResult> ExchangeToken([FromBody] TokenExchangeRequest request)
+    {
+        try
+        {
+            _logger.LogInformation($"Token exchange request from platform: {request.Platform}");
+            
+            // Verify Firebase token
+            var decodedToken = await _firebaseAuth.VerifyIdTokenAsync(request.FirebaseToken);
+            if (decodedToken == null)
+            {
+                _logger.LogWarning("Invalid Firebase token provided");
+                return Unauthorized("Invalid Firebase token");
+            }
+            
+            // Create JWT token for our server
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, decodedToken.Uid),
+                new Claim(ClaimTypes.Email, decodedToken.Claims["email"]?.ToString() ?? ""),
+                new Claim("platform", request.Platform),
+                new Claim("firebase_uid", decodedToken.Uid)
+            };
+            
+            var token = _jwtService.GenerateToken(claims, TimeSpan.FromHours(24));
+            
+            _logger.LogInformation($"Token generated for user: {decodedToken.Uid}");
+            
+            return Ok(new
+            {
+                token = token,
+                expiry = DateTime.UtcNow.AddHours(24),
+                userId = decodedToken.Uid
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Token exchange failed");
+            return StatusCode(500, "Token exchange failed");
+        }
+    }
+}
+
+public class TokenExchangeRequest
+{
+    public string FirebaseToken { get; set; }
+    public string Platform { get; set; }
+    public DeviceInfo DeviceInfo { get; set; }
+}
+```
+
+### 6. Debug Logging System (Mobile-side)
+```typescript
+// File: mobile/src/utils/AuthDebugger.ts
+export class AuthDebugger {
+    private static logs: string[] = [];
+    
+    static log(category: string, message: string, data?: any) {
+        const timestamp = new Date().toISOString();
+        const logEntry = `[${timestamp}] [${category}] ${message}`;
+        
+        console.log(logEntry, data || '');
+        this.logs.push(logEntry);
+        
+        // Store last 100 logs
+        if (this.logs.length > 100) {
+            this.logs.shift();
+        }
+    }
+    
+    static async exportLogs(): Promise<string> {
+        return this.logs.join('\n');
+    }
+    
+    static async testAuthenticationFlow() {
+        this.log('TEST', 'Starting authentication flow test');
+        
+        try {
+            // Test 1: Firebase Authentication
+            this.log('TEST', 'Testing Firebase authentication...');
+            const firebaseUser = await firebase.auth().currentUser;
+            if (!firebaseUser) {
+                this.log('ERROR', 'No Firebase user found');
+                return false;
+            }
+            this.log('SUCCESS', 'Firebase user found', { uid: firebaseUser.uid });
+            
+            // Test 2: Get Firebase Token
+            this.log('TEST', 'Getting Firebase ID token...');
+            const firebaseToken = await firebaseUser.getIdToken();
+            this.log('SUCCESS', 'Firebase token obtained', { 
+                tokenLength: firebaseToken.length,
+                tokenPreview: firebaseToken.substring(0, 20) + '...'
+            });
+            
+            // Test 3: Exchange for JWT
+            this.log('TEST', 'Exchanging for server JWT...');
+            const authService = new AuthenticationService();
+            const jwtToken = await authService.authenticateWithFirebase(firebaseUser);
+            this.log('SUCCESS', 'JWT token obtained', {
+                tokenLength: jwtToken.length,
+                tokenPreview: jwtToken.substring(0, 20) + '...'
+            });
+            
+            // Test 4: Make authenticated request
+            this.log('TEST', 'Making test authenticated request...');
+            const response = await fetch(`${BASE_URL}/api/health/auth`, {
+                headers: {
+                    'Authorization': `Bearer ${jwtToken}`
+                }
+            });
+            this.log('SUCCESS', 'Authenticated request completed', {
+                status: response.status,
+                statusText: response.statusText
+            });
+            
+            return true;
+        } catch (error) {
+            this.log('ERROR', 'Authentication flow test failed', error);
+            return false;
+        }
+    }
+}
 ```
 
 ---
 
-## **✅ DEFINITION OF DONE FOR TODAY**
+## Technical Requirements
 
-### **🎯 API CONFIGURATION UPDATE SUCCESS CRITERIA**
-- [ ] **Configuration Located**: API URL configuration files identified and updated
-- [ ] **Environment Variables**: Production environment configured with correct server URL
-- [ ] **Mobile App Rebuilt**: New build includes updated API configuration  
-- [ ] **Deployment Success**: Updated mobile app deployed to Google Cloud Run
-- [ ] **API Connectivity**: Mobile app successfully connects to working server
+### Mobile App Requirements
+1. **Dependencies**:
+   - `expo-secure-store` for secure token storage
+   - `expo-constants` for app version info
+   - Firebase SDK properly configured
 
-### **📱 MOBILE-SERVER INTEGRATION VERIFICATION**
-- [ ] **Endpoint Connectivity**: Mobile app calls correct server URL (sociallyfed-server-512204327023.us-central1.run.app)
-- [ ] **Authentication Ready**: API calls receive proper 401 responses (not connection errors)
-- [ ] **Sync Endpoint**: /api/accounts/sync endpoint accessible from mobile app
-- [ ] **Professional Services**: Professional API endpoints discoverable and protected
-- [ ] **Error Resolution**: No more calls to old api.sociallyfed.com endpoint
+2. **Environment Variables**:
+   ```env
+   REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+   REACT_APP_FIREBASE_API_KEY=your-firebase-api-key
+   REACT_APP_FIREBASE_AUTH_DOMAIN=your-auth-domain
+   ```
 
-### **🔧 TECHNICAL IMPLEMENTATION COMPLETE**
-- [ ] **Environment Configuration**: All REACT_APP_* variables configured correctly
-- [ ] **Build Validation**: Production build includes correct API URLs
-- [ ] **CORS Configuration**: Mobile app origin allowed by server CORS policy
-- [ ] **API Service Update**: Mobile API service class configured with correct endpoints
-- [ ] **Browser Console Clean**: No 401 errors from wrong server URL in network tab
+3. **Platform Detection**:
+   - Use React Native's `Platform` API
+   - Correctly identify as "mobile" not "web"
 
-### **🧪 INTEGRATION TESTING VALIDATED**
-- [ ] **Health Check Access**: Mobile app can reach server /health endpoint
-- [ ] **API Endpoint Access**: Mobile app can reach /api/* endpoints with proper authentication
-- [ ] **Professional Endpoints**: Professional services endpoints accessible (with authentication)
-- [ ] **CORS Validation**: Cross-origin requests properly configured and working
-- [ ] **Authentication Flow Ready**: Ready for JWT token implementation and testing
+### Server Requirements
+1. **NuGet Packages**:
+   - `FirebaseAdmin` for token verification
+   - `Microsoft.AspNetCore.Authentication.JwtBearer`
+   - `Microsoft.AspNetCore.Cors`
 
-### **📊 PRODUCTION READINESS CONFIRMED**
-- [ ] **Mobile App Updated**: New deployment live with correct API configuration
-- [ ] **Server Connectivity**: Both services can communicate successfully
-- [ ] **Configuration Documented**: API URL update process documented for future reference
-- [ ] **Environment Variables**: Production and development environments properly configured
-- [ ] **Integration Foundation**: Mobile-server integration foundation established
+2. **Configuration**:
+   ```json
+   {
+     "Jwt": {
+       "Secret": "your-jwt-secret-key",
+       "Issuer": "sociallyfed-server",
+       "Audience": "sociallyfed-mobile"
+     },
+     "Firebase": {
+       "ProjectId": "your-firebase-project-id"
+     }
+   }
+   ```
 
----
-
-## **⚠️ CRITICAL RISKS & MITIGATION**
-
-### **Risk 1: Configuration Not Taking Effect**
-- **Probability**: Medium (40%) - React environment variables can be tricky
-- **Impact**: Mobile app continues calling wrong server endpoint
-- **Mitigation**: Multiple verification steps, manual build with explicit environment variables
-- **Escalation**: Direct code modification if environment variables fail
-- **Timeline**: Must resolve API configuration within 1 hour
-
-### **Risk 2: Build Process Issues**
-- **Probability**: Low (25%) - Build process is generally stable
-- **Impact**: Could prevent deployment of updated configuration
-- **Mitigation**: Clean build process, dependency validation, fallback build commands
-- **Escalation**: Manual file updates and simplified build if needed
-- **Timeline**: Build issues must be resolved within 30 minutes
-
-### **Risk 3: CORS Configuration Problems**
-- **Probability**: Low (20%) - Server appears to have CORS configured
-- **Impact**: Browser blocks API calls even with correct URL
-- **Mitigation**: CORS testing, server configuration verification
-- **Escalation**: Coordinate with server team for CORS policy updates
-- **Timeline**: CORS issues should be minimal given server status
+3. **Middleware Order** (Critical):
+   ```csharp
+   app.UseCors("SociallyFedMobilePolicy");
+   app.UseAuthentication();
+   app.UseAuthorization();
+   ```
 
 ---
 
-## **🤝 COORDINATION REQUIREMENTS**
+## Integration Points to Consider
 
-### **IMMEDIATE PRIORITIES**
-- **Mobile Team**: Focus on API configuration discovery and update
-- **Server Team**: Standby for any CORS or endpoint configuration questions
-- **DevOps**: Monitor Cloud Run deployments and performance
+### 1. Firebase ↔ Server Integration
+- Firebase Admin SDK on server for token verification
+- Proper service account credentials
+- Token expiry synchronization
 
-### **SUCCESS METRICS TRACKING**
-1. **Configuration Update Time**: Target <1 hour for complete API URL update
-2. **Mobile App Deployment**: Target <30 minutes for rebuild and redeploy
-3. **Integration Test Success**: >95% success rate for mobile-server API calls
-4. **Error Resolution**: 100% elimination of calls to old api.sociallyfed.com
-5. **Authentication Readiness**: Proper 401 responses instead of connection errors
+### 2. Mobile ↔ Server API Contract
+- Consistent platform identifiers
+- Proper HTTP headers
+- Error response formats
 
----
+### 3. Token Lifecycle Management
+- Token refresh strategy
+- Secure storage on mobile
+- Session management
 
-## **🔧 COMPLETE API UPDATE SCRIPT**
+### 4. CORS & Security
+- Whitelisted origins
+- Preflight request handling
+- Security headers
 
-### **One-Command Mobile API Update**
-```bash
-#!/bin/bash
-# Complete mobile API URL update script - run in /home/ben/Development/sociallyfed-mobile
-
-echo "🚨 Starting Mobile API URL Configuration Update..."
-
-# Step 1: Backup current configuration
-echo "💾 Creating configuration backup..."
-find . -name ".env*" -exec cp {} {}.backup \; 2>/dev/null || echo "No existing env files to backup"
-
-# Step 2: Create production environment configuration
-echo "🔧 Creating production API configuration..."
-cat > .env.production << 'EOF'
-# Production API Configuration - Updated August 8th, 2025
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_ENVIRONMENT=production
-REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
-REACT_APP_DEBUG_MODE=false
-EOF
-
-# Step 3: Search and report current API configuration
-echo "🔍 Analyzing current API configuration..."
-echo "Current environment files:"
-ls -la .env* 2>/dev/null || echo "No .env files found"
-
-echo "Searching for API configuration in source code..."
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) \
-  -exec grep -l "api\." {} \; 2>/dev/null | head -5
-
-# Step 4: Clean and rebuild
-echo "🧹 Cleaning previous build..."
-rm -rf build/ node_modules/.cache/ 2>/dev/null || true
-
-# Step 5: Build with new configuration
-echo "🔨 Building with updated API configuration..."
-NODE_ENV=production npm run build
-
-# Step 6: Verify configuration in build
-echo "🔍 Verifying API URL in build..."
-if grep -r "sociallyfed-server-512204327023" build/ >/dev/null 2>&1; then
-    echo "✅ Correct server URL found in build"
-else
-    echo "⚠️ Server URL not found in build - check environment variable embedding"
-fi
-
-# Step 7: Deploy to Cloud Run
-echo "🚀 Deploying updated mobile app..."
-gcloud run deploy sociallyfed-mobile \
-  --source=. \
-  --platform=managed \
-  --region=us-central1 \
-  --allow-unauthenticated \
-  --memory=1Gi \
-  --timeout=300s \
-  --port=8080
-
-# Step 8: Test connectivity
-echo "⏱️ Waiting for deployment and testing connectivity..."
-sleep 60
-
-MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
-SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
-
-echo "🧪 Testing connectivity..."
-echo "Mobile App: $MOBILE_URL"
-echo "Server API: $SERVER_URL"
-
-# Test mobile app
-curl -s -o /dev/null -w "Mobile App Status: %{http_code}\n" "$MOBILE_URL"
-
-# Test server API
-curl -s -o /dev/null -w "Server Health: %{http_code}\n" "$SERVER_URL/health"
-
-# Test API endpoint (expect 401)
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SERVER_URL/api/accounts/sync" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"test"}')
-
-if [ "$HTTP_CODE" = "401" ]; then
-    echo "✅ API endpoint working (401 expected without authentication)"
-else
-    echo "⚠️ API endpoint returned: $HTTP_CODE"
-fi
-
-echo "🎉 Mobile API URL update complete!"
-echo ""
-echo "📱 Mobile URL: $MOBILE_URL"
-echo "🖥️  Server URL: $SERVER_URL"
-echo ""
-echo "Next Steps:"
-echo "1. Open mobile app in browser and check Network tab"
-echo "2. Verify API calls go to correct server URL"
-echo "3. Test authentication and sync functionality"
-echo "4. Validate professional services integration"
-```
+### 5. Monitoring & Logging
+- Authentication success/failure rates
+- Token expiry patterns
+- API response times
 
 ---
 
-## **📈 SUCCESS VALIDATION CHECKLIST**
+## Definition of Done for Today's Work
 
-### **IMMEDIATE VALIDATION (Next 15 minutes)**
-- [ ] Mobile app rebuild completes successfully
-- [ ] Environment variables configured correctly
-- [ ] Cloud Run deployment succeeds
-- [ ] Mobile app loads without configuration errors
+### ✅ CORS Configuration (Server)
+- [ ] CORS policy added to server startup
+- [ ] Mobile app origin whitelisted
+- [ ] Preflight requests return 200 OK
+- [ ] Test: OPTIONS request to /api/accounts/sync succeeds
 
-### **API CONNECTIVITY VALIDATION (Next 30 minutes)**
-- [ ] Mobile app calls correct server URL
-- [ ] No more 401 errors from api.sociallyfed.com
-- [ ] Server API endpoints accessible
-- [ ] CORS configuration working
+### ✅ Authentication Service (Mobile)
+- [ ] Firebase token exchange implemented
+- [ ] JWT token storage using SecureStore
+- [ ] Token refresh logic implemented
+- [ ] Test: Can obtain and store JWT token
 
-### **INTEGRATION READINESS (Next 1 hour)**
-- [ ] Authentication endpoints discoverable
+### ✅ API Interceptor (Mobile)
+- [ ] Authorization header automatically added
+- [ ] Platform header correctly set to "mobile"
+- [ ] Token refresh on 401 response
+- [ ] Test: Authenticated requests include proper headers
+
+### ✅ Token Exchange Endpoint (Server)
+- [ ] /api/auth/exchange endpoint created
+- [ ] Firebase token verification working
+- [ ] JWT generation with proper claims
+- [ ] Test: Valid Firebase token returns JWT
+
+### ✅ Platform Parameter Fix (Mobile)
+- [ ] All API calls use "mobile" platform
+- [ ] Platform detection using React Native API
+- [ ] Remove hardcoded "web" platform values
+- [ ] Test: Server logs show "platform: mobile"
+
+### ✅ Debug Logging System
+- [ ] Authentication flow logging implemented
+- [ ] Test authentication flow command works
+- [ ] Logs exportable for debugging
+- [ ] Test: Can identify exact failure point
+
+### ✅ End-to-End Testing
+- [ ] User can log in via Firebase
+- [ ] Token exchange succeeds
+- [ ] /api/accounts/sync returns 200 OK
 - [ ] Professional services endpoints accessible
-- [ ] Sync functionality ready for testing
-- [ ] Complete mobile-server communication established
+- [ ] No CORS errors in console
+
+### ✅ Documentation
+- [ ] Authentication flow documented
+- [ ] Troubleshooting guide created
+- [ ] Environment variables documented
+- [ ] Implementation report generated
 
 ---
 
-**Generated**: August 8th, 2025  
-**Priority**: P0 - CRITICAL (Fixing mobile-server connectivity)  
-**Status**: Ready for immediate API configuration update  
-**Timeline**: API URL update within 1 hour, full connectivity validation within 2 hours  
-**Success Target**: Mobile app successfully communicating with operational server
+## Success Metrics
+1. **Primary**: Mobile app can successfully sync with server (200 OK response)
+2. **Authentication**: 0 unexpected 401 errors after login
+3. **CORS**: 0 CORS policy violations in browser console
+4. **Performance**: Authentication flow completes in < 3 seconds
+5. **Reliability**: Token refresh works without user intervention
+
+---
+
+## Rollback Plan
+If authentication changes cause issues:
+1. Revert CORS configuration to previous state
+2. Disable token exchange endpoint
+3. Fall back to direct Firebase authentication
+4. Document all issues for next iteration
+
+---
+
+## Notes for Implementation Team
+- Start with CORS fix - it's the quickest win
+- Test each component in isolation before integration
+- Keep Firebase console open to monitor auth events
+- Use browser DevTools Network tab extensively
+- Save all error messages and stack traces
+- Consider implementing a feature flag for new auth flow
+
+---
+
+*Brief generated for sprint starting 2025-08-08*
+*Priority: P0 CRITICAL - System functionality blocked without authentication*
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -2048,850 +1734,536 @@ interface UnifiedProfessionalWorkflow {
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# Daily Brief - Mobile Team  
-## August 8th, 2025 - Mobile API URL Configuration Update
+# Daily Brief - Authentication Fix Sprint
+## Date: 2025-08-08
+## Priority: P0 CRITICAL - Authentication Flow Recovery
 
-### 🚨 **CRITICAL STATUS: MOBILE APP POINTING TO WRONG SERVER URL**
-**Current Situation**: Mobile app making API calls to `api.sociallyfed.com` instead of operational server  
-**Root Cause**: API configuration pointing to old/non-functional server endpoint  
-**Impact**: 401 Unauthorized errors, sync failures, professional services non-functional  
-**Your Action**: **UPDATE MOBILE API CONFIGURATION** (Critical P0 Priority)  
+### Executive Summary
+The mobile app is receiving 401 Unauthorized errors when attempting to sync with the server despite both services being operational. The root causes appear to be CORS configuration, token management, and platform identification mismatches. Today's sprint will systematically address each authentication layer to restore mobile-server connectivity.
 
 ---
 
-## **🎯 TODAY'S MISSION CRITICAL OBJECTIVES**
+## Today's Implementation Priorities
 
-### **🔴 P0 IMMEDIATE PRIORITY (Next 1 Hour) - API URL UPDATE**
+### Priority 1: CORS Configuration Fix (CRITICAL)
+**Objective**: Enable cross-origin requests from mobile app to server
+**Time Estimate**: 1-2 hours
+**Blocking**: All API communications
 
-1. **🟡 API CONFIGURATION DISCOVERY**
-   - Locate API URL configuration in mobile app codebase
-   - Identify environment variables or config files with server endpoints
-   - Find all references to `api.sociallyfed.com` domain
-   - Validate current API service configuration files
+### Priority 2: Authentication Token Flow (CRITICAL)
+**Objective**: Establish proper JWT token generation and validation pipeline
+**Time Estimate**: 2-3 hours
+**Blocking**: All authenticated operations
 
-2. **🟡 SERVER URL UPDATE IMPLEMENTATION**
-   - Update API configuration from `api.sociallyfed.com` to working server
-   - Configure correct endpoint: `https://sociallyfed-server-512204327023.us-central1.run.app`
-   - Validate environment variables and build configuration
-   - Ensure CORS and authentication headers are correctly configured
+### Priority 3: Platform Parameter Correction (HIGH)
+**Objective**: Ensure mobile app correctly identifies itself to server
+**Time Estimate**: 30 minutes
+**Impact**: Request validation and audit trails
 
-### **🟡 DEPLOYMENT VALIDATION (Hours 1-2) - POST-CONFIGURATION**
+### Priority 4: Firebase-to-JWT Token Exchange (HIGH)
+**Objective**: Implement proper token exchange mechanism
+**Time Estimate**: 2 hours
+**Impact**: User authentication flow
 
-3. **🔴 MOBILE APP REDEPLOYMENT**
-   - Rebuild mobile app with updated API configuration
-   - Deploy updated mobile app to Google Cloud Run
-   - Verify new deployment uses correct server endpoint
-   - Test API connectivity with operational server
-
-4. **🔴 INTEGRATION FUNCTIONALITY VERIFICATION**
-   - Confirm mobile app connects to working server successfully
-   - Validate authentication flow with correct JWT endpoints
-   - Test sync operations and professional services integration
-   - Verify end-to-end user workflow functionality
+### Priority 5: Debugging & Monitoring Setup (MEDIUM)
+**Objective**: Add comprehensive logging for authentication flow
+**Time Estimate**: 1 hour
+**Impact**: Future troubleshooting capability
 
 ---
 
-## **📊 CURRENT SYSTEM STATUS ANALYSIS**
+## Specific Features to Build
 
-### **✅ SERVER APPLICATION - FULLY OPERATIONAL**
-```bash
-# SERVER STATUS: WORKING CORRECTLY
-Server URL: https://sociallyfed-server-512204327023.us-central1.run.app
-Health Check: ✅ /health returns 200 OK "Healthy"
-Authentication: ✅ JWT validation working (proper 401 responses)
-API Endpoints: ✅ /api/accounts/sync functional with authentication
-Status: Ready for mobile integration
-```
-
-### **🚫 MOBILE APPLICATION - CONFIGURATION MISMATCH**
-```bash
-# MOBILE STATUS: POINTING TO WRONG SERVER
-Current Mobile URL: https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app
-API Configuration: ❌ api.sociallyfed.com (NON-FUNCTIONAL)
-Correct API URL: ✅ sociallyfed-server-512204327023.us-central1.run.app
-Error Pattern: 401 Unauthorized from wrong server endpoint
-Status: Needs API URL reconfiguration
-```
-
-### **🟡 INTEGRATION STATUS - BLOCKED BY CONFIGURATION**
-- **Mobile → Server**: ❌ Calling wrong server endpoint (api.sociallyfed.com)
-- **Authentication Flow**: ❌ 401 errors from incorrect server
-- **Professional Services**: ❌ Unavailable due to wrong API configuration
-- **Sync Operations**: ❌ Failing due to server endpoint mismatch
-
----
-
-## **🧪 API CONFIGURATION UPDATE STRATEGY**
-
-### **Step 1: Locate API Configuration Files**
-```bash
-# Navigate to mobile project
-cd /home/ben/Development/sociallyfed-mobile
-
-# Search for current API configuration
-echo "🔍 Searching for API URL configuration..."
-
-# Check environment files
-ls -la .env* 2>/dev/null || echo "No .env files found"
-grep -r "api.sociallyfed.com" . 2>/dev/null || echo "No direct references to api.sociallyfed.com"
-grep -r "REACT_APP_API" . 2>/dev/null || echo "No REACT_APP_API variables found"
-grep -r "API_URL" . 2>/dev/null || echo "No API_URL variables found"
-
-# Check source code for API configuration
-find src/ -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | xargs grep -l "api\." 2>/dev/null
-find src/ -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
-
-# Check package.json for any API-related scripts or config
-grep -i "api\|server\|url" package.json 2>/dev/null || echo "No API references in package.json"
-```
-
-### **Step 2: Identify API Service Configuration**
-```bash
-# Look for common API configuration patterns
-echo "🔍 Checking common API service patterns..."
-
-# Check for API service files
-cat src/services/api.js 2>/dev/null || echo "No src/services/api.js"
-cat src/services/apiService.js 2>/dev/null || echo "No src/services/apiService.js"
-cat src/config/api.js 2>/dev/null || echo "No src/config/api.js"
-cat src/utils/api.js 2>/dev/null || echo "No src/utils/api.js"
-
-# Check for environment configuration
-cat src/config/environment.js 2>/dev/null || echo "No src/config/environment.js"
-cat src/config/config.js 2>/dev/null || echo "No src/config/config.js"
-
-# Check for axios or fetch configuration
-grep -r "baseURL\|base_url" src/ 2>/dev/null
-grep -r "fetch.*api" src/ 2>/dev/null | head -5
-grep -r "axios" src/ 2>/dev/null | head -5
-```
-
-### **Step 3: Update API Configuration**
-```bash
-# CRITICAL: Update API URL configuration
-
-# Option A: Environment Variable Approach
-echo "🔧 Creating production environment configuration..."
-cat > .env.production << 'EOF'
-# Production API Configuration
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-EOF
-
-# Option B: Direct Configuration File Update (if found)
-# This will be updated based on what we find in Step 1-2
-
-# Create backup of current configuration
-find . -name "*.env*" -exec cp {} {}.backup \; 2>/dev/null || true
-```
-
-### **Step 4: Validate Configuration Changes**
-```bash
-# CRITICAL: Ensure configuration is properly set
-
-# Check if environment variables are being used
-grep -r "process.env.REACT_APP_API" src/ 2>/dev/null
-
-# Look for hardcoded API URLs that need updating
-grep -r "https://api\." src/ 2>/dev/null
-grep -r "api\.sociallyfed\.com" src/ 2>/dev/null
-
-# Verify the configuration approach
-echo "📋 Configuration Summary:"
-echo "Current working server: https://sociallyfed-server-512204327023.us-central1.run.app"
-echo "Environment file created: .env.production"
-echo "Next step: Identify how mobile app reads API configuration"
-```
-
----
-
-## **🚀 MOBILE APP UPDATE IMPLEMENTATION**
-
-### **Step 1: API Configuration Discovery and Update**
-```bash
-# Complete API configuration discovery script
-cd /home/ben/Development/sociallyfed-mobile
-
-echo "🔍 STEP 1: API Configuration Discovery"
-
-# Create comprehensive search for API configuration
-cat > find-api-config.sh << 'EOF'
-#!/bin/bash
-echo "=== SEARCHING FOR API CONFIGURATION ==="
-
-echo "1. Environment Files:"
-find . -name ".env*" -type f 2>/dev/null | while read file; do
-    echo "  $file:"
-    grep -i "api\|server\|url" "$file" 2>/dev/null | head -5
-done
-
-echo -e "\n2. Source Files with API References:"
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
-xargs grep -l -i "api\." 2>/dev/null | head -10
-
-echo -e "\n3. API Service Files:"
-find src/ -type f -name "*api*" -o -name "*service*" -o -name "*config*" 2>/dev/null
-
-echo -e "\n4. Base URL Configurations:"
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
-xargs grep -n "baseURL\|base_url\|API_URL" 2>/dev/null | head -10
-
-echo -e "\n5. Fetch/Axios Configurations:"
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) 2>/dev/null | \
-xargs grep -n -A2 -B2 "fetch.*api\|axios.*api" 2>/dev/null | head -15
-
-echo -e "\n6. Package.json API References:"
-grep -n -i "api\|server\|url" package.json 2>/dev/null
-EOF
-
-chmod +x find-api-config.sh
-./find-api-config.sh
-```
-
-### **Step 2: Create Updated API Configuration**
-```javascript
-// Example API service configuration update
-// This will be customized based on findings from Step 1
-
-// src/services/apiService.js - EXAMPLE CONFIGURATION
-const API_CONFIG = {
-  // OLD: baseURL: 'https://api.sociallyfed.com',
-  baseURL: process.env.REACT_APP_API_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app',
-  apiPrefix: '/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-};
-
-// Updated API service class
-class ApiService {
-  constructor() {
-    this.baseURL = API_CONFIG.baseURL;
-    this.apiURL = `${this.baseURL}${API_CONFIG.apiPrefix}`;
-  }
-  
-  async request(endpoint, options = {}) {
-    const url = `${this.apiURL}${endpoint}`;
-    const config = {
-      ...options,
-      headers: {
-        ...API_CONFIG.headers,
-        ...options.headers,
-      },
-      timeout: API_CONFIG.timeout,
-    };
-    
-    try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error(`API request failed: ${url}`, error);
-      throw error;
+### 1. CORS Middleware Configuration (Server-side)
+```csharp
+// File: server/Program.cs or Startup.cs
+public class CorsConfiguration
+{
+    public static void Configure(WebApplicationBuilder builder)
+    {
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("SociallyFedMobilePolicy",
+                policy =>
+                {
+                    policy.WithOrigins(
+                        "https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app",
+                        "http://localhost:3000", // Development
+                        "http://localhost:19006" // Expo development
+                    )
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials()
+                    .WithExposedHeaders("Authorization", "Content-Type");
+                });
+        });
     }
-  }
-  
-  // Account sync with proper endpoint
-  async syncAccount(syncData) {
-    return this.request('/accounts/sync', {
-      method: 'POST',
-      body: JSON.stringify(syncData),
-      headers: {
-        'Authorization': `Bearer ${this.getAuthToken()}`,
-      },
-    });
-  }
-  
-  getAuthToken() {
-    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-  }
 }
-
-export default new ApiService();
 ```
 
-### **Step 3: Environment Configuration Setup**
-```bash
-# Create all necessary environment configurations
-echo "🔧 STEP 3: Environment Configuration Setup"
-
-# Production environment
-cat > .env.production << 'EOF'
-# Production API Configuration - Updated August 8th, 2025
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_ENVIRONMENT=production
-
-# Feature flags
-REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
-REACT_APP_DEBUG_MODE=false
-EOF
-
-# Development environment (for future use)
-cat > .env.development << 'EOF'
-# Development API Configuration
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_ENVIRONMENT=development
-
-# Feature flags
-REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
-REACT_APP_DEBUG_MODE=true
-EOF
-
-# Local environment template
-cat > .env.local.example << 'EOF'
-# Local Development API Configuration (Copy to .env.local)
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_API_BASE_URL=http://localhost:5000/api
-REACT_APP_SERVER_URL=http://localhost:5000
-REACT_APP_ENVIRONMENT=local
-REACT_APP_DEBUG_MODE=true
-EOF
-
-echo "✅ Environment files created successfully"
-ls -la .env*
-```
-
-### **Step 4: Build and Deploy Updated Mobile App**
-```bash
-# CRITICAL: Build and deploy with new API configuration
-echo "🚀 STEP 4: Building and deploying updated mobile app"
-
-# Clean previous builds
-rm -rf build/ node_modules/.cache/ 2>/dev/null || true
-
-# Install dependencies (if needed)
-if [ ! -d "node_modules" ]; then
-    echo "📦 Installing dependencies..."
-    npm install
-fi
-
-# Build with production configuration
-echo "🔨 Building mobile app with updated API configuration..."
-NODE_ENV=production npm run build
-
-# Verify build includes correct API URL
-echo "🔍 Verifying build configuration..."
-if [ -d "build" ]; then
-    # Check if environment variables are properly embedded
-    grep -r "sociallyfed-server-512204327023" build/ 2>/dev/null && echo "✅ Correct server URL found in build" || echo "⚠️ Server URL may not be embedded"
-    
-    # Check build size
-    BUILD_SIZE=$(du -sh build/ | cut -f1)
-    echo "📊 Build size: $BUILD_SIZE"
-else
-    echo "❌ Build failed - build directory not found"
-    exit 1
-fi
-
-# Deploy to Google Cloud Run
-echo "🚀 Deploying to Google Cloud Run..."
-gcloud run deploy sociallyfed-mobile \
-  --source=. \
-  --platform=managed \
-  --region=us-central1 \
-  --allow-unauthenticated \
-  --memory=1Gi \
-  --cpu=1 \
-  --timeout=300s \
-  --max-instances=20 \
-  --port=8080
-
-# Wait for deployment
-echo "⏱️ Waiting for deployment to complete..."
-sleep 60
-
-# Get mobile app URL
-MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
-echo "📱 Mobile app deployed at: $MOBILE_URL"
-```
-
----
-
-## **🔧 INTEGRATION TESTING & VALIDATION**
-
-### **Phase 1: API Connectivity Validation**
-```bash
-# Test mobile-server connectivity with correct URLs
-echo "🧪 PHASE 1: API Connectivity Testing"
-
-MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
-SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
-
-echo "📱 Mobile URL: $MOBILE_URL"
-echo "🖥️  Server URL: $SERVER_URL"
-
-# Test mobile app loads
-echo "1. Testing mobile app availability:"
-curl -s -o /dev/null -w "Mobile App Status: %{http_code} (Response Time: %{time_total}s)\n" "$MOBILE_URL"
-
-# Test server health
-echo "2. Testing server health:"
-curl -s -o /dev/null -w "Server Health Status: %{http_code} (Response Time: %{time_total}s)\n" "$SERVER_URL/health"
-
-# Test API endpoint
-echo "3. Testing API endpoint:"
-curl -s -o /dev/null -w "API Sync Status: %{http_code} (Response Time: %{time_total}s)\n" \
-  -X POST "$SERVER_URL/api/accounts/sync" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"test"}'
-
-# Test CORS configuration
-echo "4. Testing CORS configuration:"
-curl -s -o /dev/null -w "CORS Preflight Status: %{http_code}\n" \
-  -X OPTIONS "$SERVER_URL/api/accounts/sync" \
-  -H "Origin: $MOBILE_URL" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: Content-Type,Authorization"
-```
-
-### **Phase 2: Browser Integration Testing**
-```javascript
-// Browser console test script to validate API connectivity
-// Run this in the mobile app's browser console
-
-// Test API configuration update
-const testApiConfiguration = async () => {
-  console.log('🧪 Testing API Configuration Update');
-  
-  // Expected new server URL
-  const expectedServerUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
-  
-  // Test 1: Check if environment variables are loaded correctly
-  console.log('1. Environment Variables:');
-  console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-  console.log('REACT_APP_API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
-  
-  // Test 2: Check current API service configuration
-  console.log('2. API Service Configuration:');
-  if (window.apiService) {
-    console.log('API Base URL:', window.apiService.baseURL);
-    console.log('API URL:', window.apiService.apiURL);
-  }
-  
-  // Test 3: Test health endpoint
-  console.log('3. Testing Server Health:');
-  try {
-    const healthResponse = await fetch(`${expectedServerUrl}/health`);
-    console.log('Health Check Status:', healthResponse.status);
-    const healthData = await healthResponse.text();
-    console.log('Health Response:', healthData);
-  } catch (error) {
-    console.error('Health check failed:', error);
-  }
-  
-  // Test 4: Test API endpoint (expect 401 without auth)
-  console.log('4. Testing API Endpoint:');
-  try {
-    const apiResponse = await fetch(`${expectedServerUrl}/api/accounts/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: 'test' })
-    });
-    console.log('API Sync Status:', apiResponse.status);
-    console.log('Expected: 401 (Unauthorized without token)');
-  } catch (error) {
-    console.error('API test failed:', error);
-  }
-  
-  console.log('✅ API Configuration Test Complete');
-};
-
-// Run the test
-testApiConfiguration();
-```
-
-### **Phase 3: Authentication Flow Validation**
+### 2. Authentication Service Enhancement (Mobile-side)
 ```typescript
-// Authentication flow test with correct server endpoint
-interface AuthTestResult {
-  step: string;
-  success: boolean;
-  details: string;
-  timestamp: Date;
-}
-
-class AuthenticationFlowTest {
-  private serverUrl = 'https://sociallyfed-server-512204327023.us-central1.run.app';
-  private results: AuthTestResult[] = [];
-  
-  async runAuthenticationTest(): Promise<AuthTestResult[]> {
-    console.log('🔐 Starting Authentication Flow Test');
+// File: mobile/src/services/AuthenticationService.ts
+export class AuthenticationService {
+    private jwtToken: string | null = null;
+    private tokenExpiry: Date | null = null;
     
-    // Test 1: Server connectivity
-    await this.testStep('Server Connectivity', async () => {
-      const response = await fetch(`${this.serverUrl}/health`);
-      if (!response.ok) throw new Error(`Health check failed: ${response.status}`);
-      return 'Server is accessible and healthy';
-    });
-    
-    // Test 2: API endpoint structure
-    await this.testStep('API Endpoint Structure', async () => {
-      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'test' })
-      });
-      
-      if (response.status === 401) {
-        return 'API endpoint correctly requires authentication (401)';
-      } else if (response.status === 404) {
-        throw new Error('API endpoint not found (404) - check server deployment');
-      } else {
-        return `Unexpected response: ${response.status}`;
-      }
-    });
-    
-    // Test 3: CORS configuration
-    await this.testStep('CORS Configuration', async () => {
-      const mobileUrl = window.location.origin;
-      const response = await fetch(`${this.serverUrl}/api/accounts/sync`, {
-        method: 'OPTIONS',
-        headers: {
-          'Origin': mobileUrl,
-          'Access-Control-Request-Method': 'POST',
-          'Access-Control-Request-Headers': 'Content-Type,Authorization'
+    async authenticateWithFirebase(firebaseUser: any): Promise<string> {
+        try {
+            // Step 1: Get Firebase ID token
+            const firebaseToken = await firebaseUser.getIdToken();
+            
+            // Step 2: Exchange for server JWT
+            const response = await fetch(`${this.baseUrl}/api/auth/exchange`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    firebaseToken,
+                    platform: 'mobile', // Correct platform identifier
+                    deviceInfo: {
+                        platform: Platform.OS,
+                        version: Platform.Version,
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Token exchange failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            this.jwtToken = data.token;
+            this.tokenExpiry = new Date(data.expiry);
+            
+            // Store token securely
+            await SecureStore.setItemAsync('jwt_token', this.jwtToken);
+            await SecureStore.setItemAsync('token_expiry', data.expiry);
+            
+            return this.jwtToken;
+        } catch (error) {
+            console.error('Authentication failed:', error);
+            throw error;
         }
-      });
-      
-      if (response.ok) {
-        return 'CORS configuration allows mobile app origin';
-      } else {
-        throw new Error(`CORS check failed: ${response.status}`);
-      }
-    });
-    
-    // Test 4: Professional services endpoint
-    await this.testStep('Professional Services', async () => {
-      const response = await fetch(`${this.serverUrl}/api/integration-test/professional-services`);
-      if (response.status === 401 || response.status === 403) {
-        return 'Professional services endpoint exists and requires authentication';
-      } else if (response.status === 404) {
-        throw new Error('Professional services endpoint not found');
-      } else {
-        return `Professional services response: ${response.status}`;
-      }
-    });
-    
-    return this.results;
-  }
-  
-  private async testStep(stepName: string, testFunction: () => Promise<string>): Promise<void> {
-    try {
-      const details = await testFunction();
-      this.results.push({
-        step: stepName,
-        success: true,
-        details,
-        timestamp: new Date()
-      });
-      console.log(`✅ ${stepName}: ${details}`);
-    } catch (error) {
-      this.results.push({
-        step: stepName,
-        success: false,
-        details: error.message,
-        timestamp: new Date()
-      });
-      console.error(`❌ ${stepName}: ${error.message}`);
     }
-  }
-}
-
-// Run authentication test
-// const authTest = new AuthenticationFlowTest();
-// authTest.runAuthenticationTest().then(results => {
-//   console.table(results);
-// });
-```
-
----
-
-## **📊 TROUBLESHOOTING GUIDE**
-
-### **Common Configuration Issues and Solutions**
-
-#### **Issue 1: Environment Variables Not Loading**
-```bash
-# Check if environment variables are properly configured
-echo "Current environment:"
-printenv | grep REACT_APP
-
-# Verify .env files are in correct location
-ls -la .env*
-
-# Rebuild with explicit environment
-NODE_ENV=production REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
-```
-
-#### **Issue 2: API Service Still Using Old URL**
-```javascript
-// Check if API service is reading environment variables correctly
-console.log('Environment check:', {
-  NODE_ENV: process.env.NODE_ENV,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
-  API_URL_FROM_SERVICE: apiService?.baseURL
-});
-
-// Manually update API service if needed
-if (window.apiService) {
-  window.apiService.baseURL = 'https://sociallyfed-server-512204327023.us-central1.run.app';
-  window.apiService.apiURL = 'https://sociallyfed-server-512204327023.us-central1.run.app/api';
-  console.log('API service updated manually');
+    
+    async getValidToken(): Promise<string | null> {
+        // Check if token exists and is not expired
+        if (this.jwtToken && this.tokenExpiry && this.tokenExpiry > new Date()) {
+            return this.jwtToken;
+        }
+        
+        // Try to refresh token
+        return await this.refreshToken();
+    }
+    
+    private async refreshToken(): Promise<string | null> {
+        // Implementation for token refresh
+        const storedToken = await SecureStore.getItemAsync('jwt_token');
+        const storedExpiry = await SecureStore.getItemAsync('token_expiry');
+        
+        if (storedToken && storedExpiry) {
+            const expiry = new Date(storedExpiry);
+            if (expiry > new Date()) {
+                this.jwtToken = storedToken;
+                this.tokenExpiry = expiry;
+                return storedToken;
+            }
+        }
+        
+        // Token expired or not found - need to re-authenticate
+        return null;
+    }
 }
 ```
 
-#### **Issue 3: Build Not Including Environment Variables**
-```bash
-# Verify environment variables are available at build time
-echo "Build-time environment:"
-env | grep REACT_APP
-
-# Force environment variable in build command
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app npm run build
-
-# Check if variables are embedded in build
-grep -r "sociallyfed-server-512204327023" build/ || echo "Environment variables not embedded"
+### 3. API Request Interceptor (Mobile-side)
+```typescript
+// File: mobile/src/services/ApiInterceptor.ts
+export class ApiInterceptor {
+    private authService: AuthenticationService;
+    
+    constructor(authService: AuthenticationService) {
+        this.authService = authService;
+    }
+    
+    async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
+        const token = await this.authService.getValidToken();
+        
+        if (!token) {
+            throw new Error('No valid authentication token available');
+        }
+        
+        const enhancedOptions: RequestInit = {
+            ...options,
+            headers: {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'X-Platform': 'mobile',
+                'X-App-Version': Constants.manifest?.version || '1.0.0',
+            }
+        };
+        
+        console.log(`[API] Request to: ${url}`);
+        console.log(`[API] Headers:`, enhancedOptions.headers);
+        
+        const response = await fetch(url, enhancedOptions);
+        
+        console.log(`[API] Response status: ${response.status}`);
+        
+        if (response.status === 401) {
+            console.log('[API] Token expired, attempting refresh...');
+            // Try to refresh token once
+            const newToken = await this.authService.refreshToken();
+            if (newToken) {
+                enhancedOptions.headers['Authorization'] = `Bearer ${newToken}`;
+                return fetch(url, enhancedOptions);
+            }
+        }
+        
+        return response;
+    }
+}
 ```
 
-#### **Issue 4: CORS Issues After URL Update**
-```javascript
-// Test CORS configuration with new server URL
-const testCORS = async () => {
-  try {
-    const response = await fetch('https://sociallyfed-server-512204327023.us-central1.run.app/api/accounts/sync', {
-      method: 'OPTIONS',
-      headers: {
-        'Origin': window.location.origin,
-        'Access-Control-Request-Method': 'POST',
-        'Access-Control-Request-Headers': 'Content-Type,Authorization'
-      }
-    });
-    console.log('CORS test result:', response.status);
-  } catch (error) {
-    console.error('CORS test failed:', error);
-  }
-};
+### 4. Sync Service Update (Mobile-side)
+```typescript
+// File: mobile/src/services/ServerApiService.ts
+export class ServerApiService {
+    private apiInterceptor: ApiInterceptor;
+    
+    async syncAccount(userId: string, platform: string = 'mobile'): Promise<any> {
+        const syncData = {
+            timestamp: new Date().toISOString(),
+            level: "INFO",
+            module: "ApplicationLifecycle",
+            message: `Syncing user data`,
+            platform: platform, // Use correct platform identifier
+            userId: userId,
+            offset: 600 // timezone offset
+        };
+        
+        try {
+            const response = await this.apiInterceptor.makeAuthenticatedRequest(
+                `${this.baseUrl}/api/accounts/sync`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify(syncData)
+                }
+            );
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[Sync] Failed: ${response.status} - ${errorText}`);
+                throw new Error(`Sync failed: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('[Sync] Error:', error);
+            throw error;
+        }
+    }
+}
+```
+
+### 5. Token Exchange Endpoint (Server-side)
+```csharp
+// File: server/Controllers/AuthController.cs
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
+{
+    private readonly IFirebaseAuth _firebaseAuth;
+    private readonly IJwtService _jwtService;
+    private readonly ILogger<AuthController> _logger;
+    
+    [HttpPost("exchange")]
+    public async Task<IActionResult> ExchangeToken([FromBody] TokenExchangeRequest request)
+    {
+        try
+        {
+            _logger.LogInformation($"Token exchange request from platform: {request.Platform}");
+            
+            // Verify Firebase token
+            var decodedToken = await _firebaseAuth.VerifyIdTokenAsync(request.FirebaseToken);
+            if (decodedToken == null)
+            {
+                _logger.LogWarning("Invalid Firebase token provided");
+                return Unauthorized("Invalid Firebase token");
+            }
+            
+            // Create JWT token for our server
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, decodedToken.Uid),
+                new Claim(ClaimTypes.Email, decodedToken.Claims["email"]?.ToString() ?? ""),
+                new Claim("platform", request.Platform),
+                new Claim("firebase_uid", decodedToken.Uid)
+            };
+            
+            var token = _jwtService.GenerateToken(claims, TimeSpan.FromHours(24));
+            
+            _logger.LogInformation($"Token generated for user: {decodedToken.Uid}");
+            
+            return Ok(new
+            {
+                token = token,
+                expiry = DateTime.UtcNow.AddHours(24),
+                userId = decodedToken.Uid
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Token exchange failed");
+            return StatusCode(500, "Token exchange failed");
+        }
+    }
+}
+
+public class TokenExchangeRequest
+{
+    public string FirebaseToken { get; set; }
+    public string Platform { get; set; }
+    public DeviceInfo DeviceInfo { get; set; }
+}
+```
+
+### 6. Debug Logging System (Mobile-side)
+```typescript
+// File: mobile/src/utils/AuthDebugger.ts
+export class AuthDebugger {
+    private static logs: string[] = [];
+    
+    static log(category: string, message: string, data?: any) {
+        const timestamp = new Date().toISOString();
+        const logEntry = `[${timestamp}] [${category}] ${message}`;
+        
+        console.log(logEntry, data || '');
+        this.logs.push(logEntry);
+        
+        // Store last 100 logs
+        if (this.logs.length > 100) {
+            this.logs.shift();
+        }
+    }
+    
+    static async exportLogs(): Promise<string> {
+        return this.logs.join('\n');
+    }
+    
+    static async testAuthenticationFlow() {
+        this.log('TEST', 'Starting authentication flow test');
+        
+        try {
+            // Test 1: Firebase Authentication
+            this.log('TEST', 'Testing Firebase authentication...');
+            const firebaseUser = await firebase.auth().currentUser;
+            if (!firebaseUser) {
+                this.log('ERROR', 'No Firebase user found');
+                return false;
+            }
+            this.log('SUCCESS', 'Firebase user found', { uid: firebaseUser.uid });
+            
+            // Test 2: Get Firebase Token
+            this.log('TEST', 'Getting Firebase ID token...');
+            const firebaseToken = await firebaseUser.getIdToken();
+            this.log('SUCCESS', 'Firebase token obtained', { 
+                tokenLength: firebaseToken.length,
+                tokenPreview: firebaseToken.substring(0, 20) + '...'
+            });
+            
+            // Test 3: Exchange for JWT
+            this.log('TEST', 'Exchanging for server JWT...');
+            const authService = new AuthenticationService();
+            const jwtToken = await authService.authenticateWithFirebase(firebaseUser);
+            this.log('SUCCESS', 'JWT token obtained', {
+                tokenLength: jwtToken.length,
+                tokenPreview: jwtToken.substring(0, 20) + '...'
+            });
+            
+            // Test 4: Make authenticated request
+            this.log('TEST', 'Making test authenticated request...');
+            const response = await fetch(`${BASE_URL}/api/health/auth`, {
+                headers: {
+                    'Authorization': `Bearer ${jwtToken}`
+                }
+            });
+            this.log('SUCCESS', 'Authenticated request completed', {
+                status: response.status,
+                statusText: response.statusText
+            });
+            
+            return true;
+        } catch (error) {
+            this.log('ERROR', 'Authentication flow test failed', error);
+            return false;
+        }
+    }
+}
 ```
 
 ---
 
-## **✅ DEFINITION OF DONE FOR TODAY**
+## Technical Requirements
 
-### **🎯 API CONFIGURATION UPDATE SUCCESS CRITERIA**
-- [ ] **Configuration Located**: API URL configuration files identified and updated
-- [ ] **Environment Variables**: Production environment configured with correct server URL
-- [ ] **Mobile App Rebuilt**: New build includes updated API configuration  
-- [ ] **Deployment Success**: Updated mobile app deployed to Google Cloud Run
-- [ ] **API Connectivity**: Mobile app successfully connects to working server
+### Mobile App Requirements
+1. **Dependencies**:
+   - `expo-secure-store` for secure token storage
+   - `expo-constants` for app version info
+   - Firebase SDK properly configured
 
-### **📱 MOBILE-SERVER INTEGRATION VERIFICATION**
-- [ ] **Endpoint Connectivity**: Mobile app calls correct server URL (sociallyfed-server-512204327023.us-central1.run.app)
-- [ ] **Authentication Ready**: API calls receive proper 401 responses (not connection errors)
-- [ ] **Sync Endpoint**: /api/accounts/sync endpoint accessible from mobile app
-- [ ] **Professional Services**: Professional API endpoints discoverable and protected
-- [ ] **Error Resolution**: No more calls to old api.sociallyfed.com endpoint
+2. **Environment Variables**:
+   ```env
+   REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+   REACT_APP_FIREBASE_API_KEY=your-firebase-api-key
+   REACT_APP_FIREBASE_AUTH_DOMAIN=your-auth-domain
+   ```
 
-### **🔧 TECHNICAL IMPLEMENTATION COMPLETE**
-- [ ] **Environment Configuration**: All REACT_APP_* variables configured correctly
-- [ ] **Build Validation**: Production build includes correct API URLs
-- [ ] **CORS Configuration**: Mobile app origin allowed by server CORS policy
-- [ ] **API Service Update**: Mobile API service class configured with correct endpoints
-- [ ] **Browser Console Clean**: No 401 errors from wrong server URL in network tab
+3. **Platform Detection**:
+   - Use React Native's `Platform` API
+   - Correctly identify as "mobile" not "web"
 
-### **🧪 INTEGRATION TESTING VALIDATED**
-- [ ] **Health Check Access**: Mobile app can reach server /health endpoint
-- [ ] **API Endpoint Access**: Mobile app can reach /api/* endpoints with proper authentication
-- [ ] **Professional Endpoints**: Professional services endpoints accessible (with authentication)
-- [ ] **CORS Validation**: Cross-origin requests properly configured and working
-- [ ] **Authentication Flow Ready**: Ready for JWT token implementation and testing
+### Server Requirements
+1. **NuGet Packages**:
+   - `FirebaseAdmin` for token verification
+   - `Microsoft.AspNetCore.Authentication.JwtBearer`
+   - `Microsoft.AspNetCore.Cors`
 
-### **📊 PRODUCTION READINESS CONFIRMED**
-- [ ] **Mobile App Updated**: New deployment live with correct API configuration
-- [ ] **Server Connectivity**: Both services can communicate successfully
-- [ ] **Configuration Documented**: API URL update process documented for future reference
-- [ ] **Environment Variables**: Production and development environments properly configured
-- [ ] **Integration Foundation**: Mobile-server integration foundation established
+2. **Configuration**:
+   ```json
+   {
+     "Jwt": {
+       "Secret": "your-jwt-secret-key",
+       "Issuer": "sociallyfed-server",
+       "Audience": "sociallyfed-mobile"
+     },
+     "Firebase": {
+       "ProjectId": "your-firebase-project-id"
+     }
+   }
+   ```
 
----
-
-## **⚠️ CRITICAL RISKS & MITIGATION**
-
-### **Risk 1: Configuration Not Taking Effect**
-- **Probability**: Medium (40%) - React environment variables can be tricky
-- **Impact**: Mobile app continues calling wrong server endpoint
-- **Mitigation**: Multiple verification steps, manual build with explicit environment variables
-- **Escalation**: Direct code modification if environment variables fail
-- **Timeline**: Must resolve API configuration within 1 hour
-
-### **Risk 2: Build Process Issues**
-- **Probability**: Low (25%) - Build process is generally stable
-- **Impact**: Could prevent deployment of updated configuration
-- **Mitigation**: Clean build process, dependency validation, fallback build commands
-- **Escalation**: Manual file updates and simplified build if needed
-- **Timeline**: Build issues must be resolved within 30 minutes
-
-### **Risk 3: CORS Configuration Problems**
-- **Probability**: Low (20%) - Server appears to have CORS configured
-- **Impact**: Browser blocks API calls even with correct URL
-- **Mitigation**: CORS testing, server configuration verification
-- **Escalation**: Coordinate with server team for CORS policy updates
-- **Timeline**: CORS issues should be minimal given server status
+3. **Middleware Order** (Critical):
+   ```csharp
+   app.UseCors("SociallyFedMobilePolicy");
+   app.UseAuthentication();
+   app.UseAuthorization();
+   ```
 
 ---
 
-## **🤝 COORDINATION REQUIREMENTS**
+## Integration Points to Consider
 
-### **IMMEDIATE PRIORITIES**
-- **Mobile Team**: Focus on API configuration discovery and update
-- **Server Team**: Standby for any CORS or endpoint configuration questions
-- **DevOps**: Monitor Cloud Run deployments and performance
+### 1. Firebase ↔ Server Integration
+- Firebase Admin SDK on server for token verification
+- Proper service account credentials
+- Token expiry synchronization
 
-### **SUCCESS METRICS TRACKING**
-1. **Configuration Update Time**: Target <1 hour for complete API URL update
-2. **Mobile App Deployment**: Target <30 minutes for rebuild and redeploy
-3. **Integration Test Success**: >95% success rate for mobile-server API calls
-4. **Error Resolution**: 100% elimination of calls to old api.sociallyfed.com
-5. **Authentication Readiness**: Proper 401 responses instead of connection errors
+### 2. Mobile ↔ Server API Contract
+- Consistent platform identifiers
+- Proper HTTP headers
+- Error response formats
 
----
+### 3. Token Lifecycle Management
+- Token refresh strategy
+- Secure storage on mobile
+- Session management
 
-## **🔧 COMPLETE API UPDATE SCRIPT**
+### 4. CORS & Security
+- Whitelisted origins
+- Preflight request handling
+- Security headers
 
-### **One-Command Mobile API Update**
-```bash
-#!/bin/bash
-# Complete mobile API URL update script - run in /home/ben/Development/sociallyfed-mobile
-
-echo "🚨 Starting Mobile API URL Configuration Update..."
-
-# Step 1: Backup current configuration
-echo "💾 Creating configuration backup..."
-find . -name ".env*" -exec cp {} {}.backup \; 2>/dev/null || echo "No existing env files to backup"
-
-# Step 2: Create production environment configuration
-echo "🔧 Creating production API configuration..."
-cat > .env.production << 'EOF'
-# Production API Configuration - Updated August 8th, 2025
-REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app/api
-REACT_APP_SERVER_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_ENVIRONMENT=production
-REACT_APP_PROFESSIONAL_SERVICES_ENABLED=true
-REACT_APP_DEBUG_MODE=false
-EOF
-
-# Step 3: Search and report current API configuration
-echo "🔍 Analyzing current API configuration..."
-echo "Current environment files:"
-ls -la .env* 2>/dev/null || echo "No .env files found"
-
-echo "Searching for API configuration in source code..."
-find src/ -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) \
-  -exec grep -l "api\." {} \; 2>/dev/null | head -5
-
-# Step 4: Clean and rebuild
-echo "🧹 Cleaning previous build..."
-rm -rf build/ node_modules/.cache/ 2>/dev/null || true
-
-# Step 5: Build with new configuration
-echo "🔨 Building with updated API configuration..."
-NODE_ENV=production npm run build
-
-# Step 6: Verify configuration in build
-echo "🔍 Verifying API URL in build..."
-if grep -r "sociallyfed-server-512204327023" build/ >/dev/null 2>&1; then
-    echo "✅ Correct server URL found in build"
-else
-    echo "⚠️ Server URL not found in build - check environment variable embedding"
-fi
-
-# Step 7: Deploy to Cloud Run
-echo "🚀 Deploying updated mobile app..."
-gcloud run deploy sociallyfed-mobile \
-  --source=. \
-  --platform=managed \
-  --region=us-central1 \
-  --allow-unauthenticated \
-  --memory=1Gi \
-  --timeout=300s \
-  --port=8080
-
-# Step 8: Test connectivity
-echo "⏱️ Waiting for deployment and testing connectivity..."
-sleep 60
-
-MOBILE_URL=$(gcloud run services describe sociallyfed-mobile --region=us-central1 --format="value(status.url)")
-SERVER_URL="https://sociallyfed-server-512204327023.us-central1.run.app"
-
-echo "🧪 Testing connectivity..."
-echo "Mobile App: $MOBILE_URL"
-echo "Server API: $SERVER_URL"
-
-# Test mobile app
-curl -s -o /dev/null -w "Mobile App Status: %{http_code}\n" "$MOBILE_URL"
-
-# Test server API
-curl -s -o /dev/null -w "Server Health: %{http_code}\n" "$SERVER_URL/health"
-
-# Test API endpoint (expect 401)
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SERVER_URL/api/accounts/sync" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"test"}')
-
-if [ "$HTTP_CODE" = "401" ]; then
-    echo "✅ API endpoint working (401 expected without authentication)"
-else
-    echo "⚠️ API endpoint returned: $HTTP_CODE"
-fi
-
-echo "🎉 Mobile API URL update complete!"
-echo ""
-echo "📱 Mobile URL: $MOBILE_URL"
-echo "🖥️  Server URL: $SERVER_URL"
-echo ""
-echo "Next Steps:"
-echo "1. Open mobile app in browser and check Network tab"
-echo "2. Verify API calls go to correct server URL"
-echo "3. Test authentication and sync functionality"
-echo "4. Validate professional services integration"
-```
+### 5. Monitoring & Logging
+- Authentication success/failure rates
+- Token expiry patterns
+- API response times
 
 ---
 
-## **📈 SUCCESS VALIDATION CHECKLIST**
+## Definition of Done for Today's Work
 
-### **IMMEDIATE VALIDATION (Next 15 minutes)**
-- [ ] Mobile app rebuild completes successfully
-- [ ] Environment variables configured correctly
-- [ ] Cloud Run deployment succeeds
-- [ ] Mobile app loads without configuration errors
+### ✅ CORS Configuration (Server)
+- [ ] CORS policy added to server startup
+- [ ] Mobile app origin whitelisted
+- [ ] Preflight requests return 200 OK
+- [ ] Test: OPTIONS request to /api/accounts/sync succeeds
 
-### **API CONNECTIVITY VALIDATION (Next 30 minutes)**
-- [ ] Mobile app calls correct server URL
-- [ ] No more 401 errors from api.sociallyfed.com
-- [ ] Server API endpoints accessible
-- [ ] CORS configuration working
+### ✅ Authentication Service (Mobile)
+- [ ] Firebase token exchange implemented
+- [ ] JWT token storage using SecureStore
+- [ ] Token refresh logic implemented
+- [ ] Test: Can obtain and store JWT token
 
-### **INTEGRATION READINESS (Next 1 hour)**
-- [ ] Authentication endpoints discoverable
+### ✅ API Interceptor (Mobile)
+- [ ] Authorization header automatically added
+- [ ] Platform header correctly set to "mobile"
+- [ ] Token refresh on 401 response
+- [ ] Test: Authenticated requests include proper headers
+
+### ✅ Token Exchange Endpoint (Server)
+- [ ] /api/auth/exchange endpoint created
+- [ ] Firebase token verification working
+- [ ] JWT generation with proper claims
+- [ ] Test: Valid Firebase token returns JWT
+
+### ✅ Platform Parameter Fix (Mobile)
+- [ ] All API calls use "mobile" platform
+- [ ] Platform detection using React Native API
+- [ ] Remove hardcoded "web" platform values
+- [ ] Test: Server logs show "platform: mobile"
+
+### ✅ Debug Logging System
+- [ ] Authentication flow logging implemented
+- [ ] Test authentication flow command works
+- [ ] Logs exportable for debugging
+- [ ] Test: Can identify exact failure point
+
+### ✅ End-to-End Testing
+- [ ] User can log in via Firebase
+- [ ] Token exchange succeeds
+- [ ] /api/accounts/sync returns 200 OK
 - [ ] Professional services endpoints accessible
-- [ ] Sync functionality ready for testing
-- [ ] Complete mobile-server communication established
+- [ ] No CORS errors in console
+
+### ✅ Documentation
+- [ ] Authentication flow documented
+- [ ] Troubleshooting guide created
+- [ ] Environment variables documented
+- [ ] Implementation report generated
 
 ---
 
-**Generated**: August 8th, 2025  
-**Priority**: P0 - CRITICAL (Fixing mobile-server connectivity)  
-**Status**: Ready for immediate API configuration update  
-**Timeline**: API URL update within 1 hour, full connectivity validation within 2 hours  
-**Success Target**: Mobile app successfully communicating with operational server
+## Success Metrics
+1. **Primary**: Mobile app can successfully sync with server (200 OK response)
+2. **Authentication**: 0 unexpected 401 errors after login
+3. **CORS**: 0 CORS policy violations in browser console
+4. **Performance**: Authentication flow completes in < 3 seconds
+5. **Reliability**: Token refresh works without user intervention
+
+---
+
+## Rollback Plan
+If authentication changes cause issues:
+1. Revert CORS configuration to previous state
+2. Disable token exchange endpoint
+3. Fall back to direct Firebase authentication
+4. Document all issues for next iteration
+
+---
+
+## Notes for Implementation Team
+- Start with CORS fix - it's the quickest win
+- Test each component in isolation before integration
+- Keep Firebase console open to monitor auth events
+- Use browser DevTools Network tab extensively
+- Save all error messages and stack traces
+- Consider implementing a feature flag for new auth flow
+
+---
+
+*Brief generated for sprint starting 2025-08-08*
+*Priority: P0 CRITICAL - System functionality blocked without authentication*
