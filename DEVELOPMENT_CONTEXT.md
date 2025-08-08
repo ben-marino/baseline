@@ -175,544 +175,349 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Sat 09 Aug 2025 04:01:50 AEST
+## Session Started: Sat 09 Aug 2025 07:11:00 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - Authentication Fix Sprint
-## Date: 2025-08-08
-## Priority: P0 CRITICAL - Authentication Flow Recovery
+# Daily Brief - Mobile Deployment Audit & Recovery
+## Date: 2025-08-09
+## Priority: P0 CRITICAL - Verify & Deploy Authentication Fixes
 
 ### Executive Summary
-The mobile app is receiving 401 Unauthorized errors when attempting to sync with the server despite both services being operational. The root causes appear to be CORS configuration, token management, and platform identification mismatches. Today's sprint will systematically address each authentication layer to restore mobile-server connectivity.
+Analysis reveals that the August 9th mobile authentication fixes were NOT successfully deployed to the active URL (`sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`). The mobile app continues to exhibit all original bugs: wrong API paths, incorrect platform identification, and broken Firebase integration. The server is confirmed operational. Today's sprint will audit the supposedly fixed code, rebuild, and deploy to the correct Google Cloud Run instance.
 
 ---
 
 ## Today's Implementation Priorities
 
-### Priority 1: CORS Configuration Fix (CRITICAL)
-**Objective**: Enable cross-origin requests from mobile app to server
-**Time Estimate**: 1-2 hours
-**Blocking**: All API communications
-
-### Priority 2: Authentication Token Flow (CRITICAL)
-**Objective**: Establish proper JWT token generation and validation pipeline
-**Time Estimate**: 2-3 hours
-**Blocking**: All authenticated operations
-
-### Priority 3: Platform Parameter Correction (HIGH)
-**Objective**: Ensure mobile app correctly identifies itself to server
-**Time Estimate**: 30 minutes
-**Impact**: Request validation and audit trails
-
-### Priority 4: Firebase-to-JWT Token Exchange (HIGH)
-**Objective**: Implement proper token exchange mechanism
-**Time Estimate**: 2 hours
-**Impact**: User authentication flow
-
-### Priority 5: Debugging & Monitoring Setup (MEDIUM)
-**Objective**: Add comprehensive logging for authentication flow
+### Priority 1: Code Audit & Verification (CRITICAL)
+**Objective**: Verify that authentication fixes actually exist in the codebase
 **Time Estimate**: 1 hour
-**Impact**: Future troubleshooting capability
+**Blocking**: All subsequent deployment activities
+
+### Priority 2: Firebase Integration Repair (CRITICAL)
+**Objective**: Fix Firebase initialization and accessibility issues
+**Time Estimate**: 2 hours
+**Blocking**: Entire authentication flow
+
+### Priority 3: Build & Deploy to Correct URL (CRITICAL)
+**Objective**: Deploy working code to the active mobile URL
+**Time Estimate**: 1-2 hours
+**Impact**: All mobile functionality
+
+### Priority 4: Integration Testing (HIGH)
+**Objective**: Verify end-to-end authentication flow works
+**Time Estimate**: 1 hour
+**Impact**: User experience
+
+### Priority 5: URL Consolidation (MEDIUM)
+**Objective**: Eliminate confusion between multiple deployment URLs
+**Time Estimate**: 30 minutes
+**Impact**: Future maintenance
 
 ---
 
-## Specific Features to Build
+## Specific Tasks to Complete
 
-### 1. CORS Middleware Configuration (Server-side)
-```csharp
-// File: server/Program.cs or Startup.cs
-public class CorsConfiguration
-{
-    public static void Configure(WebApplicationBuilder builder)
-    {
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("SociallyFedMobilePolicy",
-                policy =>
-                {
-                    policy.WithOrigins(
-                        "https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app",
-                        "http://localhost:3000", // Development
-                        "http://localhost:19006" // Expo development
-                    )
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials()
-                    .WithExposedHeaders("Authorization", "Content-Type");
-                });
-        });
-    }
-}
+### 1. Audit Mobile Codebase for Claimed Fixes
+```bash
+# Navigate to mobile repository
+cd /home/ben/Development/sociallyfed-mobile
+
+# Check if authentication fixes exist
+echo "=== Checking for AuthenticationService ==="
+ls -la baseline/src/services/AuthenticationService.ts
+
+echo "=== Checking for ApiInterceptor ==="
+ls -la baseline/src/services/ApiInterceptor.ts
+
+echo "=== Checking ServerApiService for correct path ==="
+grep -n "accounts/sync" baseline/src/services/ServerApiService.ts
+grep -n "/api/accounts/sync" baseline/src/services/ServerApiService.ts
+
+echo "=== Checking platform identification ==="
+grep -n "platform.*web" baseline/src/services/*.ts
+grep -n "platform.*mobile" baseline/src/services/*.ts
+
+echo "=== Checking Firebase configuration ==="
+grep -n "firebase" baseline/src/firebase.ts
+grep -n "Firebase" baseline/src/App.tsx
 ```
 
-### 2. Authentication Service Enhancement (Mobile-side)
+### 2. Fix Critical Issues If Not Present
 ```typescript
-// File: mobile/src/services/AuthenticationService.ts
-export class AuthenticationService {
-    private jwtToken: string | null = null;
-    private tokenExpiry: Date | null = null;
-    
-    async authenticateWithFirebase(firebaseUser: any): Promise<string> {
-        try {
-            // Step 1: Get Firebase ID token
-            const firebaseToken = await firebaseUser.getIdToken();
-            
-            // Step 2: Exchange for server JWT
-            const response = await fetch(`${this.baseUrl}/api/auth/exchange`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    firebaseToken,
-                    platform: 'mobile', // Correct platform identifier
-                    deviceInfo: {
-                        platform: Platform.OS,
-                        version: Platform.Version,
-                    }
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Token exchange failed: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            this.jwtToken = data.token;
-            this.tokenExpiry = new Date(data.expiry);
-            
-            // Store token securely
-            await SecureStore.setItemAsync('jwt_token', this.jwtToken);
-            await SecureStore.setItemAsync('token_expiry', data.expiry);
-            
-            return this.jwtToken;
-        } catch (error) {
-            console.error('Authentication failed:', error);
-            throw error;
+// File: baseline/src/services/ServerApiService.ts
+// MUST CHANGE: Line with wrong path
+// FROM: const syncUrl = `${this.baseUrl}/accounts/sync`;
+// TO:   const syncUrl = `${this.baseUrl}/api/accounts/sync`;
+
+// File: baseline/src/helpers.tsx
+// MUST UPDATE: getPlatformIdentifier function
+export function getPlatformIdentifier(): string {
+    // Fix platform detection
+    if (typeof window !== 'undefined' && window.navigator) {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        if (userAgent.includes('mobile') || userAgent.includes('android') || userAgent.includes('iphone')) {
+            return 'mobile';
         }
     }
-    
-    async getValidToken(): Promise<string | null> {
-        // Check if token exists and is not expired
-        if (this.jwtToken && this.tokenExpiry && this.tokenExpiry > new Date()) {
-            return this.jwtToken;
-        }
-        
-        // Try to refresh token
-        return await this.refreshToken();
-    }
-    
-    private async refreshToken(): Promise<string | null> {
-        // Implementation for token refresh
-        const storedToken = await SecureStore.getItemAsync('jwt_token');
-        const storedExpiry = await SecureStore.getItemAsync('token_expiry');
-        
-        if (storedToken && storedExpiry) {
-            const expiry = new Date(storedExpiry);
-            if (expiry > new Date()) {
-                this.jwtToken = storedToken;
-                this.tokenExpiry = expiry;
-                return storedToken;
-            }
-        }
-        
-        // Token expired or not found - need to re-authenticate
-        return null;
-    }
+    return 'mobile'; // Default to mobile for this app
+}
+
+// File: baseline/src/firebase.ts
+// ENSURE: Firebase is properly initialized and exported
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+
+const firebaseConfig = {
+    // Your config here
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
+// Make Firebase globally accessible for debugging
+if (typeof window !== 'undefined') {
+    window.firebase = { app, auth };
 }
 ```
 
-### 3. API Request Interceptor (Mobile-side)
-```typescript
-// File: mobile/src/services/ApiInterceptor.ts
-export class ApiInterceptor {
-    private authService: AuthenticationService;
-    
-    constructor(authService: AuthenticationService) {
-        this.authService = authService;
-    }
-    
-    async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
-        const token = await this.authService.getValidToken();
-        
-        if (!token) {
-            throw new Error('No valid authentication token available');
-        }
-        
-        const enhancedOptions: RequestInit = {
-            ...options,
-            headers: {
-                ...options.headers,
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'X-Platform': 'mobile',
-                'X-App-Version': Constants.manifest?.version || '1.0.0',
-            }
-        };
-        
-        console.log(`[API] Request to: ${url}`);
-        console.log(`[API] Headers:`, enhancedOptions.headers);
-        
-        const response = await fetch(url, enhancedOptions);
-        
-        console.log(`[API] Response status: ${response.status}`);
-        
-        if (response.status === 401) {
-            console.log('[API] Token expired, attempting refresh...');
-            // Try to refresh token once
-            const newToken = await this.authService.refreshToken();
-            if (newToken) {
-                enhancedOptions.headers['Authorization'] = `Bearer ${newToken}`;
-                return fetch(url, enhancedOptions);
-            }
-        }
-        
-        return response;
-    }
-}
+### 3. Build Production Version
+```bash
+# Clean previous builds
+rm -rf build/
+rm -rf node_modules/.cache/
+
+# Install dependencies
+npm install
+
+# Build with production environment
+export NODE_ENV=production
+export REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+npm run build
+
+# Verify build output
+echo "=== Checking build for correct API URL ==="
+grep -r "sociallyfed-server" build/
+grep -r "/accounts/sync" build/
+grep -r "/api/accounts/sync" build/
+
+# Check bundle size
+du -sh build/static/js/*.js
 ```
 
-### 4. Sync Service Update (Mobile-side)
-```typescript
-// File: mobile/src/services/ServerApiService.ts
-export class ServerApiService {
-    private apiInterceptor: ApiInterceptor;
-    
-    async syncAccount(userId: string, platform: string = 'mobile'): Promise<any> {
-        const syncData = {
-            timestamp: new Date().toISOString(),
-            level: "INFO",
-            module: "ApplicationLifecycle",
-            message: `Syncing user data`,
-            platform: platform, // Use correct platform identifier
-            userId: userId,
-            offset: 600 // timezone offset
-        };
-        
-        try {
-            const response = await this.apiInterceptor.makeAuthenticatedRequest(
-                `${this.baseUrl}/api/accounts/sync`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify(syncData)
-                }
-            );
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[Sync] Failed: ${response.status} - ${errorText}`);
-                throw new Error(`Sync failed: ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('[Sync] Error:', error);
-            throw error;
-        }
-    }
-}
+### 4. Deploy to Google Cloud Run
+```bash
+# Build Docker image
+docker build -t gcr.io/sociallyfed/sociallyfed-mobile:latest .
+
+# Push to Google Container Registry
+docker push gcr.io/sociallyfed/sociallyfed-mobile:latest
+
+# Deploy to the ACTIVE URL (sqdd3g2eea)
+gcloud run deploy sociallyfed-mobile-sqdd3g2eea \
+  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
+  --platform managed \
+  --region us-central1 \
+  --memory 1Gi \
+  --cpu 1 \
+  --timeout 300 \
+  --concurrency 1000 \
+  --max-instances 20 \
+  --allow-unauthenticated
+
+# Get deployment URL
+echo "=== Deployment URL ==="
+gcloud run services describe sociallyfed-mobile-sqdd3g2eea \
+  --platform managed \
+  --region us-central1 \
+  --format 'value(status.url)'
+
+# Also update the other deployment for consistency
+gcloud run deploy sociallyfed-mobile \
+  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
 ```
 
-### 5. Token Exchange Endpoint (Server-side)
-```csharp
-// File: server/Controllers/AuthController.cs
-[ApiController]
-[Route("api/auth")]
-public class AuthController : ControllerBase
-{
-    private readonly IFirebaseAuth _firebaseAuth;
-    private readonly IJwtService _jwtService;
-    private readonly ILogger<AuthController> _logger;
-    
-    [HttpPost("exchange")]
-    public async Task<IActionResult> ExchangeToken([FromBody] TokenExchangeRequest request)
-    {
-        try
-        {
-            _logger.LogInformation($"Token exchange request from platform: {request.Platform}");
-            
-            // Verify Firebase token
-            var decodedToken = await _firebaseAuth.VerifyIdTokenAsync(request.FirebaseToken);
-            if (decodedToken == null)
-            {
-                _logger.LogWarning("Invalid Firebase token provided");
-                return Unauthorized("Invalid Firebase token");
-            }
-            
-            // Create JWT token for our server
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, decodedToken.Uid),
-                new Claim(ClaimTypes.Email, decodedToken.Claims["email"]?.ToString() ?? ""),
-                new Claim("platform", request.Platform),
-                new Claim("firebase_uid", decodedToken.Uid)
-            };
-            
-            var token = _jwtService.GenerateToken(claims, TimeSpan.FromHours(24));
-            
-            _logger.LogInformation($"Token generated for user: {decodedToken.Uid}");
-            
-            return Ok(new
-            {
-                token = token,
-                expiry = DateTime.UtcNow.AddHours(24),
-                userId = decodedToken.Uid
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Token exchange failed");
-            return StatusCode(500, "Token exchange failed");
-        }
-    }
+### 5. Post-Deployment Verification Tests
+```javascript
+// Run these tests in browser console after deployment
+
+// Test 1: Verify correct API path
+console.log('Test 1: API Path Check');
+fetch('https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app/test', {
+    method: 'POST',
+    body: JSON.stringify({test: true})
+}).then(() => {
+    // Check Network tab - should show /api/accounts/sync not /accounts/sync
+    console.log('Check Network tab for API paths');
+});
+
+// Test 2: Verify Firebase is accessible
+console.log('Test 2: Firebase Availability');
+if (typeof firebase !== 'undefined') {
+    console.log('✅ Firebase is accessible');
+    console.log('Firebase auth:', firebase.auth);
+} else {
+    console.log('❌ Firebase NOT accessible - critical issue');
 }
 
-public class TokenExchangeRequest
-{
-    public string FirebaseToken { get; set; }
-    public string Platform { get; set; }
-    public DeviceInfo DeviceInfo { get; set; }
-}
+// Test 3: Platform identification
+console.log('Test 3: Platform Check');
+// Create a test sync request and check the platform value
+const testData = {
+    platform: 'web', // This should be changed to 'mobile' by the app
+    timestamp: new Date().toISOString()
+};
+console.log('Original platform:', testData.platform);
+// The app should change this to 'mobile'
+
+// Test 4: Authentication flow
+console.log('Test 4: Login Flow');
+// Try to login and watch for "getting encryption keys" stuck state
+console.log('Attempt login and check if it completes successfully');
 ```
-
-### 6. Debug Logging System (Mobile-side)
-```typescript
-// File: mobile/src/utils/AuthDebugger.ts
-export class AuthDebugger {
-    private static logs: string[] = [];
-    
-    static log(category: string, message: string, data?: any) {
-        const timestamp = new Date().toISOString();
-        const logEntry = `[${timestamp}] [${category}] ${message}`;
-        
-        console.log(logEntry, data || '');
-        this.logs.push(logEntry);
-        
-        // Store last 100 logs
-        if (this.logs.length > 100) {
-            this.logs.shift();
-        }
-    }
-    
-    static async exportLogs(): Promise<string> {
-        return this.logs.join('\n');
-    }
-    
-    static async testAuthenticationFlow() {
-        this.log('TEST', 'Starting authentication flow test');
-        
-        try {
-            // Test 1: Firebase Authentication
-            this.log('TEST', 'Testing Firebase authentication...');
-            const firebaseUser = await firebase.auth().currentUser;
-            if (!firebaseUser) {
-                this.log('ERROR', 'No Firebase user found');
-                return false;
-            }
-            this.log('SUCCESS', 'Firebase user found', { uid: firebaseUser.uid });
-            
-            // Test 2: Get Firebase Token
-            this.log('TEST', 'Getting Firebase ID token...');
-            const firebaseToken = await firebaseUser.getIdToken();
-            this.log('SUCCESS', 'Firebase token obtained', { 
-                tokenLength: firebaseToken.length,
-                tokenPreview: firebaseToken.substring(0, 20) + '...'
-            });
-            
-            // Test 3: Exchange for JWT
-            this.log('TEST', 'Exchanging for server JWT...');
-            const authService = new AuthenticationService();
-            const jwtToken = await authService.authenticateWithFirebase(firebaseUser);
-            this.log('SUCCESS', 'JWT token obtained', {
-                tokenLength: jwtToken.length,
-                tokenPreview: jwtToken.substring(0, 20) + '...'
-            });
-            
-            // Test 4: Make authenticated request
-            this.log('TEST', 'Making test authenticated request...');
-            const response = await fetch(`${BASE_URL}/api/health/auth`, {
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`
-                }
-            });
-            this.log('SUCCESS', 'Authenticated request completed', {
-                status: response.status,
-                statusText: response.statusText
-            });
-            
-            return true;
-        } catch (error) {
-            this.log('ERROR', 'Authentication flow test failed', error);
-            return false;
-        }
-    }
-}
-```
-
----
-
-## Technical Requirements
-
-### Mobile App Requirements
-1. **Dependencies**:
-   - `expo-secure-store` for secure token storage
-   - `expo-constants` for app version info
-   - Firebase SDK properly configured
-
-2. **Environment Variables**:
-   ```env
-   REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-   REACT_APP_FIREBASE_API_KEY=your-firebase-api-key
-   REACT_APP_FIREBASE_AUTH_DOMAIN=your-auth-domain
-   ```
-
-3. **Platform Detection**:
-   - Use React Native's `Platform` API
-   - Correctly identify as "mobile" not "web"
-
-### Server Requirements
-1. **NuGet Packages**:
-   - `FirebaseAdmin` for token verification
-   - `Microsoft.AspNetCore.Authentication.JwtBearer`
-   - `Microsoft.AspNetCore.Cors`
-
-2. **Configuration**:
-   ```json
-   {
-     "Jwt": {
-       "Secret": "your-jwt-secret-key",
-       "Issuer": "sociallyfed-server",
-       "Audience": "sociallyfed-mobile"
-     },
-     "Firebase": {
-       "ProjectId": "your-firebase-project-id"
-     }
-   }
-   ```
-
-3. **Middleware Order** (Critical):
-   ```csharp
-   app.UseCors("SociallyFedMobilePolicy");
-   app.UseAuthentication();
-   app.UseAuthorization();
-   ```
 
 ---
 
 ## Integration Points to Consider
 
-### 1. Firebase ↔ Server Integration
-- Firebase Admin SDK on server for token verification
-- Proper service account credentials
-- Token expiry synchronization
+### 1. Multiple Deployment URLs
+- **Primary**: `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app` (currently active)
+- **Secondary**: `sociallyfed-mobile-512204327023.us-central1.run.app` (claimed fixes)
+- **Action**: Consolidate to single deployment or implement proper routing
 
-### 2. Mobile ↔ Server API Contract
-- Consistent platform identifiers
-- Proper HTTP headers
-- Error response formats
+### 2. Firebase Configuration
+- Ensure Firebase config matches between environments
+- Verify Firebase project ID is correct
+- Check Firebase auth domain is whitelisted
 
-### 3. Token Lifecycle Management
-- Token refresh strategy
-- Secure storage on mobile
-- Session management
+### 3. Server Endpoints
+- **Working**: `/api/accounts/sync` (correct path)
+- **Not Working**: `/accounts/sync` (wrong path mobile is using)
+- **Missing**: `/api/auth/exchange` (needs server implementation)
 
-### 4. CORS & Security
-- Whitelisted origins
-- Preflight request handling
-- Security headers
-
-### 5. Monitoring & Logging
-- Authentication success/failure rates
-- Token expiry patterns
-- API response times
+### 4. CORS Configuration
+- Server must whitelist both mobile URLs
+- Include proper headers for authentication
+- Handle preflight requests correctly
 
 ---
 
 ## Definition of Done for Today's Work
 
-### ✅ CORS Configuration (Server)
-- [ ] CORS policy added to server startup
-- [ ] Mobile app origin whitelisted
-- [ ] Preflight requests return 200 OK
-- [ ] Test: OPTIONS request to /api/accounts/sync succeeds
+### ✅ Code Audit Complete
+- [ ] Verified AuthenticationService.ts exists
+- [ ] Verified ApiInterceptor.ts exists
+- [ ] Confirmed ServerApiService uses `/api/accounts/sync`
+- [ ] Confirmed platform sends "mobile" not "web"
+- [ ] Firebase properly initialized and exported
 
-### ✅ Authentication Service (Mobile)
-- [ ] Firebase token exchange implemented
-- [ ] JWT token storage using SecureStore
-- [ ] Token refresh logic implemented
-- [ ] Test: Can obtain and store JWT token
+### ✅ Critical Fixes Applied
+- [ ] API path corrected to `/api/accounts/sync`
+- [ ] Platform identification returns "mobile"
+- [ ] Firebase accessible in window scope
+- [ ] Encryption keys loading screen can be bypassed
 
-### ✅ API Interceptor (Mobile)
-- [ ] Authorization header automatically added
-- [ ] Platform header correctly set to "mobile"
-- [ ] Token refresh on 401 response
-- [ ] Test: Authenticated requests include proper headers
+### ✅ Build Successful
+- [ ] Production build completes without errors
+- [ ] Build output contains correct API URLs
+- [ ] Bundle size < 1MB gzipped
+- [ ] Environment variables properly injected
 
-### ✅ Token Exchange Endpoint (Server)
-- [ ] /api/auth/exchange endpoint created
-- [ ] Firebase token verification working
-- [ ] JWT generation with proper claims
-- [ ] Test: Valid Firebase token returns JWT
+### ✅ Deployment Verified
+- [ ] Deployed to `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`
+- [ ] Health check returns 200 OK
+- [ ] No 404 errors on static resources
+- [ ] Deployment URL confirmed and documented
 
-### ✅ Platform Parameter Fix (Mobile)
-- [ ] All API calls use "mobile" platform
-- [ ] Platform detection using React Native API
-- [ ] Remove hardcoded "web" platform values
-- [ ] Test: Server logs show "platform: mobile"
+### ✅ Integration Tests Pass
+- [ ] Login flow completes without getting stuck
+- [ ] Network requests use `/api/accounts/sync`
+- [ ] Platform header shows "mobile"
+- [ ] Firebase accessible in browser console
+- [ ] Authentication token can be obtained
 
-### ✅ Debug Logging System
-- [ ] Authentication flow logging implemented
-- [ ] Test authentication flow command works
-- [ ] Logs exportable for debugging
-- [ ] Test: Can identify exact failure point
-
-### ✅ End-to-End Testing
-- [ ] User can log in via Firebase
-- [ ] Token exchange succeeds
-- [ ] /api/accounts/sync returns 200 OK
-- [ ] Professional services endpoints accessible
-- [ ] No CORS errors in console
-
-### ✅ Documentation
-- [ ] Authentication flow documented
-- [ ] Troubleshooting guide created
-- [ ] Environment variables documented
+### ✅ Documentation Updated
+- [ ] Deployment URLs documented
+- [ ] Known issues list updated
 - [ ] Implementation report generated
+- [ ] Runbook for future deployments created
 
 ---
 
 ## Success Metrics
-1. **Primary**: Mobile app can successfully sync with server (200 OK response)
-2. **Authentication**: 0 unexpected 401 errors after login
-3. **CORS**: 0 CORS policy violations in browser console
-4. **Performance**: Authentication flow completes in < 3 seconds
-5. **Reliability**: Token refresh works without user intervention
+1. **Primary**: Zero 401 errors after successful login
+2. **API Paths**: 100% of sync requests use `/api/accounts/sync`
+3. **Platform**: All requests identify as "mobile"
+4. **Firebase**: `window.firebase` accessible in console
+5. **Login Flow**: Completes in < 5 seconds without getting stuck
+
+---
+
+## Next Steps After Deployment
+
+### Immediate (Today)
+1. Monitor Cloud Run logs for errors
+2. Test complete user journey from login to sync
+3. Verify professional services integration
+4. Document any remaining issues
+
+### Short-term (This Week)
+1. Implement `/api/auth/exchange` endpoint on server
+2. Add comprehensive error handling
+3. Implement token refresh mechanism
+4. Set up monitoring and alerting
+
+### Long-term (Next Sprint)
+1. Refactor authentication architecture
+2. Implement proper Firebase persistence
+3. Add integration test suite
+4. Consider migrating to single deployment URL
 
 ---
 
 ## Rollback Plan
-If authentication changes cause issues:
-1. Revert CORS configuration to previous state
-2. Disable token exchange endpoint
-3. Fall back to direct Firebase authentication
-4. Document all issues for next iteration
+If deployment causes critical issues:
+```bash
+# Rollback to previous revision
+gcloud run revisions list --service=sociallyfed-mobile-sqdd3g2eea --region=us-central1
+
+# Deploy previous working revision
+gcloud run services update-traffic sociallyfed-mobile-sqdd3g2eea \
+  --region=us-central1 \
+  --to-revisions=PREVIOUS_REVISION_ID=100
+```
 
 ---
 
-## Notes for Implementation Team
-- Start with CORS fix - it's the quickest win
-- Test each component in isolation before integration
-- Keep Firebase console open to monitor auth events
-- Use browser DevTools Network tab extensively
-- Save all error messages and stack traces
-- Consider implementing a feature flag for new auth flow
+## Critical Notes
+
+### ⚠️ Known Issues Not Yet Fixed
+1. **Server Missing Endpoint**: `/api/auth/exchange` doesn't exist - needs server deployment
+2. **Firebase Persistence**: Auth doesn't survive page refresh
+3. **Token Management**: No automatic token refresh implemented
+4. **Error Handling**: No user-friendly error messages
+
+### 🔴 Deployment Confusion
+- Two different Cloud Run services with different URLs
+- Fixes deployed to wrong URL in previous attempt
+- Need to consolidate or clearly document which is production
+
+### ✅ What IS Working
+- Server is fully operational at correct URL
+- CORS partially configured
+- Health endpoints responding
+- Static assets serving correctly
 
 ---
 
-*Brief generated for sprint starting 2025-08-08*
-*Priority: P0 CRITICAL - System functionality blocked without authentication*
+*Brief generated for deployment audit on 2025-08-09*
+*Priority: P0 CRITICAL - Mobile app non-functional without these fixes*
+*Estimated completion: 4-6 hours including testing*
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -1734,536 +1539,341 @@ interface UnifiedProfessionalWorkflow {
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# Daily Brief - Authentication Fix Sprint
-## Date: 2025-08-08
-## Priority: P0 CRITICAL - Authentication Flow Recovery
+# Daily Brief - Mobile Deployment Audit & Recovery
+## Date: 2025-08-09
+## Priority: P0 CRITICAL - Verify & Deploy Authentication Fixes
 
 ### Executive Summary
-The mobile app is receiving 401 Unauthorized errors when attempting to sync with the server despite both services being operational. The root causes appear to be CORS configuration, token management, and platform identification mismatches. Today's sprint will systematically address each authentication layer to restore mobile-server connectivity.
+Analysis reveals that the August 9th mobile authentication fixes were NOT successfully deployed to the active URL (`sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`). The mobile app continues to exhibit all original bugs: wrong API paths, incorrect platform identification, and broken Firebase integration. The server is confirmed operational. Today's sprint will audit the supposedly fixed code, rebuild, and deploy to the correct Google Cloud Run instance.
 
 ---
 
 ## Today's Implementation Priorities
 
-### Priority 1: CORS Configuration Fix (CRITICAL)
-**Objective**: Enable cross-origin requests from mobile app to server
-**Time Estimate**: 1-2 hours
-**Blocking**: All API communications
-
-### Priority 2: Authentication Token Flow (CRITICAL)
-**Objective**: Establish proper JWT token generation and validation pipeline
-**Time Estimate**: 2-3 hours
-**Blocking**: All authenticated operations
-
-### Priority 3: Platform Parameter Correction (HIGH)
-**Objective**: Ensure mobile app correctly identifies itself to server
-**Time Estimate**: 30 minutes
-**Impact**: Request validation and audit trails
-
-### Priority 4: Firebase-to-JWT Token Exchange (HIGH)
-**Objective**: Implement proper token exchange mechanism
-**Time Estimate**: 2 hours
-**Impact**: User authentication flow
-
-### Priority 5: Debugging & Monitoring Setup (MEDIUM)
-**Objective**: Add comprehensive logging for authentication flow
+### Priority 1: Code Audit & Verification (CRITICAL)
+**Objective**: Verify that authentication fixes actually exist in the codebase
 **Time Estimate**: 1 hour
-**Impact**: Future troubleshooting capability
+**Blocking**: All subsequent deployment activities
+
+### Priority 2: Firebase Integration Repair (CRITICAL)
+**Objective**: Fix Firebase initialization and accessibility issues
+**Time Estimate**: 2 hours
+**Blocking**: Entire authentication flow
+
+### Priority 3: Build & Deploy to Correct URL (CRITICAL)
+**Objective**: Deploy working code to the active mobile URL
+**Time Estimate**: 1-2 hours
+**Impact**: All mobile functionality
+
+### Priority 4: Integration Testing (HIGH)
+**Objective**: Verify end-to-end authentication flow works
+**Time Estimate**: 1 hour
+**Impact**: User experience
+
+### Priority 5: URL Consolidation (MEDIUM)
+**Objective**: Eliminate confusion between multiple deployment URLs
+**Time Estimate**: 30 minutes
+**Impact**: Future maintenance
 
 ---
 
-## Specific Features to Build
+## Specific Tasks to Complete
 
-### 1. CORS Middleware Configuration (Server-side)
-```csharp
-// File: server/Program.cs or Startup.cs
-public class CorsConfiguration
-{
-    public static void Configure(WebApplicationBuilder builder)
-    {
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("SociallyFedMobilePolicy",
-                policy =>
-                {
-                    policy.WithOrigins(
-                        "https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app",
-                        "http://localhost:3000", // Development
-                        "http://localhost:19006" // Expo development
-                    )
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials()
-                    .WithExposedHeaders("Authorization", "Content-Type");
-                });
-        });
-    }
-}
+### 1. Audit Mobile Codebase for Claimed Fixes
+```bash
+# Navigate to mobile repository
+cd /home/ben/Development/sociallyfed-mobile
+
+# Check if authentication fixes exist
+echo "=== Checking for AuthenticationService ==="
+ls -la baseline/src/services/AuthenticationService.ts
+
+echo "=== Checking for ApiInterceptor ==="
+ls -la baseline/src/services/ApiInterceptor.ts
+
+echo "=== Checking ServerApiService for correct path ==="
+grep -n "accounts/sync" baseline/src/services/ServerApiService.ts
+grep -n "/api/accounts/sync" baseline/src/services/ServerApiService.ts
+
+echo "=== Checking platform identification ==="
+grep -n "platform.*web" baseline/src/services/*.ts
+grep -n "platform.*mobile" baseline/src/services/*.ts
+
+echo "=== Checking Firebase configuration ==="
+grep -n "firebase" baseline/src/firebase.ts
+grep -n "Firebase" baseline/src/App.tsx
 ```
 
-### 2. Authentication Service Enhancement (Mobile-side)
+### 2. Fix Critical Issues If Not Present
 ```typescript
-// File: mobile/src/services/AuthenticationService.ts
-export class AuthenticationService {
-    private jwtToken: string | null = null;
-    private tokenExpiry: Date | null = null;
-    
-    async authenticateWithFirebase(firebaseUser: any): Promise<string> {
-        try {
-            // Step 1: Get Firebase ID token
-            const firebaseToken = await firebaseUser.getIdToken();
-            
-            // Step 2: Exchange for server JWT
-            const response = await fetch(`${this.baseUrl}/api/auth/exchange`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    firebaseToken,
-                    platform: 'mobile', // Correct platform identifier
-                    deviceInfo: {
-                        platform: Platform.OS,
-                        version: Platform.Version,
-                    }
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Token exchange failed: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            this.jwtToken = data.token;
-            this.tokenExpiry = new Date(data.expiry);
-            
-            // Store token securely
-            await SecureStore.setItemAsync('jwt_token', this.jwtToken);
-            await SecureStore.setItemAsync('token_expiry', data.expiry);
-            
-            return this.jwtToken;
-        } catch (error) {
-            console.error('Authentication failed:', error);
-            throw error;
+// File: baseline/src/services/ServerApiService.ts
+// MUST CHANGE: Line with wrong path
+// FROM: const syncUrl = `${this.baseUrl}/accounts/sync`;
+// TO:   const syncUrl = `${this.baseUrl}/api/accounts/sync`;
+
+// File: baseline/src/helpers.tsx
+// MUST UPDATE: getPlatformIdentifier function
+export function getPlatformIdentifier(): string {
+    // Fix platform detection
+    if (typeof window !== 'undefined' && window.navigator) {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        if (userAgent.includes('mobile') || userAgent.includes('android') || userAgent.includes('iphone')) {
+            return 'mobile';
         }
     }
-    
-    async getValidToken(): Promise<string | null> {
-        // Check if token exists and is not expired
-        if (this.jwtToken && this.tokenExpiry && this.tokenExpiry > new Date()) {
-            return this.jwtToken;
-        }
-        
-        // Try to refresh token
-        return await this.refreshToken();
-    }
-    
-    private async refreshToken(): Promise<string | null> {
-        // Implementation for token refresh
-        const storedToken = await SecureStore.getItemAsync('jwt_token');
-        const storedExpiry = await SecureStore.getItemAsync('token_expiry');
-        
-        if (storedToken && storedExpiry) {
-            const expiry = new Date(storedExpiry);
-            if (expiry > new Date()) {
-                this.jwtToken = storedToken;
-                this.tokenExpiry = expiry;
-                return storedToken;
-            }
-        }
-        
-        // Token expired or not found - need to re-authenticate
-        return null;
-    }
+    return 'mobile'; // Default to mobile for this app
+}
+
+// File: baseline/src/firebase.ts
+// ENSURE: Firebase is properly initialized and exported
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+
+const firebaseConfig = {
+    // Your config here
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
+// Make Firebase globally accessible for debugging
+if (typeof window !== 'undefined') {
+    window.firebase = { app, auth };
 }
 ```
 
-### 3. API Request Interceptor (Mobile-side)
-```typescript
-// File: mobile/src/services/ApiInterceptor.ts
-export class ApiInterceptor {
-    private authService: AuthenticationService;
-    
-    constructor(authService: AuthenticationService) {
-        this.authService = authService;
-    }
-    
-    async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
-        const token = await this.authService.getValidToken();
-        
-        if (!token) {
-            throw new Error('No valid authentication token available');
-        }
-        
-        const enhancedOptions: RequestInit = {
-            ...options,
-            headers: {
-                ...options.headers,
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'X-Platform': 'mobile',
-                'X-App-Version': Constants.manifest?.version || '1.0.0',
-            }
-        };
-        
-        console.log(`[API] Request to: ${url}`);
-        console.log(`[API] Headers:`, enhancedOptions.headers);
-        
-        const response = await fetch(url, enhancedOptions);
-        
-        console.log(`[API] Response status: ${response.status}`);
-        
-        if (response.status === 401) {
-            console.log('[API] Token expired, attempting refresh...');
-            // Try to refresh token once
-            const newToken = await this.authService.refreshToken();
-            if (newToken) {
-                enhancedOptions.headers['Authorization'] = `Bearer ${newToken}`;
-                return fetch(url, enhancedOptions);
-            }
-        }
-        
-        return response;
-    }
-}
+### 3. Build Production Version
+```bash
+# Clean previous builds
+rm -rf build/
+rm -rf node_modules/.cache/
+
+# Install dependencies
+npm install
+
+# Build with production environment
+export NODE_ENV=production
+export REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+npm run build
+
+# Verify build output
+echo "=== Checking build for correct API URL ==="
+grep -r "sociallyfed-server" build/
+grep -r "/accounts/sync" build/
+grep -r "/api/accounts/sync" build/
+
+# Check bundle size
+du -sh build/static/js/*.js
 ```
 
-### 4. Sync Service Update (Mobile-side)
-```typescript
-// File: mobile/src/services/ServerApiService.ts
-export class ServerApiService {
-    private apiInterceptor: ApiInterceptor;
-    
-    async syncAccount(userId: string, platform: string = 'mobile'): Promise<any> {
-        const syncData = {
-            timestamp: new Date().toISOString(),
-            level: "INFO",
-            module: "ApplicationLifecycle",
-            message: `Syncing user data`,
-            platform: platform, // Use correct platform identifier
-            userId: userId,
-            offset: 600 // timezone offset
-        };
-        
-        try {
-            const response = await this.apiInterceptor.makeAuthenticatedRequest(
-                `${this.baseUrl}/api/accounts/sync`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify(syncData)
-                }
-            );
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[Sync] Failed: ${response.status} - ${errorText}`);
-                throw new Error(`Sync failed: ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('[Sync] Error:', error);
-            throw error;
-        }
-    }
-}
+### 4. Deploy to Google Cloud Run
+```bash
+# Build Docker image
+docker build -t gcr.io/sociallyfed/sociallyfed-mobile:latest .
+
+# Push to Google Container Registry
+docker push gcr.io/sociallyfed/sociallyfed-mobile:latest
+
+# Deploy to the ACTIVE URL (sqdd3g2eea)
+gcloud run deploy sociallyfed-mobile-sqdd3g2eea \
+  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
+  --platform managed \
+  --region us-central1 \
+  --memory 1Gi \
+  --cpu 1 \
+  --timeout 300 \
+  --concurrency 1000 \
+  --max-instances 20 \
+  --allow-unauthenticated
+
+# Get deployment URL
+echo "=== Deployment URL ==="
+gcloud run services describe sociallyfed-mobile-sqdd3g2eea \
+  --platform managed \
+  --region us-central1 \
+  --format 'value(status.url)'
+
+# Also update the other deployment for consistency
+gcloud run deploy sociallyfed-mobile \
+  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
 ```
 
-### 5. Token Exchange Endpoint (Server-side)
-```csharp
-// File: server/Controllers/AuthController.cs
-[ApiController]
-[Route("api/auth")]
-public class AuthController : ControllerBase
-{
-    private readonly IFirebaseAuth _firebaseAuth;
-    private readonly IJwtService _jwtService;
-    private readonly ILogger<AuthController> _logger;
-    
-    [HttpPost("exchange")]
-    public async Task<IActionResult> ExchangeToken([FromBody] TokenExchangeRequest request)
-    {
-        try
-        {
-            _logger.LogInformation($"Token exchange request from platform: {request.Platform}");
-            
-            // Verify Firebase token
-            var decodedToken = await _firebaseAuth.VerifyIdTokenAsync(request.FirebaseToken);
-            if (decodedToken == null)
-            {
-                _logger.LogWarning("Invalid Firebase token provided");
-                return Unauthorized("Invalid Firebase token");
-            }
-            
-            // Create JWT token for our server
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, decodedToken.Uid),
-                new Claim(ClaimTypes.Email, decodedToken.Claims["email"]?.ToString() ?? ""),
-                new Claim("platform", request.Platform),
-                new Claim("firebase_uid", decodedToken.Uid)
-            };
-            
-            var token = _jwtService.GenerateToken(claims, TimeSpan.FromHours(24));
-            
-            _logger.LogInformation($"Token generated for user: {decodedToken.Uid}");
-            
-            return Ok(new
-            {
-                token = token,
-                expiry = DateTime.UtcNow.AddHours(24),
-                userId = decodedToken.Uid
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Token exchange failed");
-            return StatusCode(500, "Token exchange failed");
-        }
-    }
+### 5. Post-Deployment Verification Tests
+```javascript
+// Run these tests in browser console after deployment
+
+// Test 1: Verify correct API path
+console.log('Test 1: API Path Check');
+fetch('https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app/test', {
+    method: 'POST',
+    body: JSON.stringify({test: true})
+}).then(() => {
+    // Check Network tab - should show /api/accounts/sync not /accounts/sync
+    console.log('Check Network tab for API paths');
+});
+
+// Test 2: Verify Firebase is accessible
+console.log('Test 2: Firebase Availability');
+if (typeof firebase !== 'undefined') {
+    console.log('✅ Firebase is accessible');
+    console.log('Firebase auth:', firebase.auth);
+} else {
+    console.log('❌ Firebase NOT accessible - critical issue');
 }
 
-public class TokenExchangeRequest
-{
-    public string FirebaseToken { get; set; }
-    public string Platform { get; set; }
-    public DeviceInfo DeviceInfo { get; set; }
-}
+// Test 3: Platform identification
+console.log('Test 3: Platform Check');
+// Create a test sync request and check the platform value
+const testData = {
+    platform: 'web', // This should be changed to 'mobile' by the app
+    timestamp: new Date().toISOString()
+};
+console.log('Original platform:', testData.platform);
+// The app should change this to 'mobile'
+
+// Test 4: Authentication flow
+console.log('Test 4: Login Flow');
+// Try to login and watch for "getting encryption keys" stuck state
+console.log('Attempt login and check if it completes successfully');
 ```
-
-### 6. Debug Logging System (Mobile-side)
-```typescript
-// File: mobile/src/utils/AuthDebugger.ts
-export class AuthDebugger {
-    private static logs: string[] = [];
-    
-    static log(category: string, message: string, data?: any) {
-        const timestamp = new Date().toISOString();
-        const logEntry = `[${timestamp}] [${category}] ${message}`;
-        
-        console.log(logEntry, data || '');
-        this.logs.push(logEntry);
-        
-        // Store last 100 logs
-        if (this.logs.length > 100) {
-            this.logs.shift();
-        }
-    }
-    
-    static async exportLogs(): Promise<string> {
-        return this.logs.join('\n');
-    }
-    
-    static async testAuthenticationFlow() {
-        this.log('TEST', 'Starting authentication flow test');
-        
-        try {
-            // Test 1: Firebase Authentication
-            this.log('TEST', 'Testing Firebase authentication...');
-            const firebaseUser = await firebase.auth().currentUser;
-            if (!firebaseUser) {
-                this.log('ERROR', 'No Firebase user found');
-                return false;
-            }
-            this.log('SUCCESS', 'Firebase user found', { uid: firebaseUser.uid });
-            
-            // Test 2: Get Firebase Token
-            this.log('TEST', 'Getting Firebase ID token...');
-            const firebaseToken = await firebaseUser.getIdToken();
-            this.log('SUCCESS', 'Firebase token obtained', { 
-                tokenLength: firebaseToken.length,
-                tokenPreview: firebaseToken.substring(0, 20) + '...'
-            });
-            
-            // Test 3: Exchange for JWT
-            this.log('TEST', 'Exchanging for server JWT...');
-            const authService = new AuthenticationService();
-            const jwtToken = await authService.authenticateWithFirebase(firebaseUser);
-            this.log('SUCCESS', 'JWT token obtained', {
-                tokenLength: jwtToken.length,
-                tokenPreview: jwtToken.substring(0, 20) + '...'
-            });
-            
-            // Test 4: Make authenticated request
-            this.log('TEST', 'Making test authenticated request...');
-            const response = await fetch(`${BASE_URL}/api/health/auth`, {
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`
-                }
-            });
-            this.log('SUCCESS', 'Authenticated request completed', {
-                status: response.status,
-                statusText: response.statusText
-            });
-            
-            return true;
-        } catch (error) {
-            this.log('ERROR', 'Authentication flow test failed', error);
-            return false;
-        }
-    }
-}
-```
-
----
-
-## Technical Requirements
-
-### Mobile App Requirements
-1. **Dependencies**:
-   - `expo-secure-store` for secure token storage
-   - `expo-constants` for app version info
-   - Firebase SDK properly configured
-
-2. **Environment Variables**:
-   ```env
-   REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-   REACT_APP_FIREBASE_API_KEY=your-firebase-api-key
-   REACT_APP_FIREBASE_AUTH_DOMAIN=your-auth-domain
-   ```
-
-3. **Platform Detection**:
-   - Use React Native's `Platform` API
-   - Correctly identify as "mobile" not "web"
-
-### Server Requirements
-1. **NuGet Packages**:
-   - `FirebaseAdmin` for token verification
-   - `Microsoft.AspNetCore.Authentication.JwtBearer`
-   - `Microsoft.AspNetCore.Cors`
-
-2. **Configuration**:
-   ```json
-   {
-     "Jwt": {
-       "Secret": "your-jwt-secret-key",
-       "Issuer": "sociallyfed-server",
-       "Audience": "sociallyfed-mobile"
-     },
-     "Firebase": {
-       "ProjectId": "your-firebase-project-id"
-     }
-   }
-   ```
-
-3. **Middleware Order** (Critical):
-   ```csharp
-   app.UseCors("SociallyFedMobilePolicy");
-   app.UseAuthentication();
-   app.UseAuthorization();
-   ```
 
 ---
 
 ## Integration Points to Consider
 
-### 1. Firebase ↔ Server Integration
-- Firebase Admin SDK on server for token verification
-- Proper service account credentials
-- Token expiry synchronization
+### 1. Multiple Deployment URLs
+- **Primary**: `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app` (currently active)
+- **Secondary**: `sociallyfed-mobile-512204327023.us-central1.run.app` (claimed fixes)
+- **Action**: Consolidate to single deployment or implement proper routing
 
-### 2. Mobile ↔ Server API Contract
-- Consistent platform identifiers
-- Proper HTTP headers
-- Error response formats
+### 2. Firebase Configuration
+- Ensure Firebase config matches between environments
+- Verify Firebase project ID is correct
+- Check Firebase auth domain is whitelisted
 
-### 3. Token Lifecycle Management
-- Token refresh strategy
-- Secure storage on mobile
-- Session management
+### 3. Server Endpoints
+- **Working**: `/api/accounts/sync` (correct path)
+- **Not Working**: `/accounts/sync` (wrong path mobile is using)
+- **Missing**: `/api/auth/exchange` (needs server implementation)
 
-### 4. CORS & Security
-- Whitelisted origins
-- Preflight request handling
-- Security headers
-
-### 5. Monitoring & Logging
-- Authentication success/failure rates
-- Token expiry patterns
-- API response times
+### 4. CORS Configuration
+- Server must whitelist both mobile URLs
+- Include proper headers for authentication
+- Handle preflight requests correctly
 
 ---
 
 ## Definition of Done for Today's Work
 
-### ✅ CORS Configuration (Server)
-- [ ] CORS policy added to server startup
-- [ ] Mobile app origin whitelisted
-- [ ] Preflight requests return 200 OK
-- [ ] Test: OPTIONS request to /api/accounts/sync succeeds
+### ✅ Code Audit Complete
+- [ ] Verified AuthenticationService.ts exists
+- [ ] Verified ApiInterceptor.ts exists
+- [ ] Confirmed ServerApiService uses `/api/accounts/sync`
+- [ ] Confirmed platform sends "mobile" not "web"
+- [ ] Firebase properly initialized and exported
 
-### ✅ Authentication Service (Mobile)
-- [ ] Firebase token exchange implemented
-- [ ] JWT token storage using SecureStore
-- [ ] Token refresh logic implemented
-- [ ] Test: Can obtain and store JWT token
+### ✅ Critical Fixes Applied
+- [ ] API path corrected to `/api/accounts/sync`
+- [ ] Platform identification returns "mobile"
+- [ ] Firebase accessible in window scope
+- [ ] Encryption keys loading screen can be bypassed
 
-### ✅ API Interceptor (Mobile)
-- [ ] Authorization header automatically added
-- [ ] Platform header correctly set to "mobile"
-- [ ] Token refresh on 401 response
-- [ ] Test: Authenticated requests include proper headers
+### ✅ Build Successful
+- [ ] Production build completes without errors
+- [ ] Build output contains correct API URLs
+- [ ] Bundle size < 1MB gzipped
+- [ ] Environment variables properly injected
 
-### ✅ Token Exchange Endpoint (Server)
-- [ ] /api/auth/exchange endpoint created
-- [ ] Firebase token verification working
-- [ ] JWT generation with proper claims
-- [ ] Test: Valid Firebase token returns JWT
+### ✅ Deployment Verified
+- [ ] Deployed to `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`
+- [ ] Health check returns 200 OK
+- [ ] No 404 errors on static resources
+- [ ] Deployment URL confirmed and documented
 
-### ✅ Platform Parameter Fix (Mobile)
-- [ ] All API calls use "mobile" platform
-- [ ] Platform detection using React Native API
-- [ ] Remove hardcoded "web" platform values
-- [ ] Test: Server logs show "platform: mobile"
+### ✅ Integration Tests Pass
+- [ ] Login flow completes without getting stuck
+- [ ] Network requests use `/api/accounts/sync`
+- [ ] Platform header shows "mobile"
+- [ ] Firebase accessible in browser console
+- [ ] Authentication token can be obtained
 
-### ✅ Debug Logging System
-- [ ] Authentication flow logging implemented
-- [ ] Test authentication flow command works
-- [ ] Logs exportable for debugging
-- [ ] Test: Can identify exact failure point
-
-### ✅ End-to-End Testing
-- [ ] User can log in via Firebase
-- [ ] Token exchange succeeds
-- [ ] /api/accounts/sync returns 200 OK
-- [ ] Professional services endpoints accessible
-- [ ] No CORS errors in console
-
-### ✅ Documentation
-- [ ] Authentication flow documented
-- [ ] Troubleshooting guide created
-- [ ] Environment variables documented
+### ✅ Documentation Updated
+- [ ] Deployment URLs documented
+- [ ] Known issues list updated
 - [ ] Implementation report generated
+- [ ] Runbook for future deployments created
 
 ---
 
 ## Success Metrics
-1. **Primary**: Mobile app can successfully sync with server (200 OK response)
-2. **Authentication**: 0 unexpected 401 errors after login
-3. **CORS**: 0 CORS policy violations in browser console
-4. **Performance**: Authentication flow completes in < 3 seconds
-5. **Reliability**: Token refresh works without user intervention
+1. **Primary**: Zero 401 errors after successful login
+2. **API Paths**: 100% of sync requests use `/api/accounts/sync`
+3. **Platform**: All requests identify as "mobile"
+4. **Firebase**: `window.firebase` accessible in console
+5. **Login Flow**: Completes in < 5 seconds without getting stuck
+
+---
+
+## Next Steps After Deployment
+
+### Immediate (Today)
+1. Monitor Cloud Run logs for errors
+2. Test complete user journey from login to sync
+3. Verify professional services integration
+4. Document any remaining issues
+
+### Short-term (This Week)
+1. Implement `/api/auth/exchange` endpoint on server
+2. Add comprehensive error handling
+3. Implement token refresh mechanism
+4. Set up monitoring and alerting
+
+### Long-term (Next Sprint)
+1. Refactor authentication architecture
+2. Implement proper Firebase persistence
+3. Add integration test suite
+4. Consider migrating to single deployment URL
 
 ---
 
 ## Rollback Plan
-If authentication changes cause issues:
-1. Revert CORS configuration to previous state
-2. Disable token exchange endpoint
-3. Fall back to direct Firebase authentication
-4. Document all issues for next iteration
+If deployment causes critical issues:
+```bash
+# Rollback to previous revision
+gcloud run revisions list --service=sociallyfed-mobile-sqdd3g2eea --region=us-central1
+
+# Deploy previous working revision
+gcloud run services update-traffic sociallyfed-mobile-sqdd3g2eea \
+  --region=us-central1 \
+  --to-revisions=PREVIOUS_REVISION_ID=100
+```
 
 ---
 
-## Notes for Implementation Team
-- Start with CORS fix - it's the quickest win
-- Test each component in isolation before integration
-- Keep Firebase console open to monitor auth events
-- Use browser DevTools Network tab extensively
-- Save all error messages and stack traces
-- Consider implementing a feature flag for new auth flow
+## Critical Notes
+
+### ⚠️ Known Issues Not Yet Fixed
+1. **Server Missing Endpoint**: `/api/auth/exchange` doesn't exist - needs server deployment
+2. **Firebase Persistence**: Auth doesn't survive page refresh
+3. **Token Management**: No automatic token refresh implemented
+4. **Error Handling**: No user-friendly error messages
+
+### 🔴 Deployment Confusion
+- Two different Cloud Run services with different URLs
+- Fixes deployed to wrong URL in previous attempt
+- Need to consolidate or clearly document which is production
+
+### ✅ What IS Working
+- Server is fully operational at correct URL
+- CORS partially configured
+- Health endpoints responding
+- Static assets serving correctly
 
 ---
 
-*Brief generated for sprint starting 2025-08-08*
-*Priority: P0 CRITICAL - System functionality blocked without authentication*
+*Brief generated for deployment audit on 2025-08-09*
+*Priority: P0 CRITICAL - Mobile app non-functional without these fixes*
+*Estimated completion: 4-6 hours including testing*
