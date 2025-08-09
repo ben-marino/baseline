@@ -175,349 +175,985 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Sat 09 Aug 2025 07:11:00 AEST
+## Session Started: Sat 09 Aug 2025 07:56:51 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - Mobile Deployment Audit & Recovery
+# Daily Brief - Feature Flag Implementation & Simplified Authentication
 ## Date: 2025-08-09
-## Priority: P0 CRITICAL - Verify & Deploy Authentication Fixes
+## Priority: P0 CRITICAL - Strip Complexity, Enable Basic Authentication
 
 ### Executive Summary
-Analysis reveals that the August 9th mobile authentication fixes were NOT successfully deployed to the active URL (`sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`). The mobile app continues to exhibit all original bugs: wrong API paths, incorrect platform identification, and broken Firebase integration. The server is confirmed operational. Today's sprint will audit the supposedly fixed code, rebuild, and deploy to the correct Google Cloud Run instance.
+The mobile application is currently overengineered with multi-tenant, professional services, and complex encryption features that are preventing basic authentication from working. Today's sprint will implement comprehensive feature flags to disable all complex features, focusing solely on getting a single user to successfully authenticate and sync with the server. This staged approach will establish a working baseline before progressively re-enabling advanced features.
 
 ---
 
 ## Today's Implementation Priorities
 
-### Priority 1: Code Audit & Verification (CRITICAL)
-**Objective**: Verify that authentication fixes actually exist in the codebase
-**Time Estimate**: 1 hour
-**Blocking**: All subsequent deployment activities
-
-### Priority 2: Firebase Integration Repair (CRITICAL)
-**Objective**: Fix Firebase initialization and accessibility issues
-**Time Estimate**: 2 hours
-**Blocking**: Entire authentication flow
-
-### Priority 3: Build & Deploy to Correct URL (CRITICAL)
-**Objective**: Deploy working code to the active mobile URL
-**Time Estimate**: 1-2 hours
-**Impact**: All mobile functionality
-
-### Priority 4: Integration Testing (HIGH)
-**Objective**: Verify end-to-end authentication flow works
-**Time Estimate**: 1 hour
-**Impact**: User experience
-
-### Priority 5: URL Consolidation (MEDIUM)
-**Objective**: Eliminate confusion between multiple deployment URLs
+### Priority 1: Create Feature Flag Infrastructure (CRITICAL)
+**Objective**: Implement centralized feature flag system to control all complex features
 **Time Estimate**: 30 minutes
-**Impact**: Future maintenance
+**Blocking**: All subsequent simplification work
+**Impact**: Enables/disables entire feature sets with single configuration change
+
+### Priority 2: Disable Encryption Keys Flow (CRITICAL)
+**Objective**: Bypass "Getting your encryption keys" stuck screen
+**Time Estimate**: 1 hour
+**Blocking**: User login completion
+**Impact**: Removes primary authentication blocker
+
+### Priority 3: Simplify Authentication Flow (CRITICAL)
+**Objective**: Strip authentication to Firebase auth + basic JWT exchange only
+**Time Estimate**: 1.5 hours
+**Blocking**: All authenticated operations
+**Impact**: Establishes working authentication baseline
+
+### Priority 4: Remove Multi-Tenant Logic (HIGH)
+**Objective**: Eliminate tenant configuration checks and merging
+**Time Estimate**: 1 hour
+**Impact**: Simplifies sync operations and data flow
+
+### Priority 5: Disable Professional Services (HIGH)
+**Objective**: Remove professional dashboard, WebSocket, and related APIs
+**Time Estimate**: 45 minutes
+**Impact**: Reduces application complexity by ~40%
+
+### Priority 6: Fix API Endpoint Paths (HIGH)
+**Objective**: Ensure all sync calls use `/api/accounts/sync` (not `/accounts/sync`)
+**Time Estimate**: 30 minutes
+**Impact**: Corrects 401 authentication errors
+
+### Priority 7: Correct Platform Identification (MEDIUM)
+**Objective**: Hardcode platform as 'mobile' throughout application
+**Time Estimate**: 30 minutes
+**Impact**: Ensures proper server-side request handling
 
 ---
 
-## Specific Tasks to Complete
+## Specific Features to Build
 
-### 1. Audit Mobile Codebase for Claimed Fixes
-```bash
-# Navigate to mobile repository
-cd /home/ben/Development/sociallyfed-mobile
-
-# Check if authentication fixes exist
-echo "=== Checking for AuthenticationService ==="
-ls -la baseline/src/services/AuthenticationService.ts
-
-echo "=== Checking for ApiInterceptor ==="
-ls -la baseline/src/services/ApiInterceptor.ts
-
-echo "=== Checking ServerApiService for correct path ==="
-grep -n "accounts/sync" baseline/src/services/ServerApiService.ts
-grep -n "/api/accounts/sync" baseline/src/services/ServerApiService.ts
-
-echo "=== Checking platform identification ==="
-grep -n "platform.*web" baseline/src/services/*.ts
-grep -n "platform.*mobile" baseline/src/services/*.ts
-
-echo "=== Checking Firebase configuration ==="
-grep -n "firebase" baseline/src/firebase.ts
-grep -n "Firebase" baseline/src/App.tsx
-```
-
-### 2. Fix Critical Issues If Not Present
+### 1. Core Feature Flag System
 ```typescript
-// File: baseline/src/services/ServerApiService.ts
-// MUST CHANGE: Line with wrong path
-// FROM: const syncUrl = `${this.baseUrl}/accounts/sync`;
-// TO:   const syncUrl = `${this.baseUrl}/api/accounts/sync`;
+// File: baseline/src/config/featureFlags.ts
+/**
+ * Centralized feature flag configuration
+ * Stage 1: All complex features disabled for basic authentication testing
+ */
 
-// File: baseline/src/helpers.tsx
-// MUST UPDATE: getPlatformIdentifier function
-export function getPlatformIdentifier(): string {
-    // Fix platform detection
-    if (typeof window !== 'undefined' && window.navigator) {
-        const userAgent = window.navigator.userAgent.toLowerCase();
-        if (userAgent.includes('mobile') || userAgent.includes('android') || userAgent.includes('iphone')) {
-            return 'mobile';
-        }
-    }
-    return 'mobile'; // Default to mobile for this app
+interface FeatureFlags {
+  // Core Features (Stage 1: ON)
+  BASIC_AUTH: boolean;
+  SIMPLE_SYNC: boolean;
+  
+  // Complex Features (Stage 1: OFF)
+  MULTI_TENANT: boolean;
+  PROFESSIONAL_SERVICES: boolean;
+  WEBSOCKET_SYNC: boolean;
+  ENCRYPTION_KEYS: boolean;
+  TENANT_CONFIG: boolean;
+  ADVANCED_ANALYTICS: boolean;
+  COLLABORATIVE_FEATURES: boolean;
+  FIREBASE_REALTIME_SYNC: boolean;
+  BACKGROUND_SYNC: boolean;
+  OFFLINE_MODE: boolean;
+  CLIENT_MANAGEMENT: boolean;
+  SESSION_MANAGEMENT: boolean;
+  INSIGHT_TRACKING: boolean;
+  MEDIA_ENCRYPTION: boolean;
+  VIRTUE_ALIGNMENT: boolean;
+  CYBERNETICS_FEATURES: boolean;
 }
 
-// File: baseline/src/firebase.ts
-// ENSURE: Firebase is properly initialized and exported
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-
-const firebaseConfig = {
-    // Your config here
+// Get flags from environment or use defaults
+const getFeatureFlag = (envKey: string, defaultValue: boolean): boolean => {
+  const envValue = process.env[`REACT_APP_ENABLE_${envKey}`];
+  if (envValue === undefined) return defaultValue;
+  return envValue === 'true';
 };
+
+export const FEATURE_FLAGS: FeatureFlags = {
+  // Core Features - Always enabled in Stage 1
+  BASIC_AUTH: true,
+  SIMPLE_SYNC: true,
+  
+  // Complex Features - All disabled in Stage 1
+  MULTI_TENANT: getFeatureFlag('MULTI_TENANT', false),
+  PROFESSIONAL_SERVICES: getFeatureFlag('PROFESSIONAL', false),
+  WEBSOCKET_SYNC: getFeatureFlag('WEBSOCKET', false),
+  ENCRYPTION_KEYS: getFeatureFlag('ENCRYPTION', false),
+  TENANT_CONFIG: getFeatureFlag('TENANT_CONFIG', false),
+  ADVANCED_ANALYTICS: getFeatureFlag('ANALYTICS', false),
+  COLLABORATIVE_FEATURES: getFeatureFlag('COLLABORATIVE', false),
+  FIREBASE_REALTIME_SYNC: getFeatureFlag('REALTIME_SYNC', false),
+  BACKGROUND_SYNC: getFeatureFlag('BACKGROUND_SYNC', false),
+  OFFLINE_MODE: getFeatureFlag('OFFLINE', false),
+  CLIENT_MANAGEMENT: getFeatureFlag('CLIENT_MGMT', false),
+  SESSION_MANAGEMENT: getFeatureFlag('SESSION_MGMT', false),
+  INSIGHT_TRACKING: getFeatureFlag('INSIGHTS', false),
+  MEDIA_ENCRYPTION: getFeatureFlag('MEDIA_ENCRYPT', false),
+  VIRTUE_ALIGNMENT: getFeatureFlag('VIRTUE', false),
+  CYBERNETICS_FEATURES: getFeatureFlag('CYBERNETICS', false),
+};
+
+// Debug logging
+if (process.env.NODE_ENV === 'development') {
+  console.log('🚩 Feature Flags Configuration:', FEATURE_FLAGS);
+}
+
+// Export helper to check multiple flags
+export const areFeaturesEnabled = (...flags: (keyof FeatureFlags)[]): boolean => {
+  return flags.every(flag => FEATURE_FLAGS[flag]);
+};
+
+// Export feature groups for easier checking
+export const FEATURE_GROUPS = {
+  isProfessionalEnabled: (): boolean => 
+    FEATURE_FLAGS.PROFESSIONAL_SERVICES || 
+    FEATURE_FLAGS.CLIENT_MANAGEMENT || 
+    FEATURE_FLAGS.SESSION_MANAGEMENT,
+    
+  isMultiTenantEnabled: (): boolean => 
+    FEATURE_FLAGS.MULTI_TENANT || 
+    FEATURE_FLAGS.TENANT_CONFIG,
+    
+  isAdvancedSyncEnabled: (): boolean => 
+    FEATURE_FLAGS.WEBSOCKET_SYNC || 
+    FEATURE_FLAGS.FIREBASE_REALTIME_SYNC || 
+    FEATURE_FLAGS.BACKGROUND_SYNC,
+    
+  isDataTrackingEnabled: (): boolean => 
+    FEATURE_FLAGS.ADVANCED_ANALYTICS || 
+    FEATURE_FLAGS.INSIGHT_TRACKING || 
+    FEATURE_FLAGS.VIRTUE_ALIGNMENT,
+};
+```
+
+### 2. Simplified App.tsx with Feature Flags
+```typescript
+// File: baseline/src/App.tsx
+import React, { useEffect, useState } from 'react';
+import { auth, signInWithGoogle } from './firebase';
+import { FEATURE_FLAGS } from './config/featureFlags';
+import { SimpleLogin } from './components/SimpleLogin';
+import { MainApp } from './components/MainApp';
+import { LoadingScreen } from './components/LoadingScreen';
+
+// Import complex features only if enabled
+const ProfessionalDashboard = FEATURE_FLAGS.PROFESSIONAL_SERVICES 
+  ? React.lazy(() => import('./components/ProfessionalDashboard'))
+  : null;
+
+const TenantConfig = FEATURE_FLAGS.MULTI_TENANT
+  ? React.lazy(() => import('./services/TenantConfigService'))
+  : null;
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('idle');
+
+  useEffect(() => {
+    console.log('🚀 App initializing with features:', {
+      basicAuth: FEATURE_FLAGS.BASIC_AUTH,
+      encryption: FEATURE_FLAGS.ENCRYPTION_KEYS,
+      multiTenant: FEATURE_FLAGS.MULTI_TENANT,
+    });
+
+    // Simple auth state listener
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      console.log('🔐 Auth state changed:', firebaseUser ? 'User logged in' : 'No user');
+      
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        
+        // Only sync if simple sync is enabled
+        if (FEATURE_FLAGS.SIMPLE_SYNC) {
+          await performSimpleSync(firebaseUser);
+        }
+        
+        // Skip all complex initialization
+        if (!FEATURE_FLAGS.ENCRYPTION_KEYS) {
+          console.log('✅ Skipping encryption keys - feature disabled');
+        }
+        
+        if (!FEATURE_FLAGS.MULTI_TENANT) {
+          console.log('✅ Skipping tenant configuration - feature disabled');
+        }
+        
+        if (!FEATURE_FLAGS.PROFESSIONAL_SERVICES) {
+          console.log('✅ Skipping professional services - feature disabled');
+        }
+      } else {
+        setUser(null);
+        setSyncStatus('idle');
+      }
+      
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const performSimpleSync = async (firebaseUser) => {
+    try {
+      setSyncStatus('syncing');
+      console.log('🔄 Starting simple sync for user:', firebaseUser.uid);
+      
+      const token = await firebaseUser.getIdToken();
+      
+      // CRITICAL: Use correct API path
+      const apiUrl = `${process.env.REACT_APP_API_BASE_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app'}/api/accounts/sync`;
+      
+      console.log('📡 Sync URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Platform': 'mobile', // Hardcoded for Stage 1
+        },
+        body: JSON.stringify({
+          userId: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          platform: 'mobile', // Hardcoded for Stage 1
+          timestamp: new Date().toISOString(),
+          version: '1.0.0-stage1',
+          features: {
+            stage: 1,
+            enabledFlags: Object.entries(FEATURE_FLAGS)
+              .filter(([_, enabled]) => enabled)
+              .map(([flag]) => flag),
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Sync successful:', data);
+        setSyncStatus('success');
+      } else {
+        console.error('❌ Sync failed:', response.status, response.statusText);
+        setSyncStatus('error');
+      }
+    } catch (error) {
+      console.error('❌ Sync error:', error);
+      setSyncStatus('error');
+    }
+  };
+
+  // Render logic with feature flags
+  if (loading) {
+    return <LoadingScreen message="Initializing app..." />;
+  }
+
+  if (!user) {
+    return (
+      <SimpleLogin 
+        onLogin={signInWithGoogle}
+        skipEncryption={!FEATURE_FLAGS.ENCRYPTION_KEYS}
+      />
+    );
+  }
+
+  // Main app with conditional features
+  return (
+    <div className="app">
+      <MainApp 
+        user={user} 
+        syncStatus={syncStatus}
+        features={{
+          showProfessional: FEATURE_FLAGS.PROFESSIONAL_SERVICES,
+          showTenantSwitcher: FEATURE_FLAGS.MULTI_TENANT,
+          showAnalytics: FEATURE_FLAGS.ADVANCED_ANALYTICS,
+          showOfflineIndicator: FEATURE_FLAGS.OFFLINE_MODE,
+        }}
+      />
+    </div>
+  );
+}
+
+export default App;
+```
+
+### 3. Bypass Encryption Keys Screen
+```typescript
+// File: baseline/src/components/SimpleLogin.tsx
+import React, { useState } from 'react';
+import { FEATURE_FLAGS } from '../config/featureFlags';
+
+export const SimpleLogin = ({ onLogin, skipEncryption }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      console.log('🔐 Starting Google login...');
+      
+      const result = await onLogin();
+      
+      // CRITICAL: Skip encryption keys screen
+      if (FEATURE_FLAGS.ENCRYPTION_KEYS) {
+        console.log('🔑 Encryption keys feature enabled - showing screen');
+        // Would show encryption screen here
+        // But for Stage 1, we skip it
+      } else {
+        console.log('✅ Skipping encryption keys - proceeding to app');
+        // Login successful, App.tsx will handle the rest
+      }
+      
+    } catch (error) {
+      console.error('❌ Login failed:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-container">
+      <h1>SociallyFed Mobile</h1>
+      <p>Stage 1: Basic Authentication</p>
+      
+      {error && (
+        <div className="error-message">
+          Login failed: {error}
+        </div>
+      )}
+      
+      <button 
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
+        className="login-button"
+      >
+        {isLoading ? 'Signing in...' : 'Sign in with Google'}
+      </button>
+      
+      <div className="feature-status">
+        <h3>Feature Status:</h3>
+        <ul>
+          <li>✅ Basic Auth: Enabled</li>
+          <li>{FEATURE_FLAGS.ENCRYPTION_KEYS ? '⚠️' : '✅'} Encryption: {FEATURE_FLAGS.ENCRYPTION_KEYS ? 'Enabled' : 'Disabled'}</li>
+          <li>{FEATURE_FLAGS.MULTI_TENANT ? '⚠️' : '✅'} Multi-Tenant: {FEATURE_FLAGS.MULTI_TENANT ? 'Enabled' : 'Disabled'}</li>
+          <li>{FEATURE_FLAGS.PROFESSIONAL_SERVICES ? '⚠️' : '✅'} Professional: {FEATURE_FLAGS.PROFESSIONAL_SERVICES ? 'Enabled' : 'Disabled'}</li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+```
+
+### 4. Simplified ServerApiService
+```typescript
+// File: baseline/src/services/ServerApiService.ts
+import { FEATURE_FLAGS } from '../config/featureFlags';
+
+export class ServerApiService {
+  private baseUrl: string;
+  
+  constructor() {
+    this.baseUrl = process.env.REACT_APP_API_BASE_URL || 
+                   'https://sociallyfed-server-512204327023.us-central1.run.app';
+    console.log('📡 ServerApiService initialized with base URL:', this.baseUrl);
+  }
+
+  async syncAccount(user: any): Promise<any> {
+    console.log('🔄 ServerApiService.syncAccount called for user:', user.uid);
+    
+    // Stage 1: Simple sync only
+    if (!FEATURE_FLAGS.SIMPLE_SYNC) {
+      console.log('⏭️ Simple sync disabled, skipping');
+      return { skipped: true };
+    }
+
+    try {
+      const token = await user.getIdToken();
+      
+      // CRITICAL FIX: Use correct API path
+      const syncUrl = `${this.baseUrl}/api/accounts/sync`;
+      console.log('📡 Sync URL:', syncUrl);
+      
+      const response = await fetch(syncUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Platform': 'mobile', // CRITICAL FIX: Hardcode as mobile
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          email: user.email,
+          platform: 'mobile', // CRITICAL FIX: Hardcode as mobile
+          timestamp: new Date().toISOString(),
+          
+          // Only include complex data if features enabled
+          ...(FEATURE_FLAGS.MULTI_TENANT && { tenantId: null }),
+          ...(FEATURE_FLAGS.PROFESSIONAL_SERVICES && { professionalData: null }),
+          ...(FEATURE_FLAGS.ADVANCED_ANALYTICS && { analytics: null }),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sync failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Sync successful:', data);
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Sync error:', error);
+      throw error;
+    }
+  }
+
+  // Complex methods only if features enabled
+  async fetchTenantConfig(tenantId: string): Promise<any> {
+    if (!FEATURE_FLAGS.MULTI_TENANT) {
+      console.log('⏭️ Multi-tenant disabled, returning default config');
+      return { tenantId: 'default', features: {} };
+    }
+    // Original complex implementation here
+  }
+
+  async fetchProfessionalData(userId: string): Promise<any> {
+    if (!FEATURE_FLAGS.PROFESSIONAL_SERVICES) {
+      console.log('⏭️ Professional services disabled, returning empty data');
+      return { clients: [], sessions: [] };
+    }
+    // Original complex implementation here
+  }
+}
+```
+
+### 5. Environment Configuration for Stage 1
+```bash
+# File: baseline/.env.production
+# Stage 1: Minimal Configuration - Complex Features Disabled
+
+# Core Configuration (Required)
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENV=production
+REACT_APP_STAGE=1
+
+# Firebase Configuration (Required for Auth)
+REACT_APP_FIREBASE_API_KEY=AIzaSyDZ...your-key
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed
+
+# Feature Flags - Stage 1 (All Complex Features OFF)
+REACT_APP_ENABLE_MULTI_TENANT=false
+REACT_APP_ENABLE_PROFESSIONAL=false
+REACT_APP_ENABLE_WEBSOCKET=false
+REACT_APP_ENABLE_ENCRYPTION=false
+REACT_APP_ENABLE_TENANT_CONFIG=false
+REACT_APP_ENABLE_ANALYTICS=false
+REACT_APP_ENABLE_COLLABORATIVE=false
+REACT_APP_ENABLE_REALTIME_SYNC=false
+REACT_APP_ENABLE_BACKGROUND_SYNC=false
+REACT_APP_ENABLE_OFFLINE=false
+REACT_APP_ENABLE_CLIENT_MGMT=false
+REACT_APP_ENABLE_SESSION_MGMT=false
+REACT_APP_ENABLE_INSIGHTS=false
+REACT_APP_ENABLE_MEDIA_ENCRYPT=false
+REACT_APP_ENABLE_VIRTUE=false
+REACT_APP_ENABLE_CYBERNETICS=false
+
+# Debug Settings
+REACT_APP_DEBUG_MODE=true
+REACT_APP_LOG_LEVEL=debug
+```
+
+### 6. Simplified Firebase Configuration
+```typescript
+// File: baseline/src/firebase.ts
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { FEATURE_FLAGS } from './config/featureFlags';
+
+// Stage 1: Minimal Firebase configuration
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  // Conditionally add complex features
+  ...(FEATURE_FLAGS.FIREBASE_REALTIME_SYNC && {
+    databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
+  }),
+  ...(FEATURE_FLAGS.MEDIA_ENCRYPTION && {
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  }),
+};
+
+console.log('🔥 Initializing Firebase with config:', {
+  ...firebaseConfig,
+  apiKey: '***hidden***',
+});
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
+// Set persistence to LOCAL so auth survives refresh
+setPersistence(auth, browserLocalPersistence)
+  .then(() => console.log('✅ Firebase persistence set to LOCAL'))
+  .catch((error) => console.error('❌ Failed to set persistence:', error));
+
 // Make Firebase globally accessible for debugging
 if (typeof window !== 'undefined') {
-    window.firebase = { app, auth };
-}
-```
-
-### 3. Build Production Version
-```bash
-# Clean previous builds
-rm -rf build/
-rm -rf node_modules/.cache/
-
-# Install dependencies
-npm install
-
-# Build with production environment
-export NODE_ENV=production
-export REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-npm run build
-
-# Verify build output
-echo "=== Checking build for correct API URL ==="
-grep -r "sociallyfed-server" build/
-grep -r "/accounts/sync" build/
-grep -r "/api/accounts/sync" build/
-
-# Check bundle size
-du -sh build/static/js/*.js
-```
-
-### 4. Deploy to Google Cloud Run
-```bash
-# Build Docker image
-docker build -t gcr.io/sociallyfed/sociallyfed-mobile:latest .
-
-# Push to Google Container Registry
-docker push gcr.io/sociallyfed/sociallyfed-mobile:latest
-
-# Deploy to the ACTIVE URL (sqdd3g2eea)
-gcloud run deploy sociallyfed-mobile-sqdd3g2eea \
-  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
-  --platform managed \
-  --region us-central1 \
-  --memory 1Gi \
-  --cpu 1 \
-  --timeout 300 \
-  --concurrency 1000 \
-  --max-instances 20 \
-  --allow-unauthenticated
-
-# Get deployment URL
-echo "=== Deployment URL ==="
-gcloud run services describe sociallyfed-mobile-sqdd3g2eea \
-  --platform managed \
-  --region us-central1 \
-  --format 'value(status.url)'
-
-# Also update the other deployment for consistency
-gcloud run deploy sociallyfed-mobile \
-  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated
-```
-
-### 5. Post-Deployment Verification Tests
-```javascript
-// Run these tests in browser console after deployment
-
-// Test 1: Verify correct API path
-console.log('Test 1: API Path Check');
-fetch('https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app/test', {
-    method: 'POST',
-    body: JSON.stringify({test: true})
-}).then(() => {
-    // Check Network tab - should show /api/accounts/sync not /accounts/sync
-    console.log('Check Network tab for API paths');
-});
-
-// Test 2: Verify Firebase is accessible
-console.log('Test 2: Firebase Availability');
-if (typeof firebase !== 'undefined') {
-    console.log('✅ Firebase is accessible');
-    console.log('Firebase auth:', firebase.auth);
-} else {
-    console.log('❌ Firebase NOT accessible - critical issue');
+  window.firebase = { app, auth };
+  console.log('🔧 Firebase available in window.firebase for debugging');
 }
 
-// Test 3: Platform identification
-console.log('Test 3: Platform Check');
-// Create a test sync request and check the platform value
-const testData = {
-    platform: 'web', // This should be changed to 'mobile' by the app
-    timestamp: new Date().toISOString()
+// Simple Google sign-in
+export const signInWithGoogle = async () => {
+  try {
+    console.log('🔐 Starting Google sign-in...');
+    const provider = new GoogleAuthProvider();
+    
+    // Stage 1: Basic scopes only
+    provider.addScope('email');
+    provider.addScope('profile');
+    
+    const result = await signInWithPopup(auth, provider);
+    console.log('✅ Google sign-in successful:', result.user.email);
+    return result;
+  } catch (error) {
+    console.error('❌ Google sign-in failed:', error);
+    throw error;
+  }
 };
-console.log('Original platform:', testData.platform);
-// The app should change this to 'mobile'
 
-// Test 4: Authentication flow
-console.log('Test 4: Login Flow');
-// Try to login and watch for "getting encryption keys" stuck state
-console.log('Attempt login and check if it completes successfully');
+// Sign out
+export const signOut = async () => {
+  try {
+    await auth.signOut();
+    console.log('✅ Signed out successfully');
+  } catch (error) {
+    console.error('❌ Sign out failed:', error);
+    throw error;
+  }
+};
 ```
+
+### 7. Backend Feature Flag Configuration
+```typescript
+// File: backend/src/config/featureFlags.ts
+export const BACKEND_FEATURE_FLAGS = {
+  // Core features
+  BASIC_AUTH: true,
+  SIMPLE_SYNC: true,
+  
+  // Complex features - disabled for Stage 1
+  MULTI_TENANT: process.env.ENABLE_MULTI_TENANT === 'true',
+  PROFESSIONAL_SERVICES: process.env.ENABLE_PROFESSIONAL === 'true',
+  WEBSOCKET_SERVER: process.env.ENABLE_WEBSOCKET === 'true',
+  TOKEN_EXCHANGE: process.env.ENABLE_TOKEN_EXCHANGE === 'true',
+  TENANT_CONFIG: process.env.ENABLE_TENANT_CONFIG === 'true',
+};
+
+// File: backend/src/app.ts
+import express from 'express';
+import { BACKEND_FEATURE_FLAGS } from './config/featureFlags';
+
+const app = express();
+
+// Core middleware - always enabled
+app.use(express.json());
+app.use(cors({
+  origin: [
+    'https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app',
+    'https://sociallyfed-mobile-512204327023.us-central1.run.app',
+    'http://localhost:3000',
+  ],
+  credentials: true,
+}));
+
+// Basic routes - always enabled
+app.use('/health', (req, res) => res.send('Healthy'));
+app.use('/api/auth', authRoutes);
+app.use('/api/accounts', accountRoutes);
+
+// Complex routes - conditionally enabled
+if (BACKEND_FEATURE_FLAGS.PROFESSIONAL_SERVICES) {
+  console.log('📊 Professional services enabled');
+  app.use('/api/professional', professionalRoutes);
+} else {
+  console.log('⏭️ Professional services disabled');
+}
+
+if (BACKEND_FEATURE_FLAGS.MULTI_TENANT) {
+  console.log('🏢 Multi-tenant features enabled');
+  app.use('/api/tenants', tenantRoutes);
+} else {
+  console.log('⏭️ Multi-tenant features disabled');
+}
+
+if (BACKEND_FEATURE_FLAGS.WEBSOCKET_SERVER) {
+  console.log('🔌 WebSocket server enabled');
+  setupWebSocketServer(server);
+} else {
+  console.log('⏭️ WebSocket server disabled');
+}
+```
+
+---
+
+## Technical Requirements
+
+### Frontend Requirements
+1. **Dependencies to Keep**:
+   - `firebase` (^9.x) - Core authentication
+   - `react` (^18.x) - UI framework
+   - `react-dom` - React DOM rendering
+   - Essential build tools
+
+2. **Dependencies to Conditionally Load**:
+   - Load WebSocket libraries only if `WEBSOCKET_SYNC` enabled
+   - Load analytics SDKs only if `ADVANCED_ANALYTICS` enabled
+   - Load encryption libraries only if `ENCRYPTION_KEYS` enabled
+
+3. **Build Configuration**:
+   ```json
+   // package.json scripts
+   {
+     "scripts": {
+       "build:stage1": "REACT_APP_STAGE=1 react-scripts build",
+       "build:stage2": "REACT_APP_STAGE=2 react-scripts build",
+       "build:full": "REACT_APP_STAGE=5 react-scripts build"
+     }
+   }
+   ```
+
+### Backend Requirements
+1. **Simplified Endpoints for Stage 1**:
+   - `/health` - Health check
+   - `/api/auth/login` - Basic authentication
+   - `/api/accounts/sync` - Simple sync endpoint
+   
+2. **Disabled Endpoints**:
+   - `/api/professional/*` - All professional services
+   - `/api/tenants/*` - All multi-tenant endpoints
+   - `/api/analytics/*` - All analytics endpoints
+   - `/ws/*` - All WebSocket endpoints
+
+3. **Database Requirements**:
+   - Stage 1: Single user table, simple key-value for user data
+   - No tenant tables
+   - No professional services tables
+   - No complex relationships
+
+### Infrastructure Requirements
+1. **Google Cloud Run**:
+   ```yaml
+   # Stage 1 Configuration
+   memory: 512Mi  # Reduced from 1Gi
+   cpu: 1
+   max-instances: 5  # Reduced from 20
+   min-instances: 0
+   ```
+
+2. **Environment Variables**:
+   - Minimal set for Stage 1
+   - All feature flags set to false
+   - Only essential API keys
 
 ---
 
 ## Integration Points to Consider
 
-### 1. Multiple Deployment URLs
-- **Primary**: `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app` (currently active)
-- **Secondary**: `sociallyfed-mobile-512204327023.us-central1.run.app` (claimed fixes)
-- **Action**: Consolidate to single deployment or implement proper routing
+### Stage 1 Integration Points (Active)
+1. **Firebase Auth ↔ Mobile App**:
+   - Google Sign-In only
+   - Token generation
+   - Session persistence
 
-### 2. Firebase Configuration
-- Ensure Firebase config matches between environments
-- Verify Firebase project ID is correct
-- Check Firebase auth domain is whitelisted
+2. **Mobile App ↔ Server API**:
+   - Single endpoint: `/api/accounts/sync`
+   - Bearer token authentication
+   - Platform header: 'mobile'
 
-### 3. Server Endpoints
-- **Working**: `/api/accounts/sync` (correct path)
-- **Not Working**: `/accounts/sync` (wrong path mobile is using)
-- **Missing**: `/api/auth/exchange` (needs server implementation)
+3. **Server ↔ Database**:
+   - Simple user storage
+   - No complex queries
+   - No joins or relationships
 
-### 4. CORS Configuration
-- Server must whitelist both mobile URLs
-- Include proper headers for authentication
-- Handle preflight requests correctly
+### Disabled Integration Points (Stage 1)
+1. ❌ **Multi-Tenant Systems** - Completely disabled
+2. ❌ **WebSocket Connections** - Not initialized
+3. ❌ **Professional Dashboard** - Routes not registered
+4. ❌ **Background Sync** - Service workers disabled
+5. ❌ **Offline Mode** - Cache strategies disabled
+6. ❌ **Analytics Tracking** - No events sent
+7. ❌ **Encryption Services** - Keys not generated
+
+### Critical Path Dependencies
+```
+User → Google Auth → Firebase → JWT Token → Server Sync → Success
+         ↓                          ↓           ↓
+    (No encryption)          (No tenant)   (No complex data)
+```
 
 ---
 
 ## Definition of Done for Today's Work
 
-### ✅ Code Audit Complete
-- [ ] Verified AuthenticationService.ts exists
-- [ ] Verified ApiInterceptor.ts exists
-- [ ] Confirmed ServerApiService uses `/api/accounts/sync`
-- [ ] Confirmed platform sends "mobile" not "web"
-- [ ] Firebase properly initialized and exported
+### ✅ Feature Flag Infrastructure
+- [ ] Feature flags file created and exported
+- [ ] All 16+ feature flags defined
+- [ ] Environment variables mapped to flags
+- [ ] Debug logging shows flag status
+- [ ] Feature groups helper functions work
 
-### ✅ Critical Fixes Applied
-- [ ] API path corrected to `/api/accounts/sync`
-- [ ] Platform identification returns "mobile"
-- [ ] Firebase accessible in window scope
-- [ ] Encryption keys loading screen can be bypassed
+### ✅ Authentication Simplification
+- [ ] Google Sign-In works without errors
+- [ ] Firebase auth state persists on refresh
+- [ ] JWT token obtained successfully
+- [ ] No "Getting encryption keys" screen appears
+- [ ] Login completes in < 5 seconds
 
-### ✅ Build Successful
-- [ ] Production build completes without errors
-- [ ] Build output contains correct API URLs
-- [ ] Bundle size < 1MB gzipped
-- [ ] Environment variables properly injected
+### ✅ API Path Corrections
+- [ ] All sync calls use `/api/accounts/sync`
+- [ ] No references to `/accounts/sync` remain
+- [ ] Network tab shows correct paths
+- [ ] No 404 errors on API calls
 
-### ✅ Deployment Verified
-- [ ] Deployed to `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`
+### ✅ Platform Identification
+- [ ] Platform hardcoded as 'mobile' everywhere
+- [ ] X-Platform header shows 'mobile'
+- [ ] Request body platform field shows 'mobile'
+- [ ] No 'web' platform values sent
+
+### ✅ Complex Feature Removal
+- [ ] Professional services code wrapped in feature flags
+- [ ] Multi-tenant logic bypassed
+- [ ] WebSocket initialization skipped
+- [ ] Background sync disabled
+- [ ] Offline mode indicators hidden
+
+### ✅ Build and Deployment
+- [ ] Stage 1 build completes without errors
+- [ ] Bundle size < 500KB (reduced from 767KB)
+- [ ] No references to disabled features in bundle
+- [ ] Deployment to Cloud Run successful
 - [ ] Health check returns 200 OK
-- [ ] No 404 errors on static resources
-- [ ] Deployment URL confirmed and documented
 
-### ✅ Integration Tests Pass
-- [ ] Login flow completes without getting stuck
-- [ ] Network requests use `/api/accounts/sync`
-- [ ] Platform header shows "mobile"
-- [ ] Firebase accessible in browser console
-- [ ] Authentication token can be obtained
+### ✅ End-to-End Testing
+- [ ] User can open app
+- [ ] Login button visible and clickable
+- [ ] Google auth popup appears
+- [ ] Auth completes without stuck screens
+- [ ] User email displayed after login
+- [ ] Sync request sent automatically
+- [ ] Sync returns 200 OK (not 401)
+- [ ] No console errors
 
-### ✅ Documentation Updated
-- [ ] Deployment URLs documented
-- [ ] Known issues list updated
-- [ ] Implementation report generated
-- [ ] Runbook for future deployments created
-
----
-
-## Success Metrics
-1. **Primary**: Zero 401 errors after successful login
-2. **API Paths**: 100% of sync requests use `/api/accounts/sync`
-3. **Platform**: All requests identify as "mobile"
-4. **Firebase**: `window.firebase` accessible in console
-5. **Login Flow**: Completes in < 5 seconds without getting stuck
-
----
-
-## Next Steps After Deployment
-
-### Immediate (Today)
-1. Monitor Cloud Run logs for errors
-2. Test complete user journey from login to sync
-3. Verify professional services integration
-4. Document any remaining issues
-
-### Short-term (This Week)
-1. Implement `/api/auth/exchange` endpoint on server
-2. Add comprehensive error handling
-3. Implement token refresh mechanism
-4. Set up monitoring and alerting
-
-### Long-term (Next Sprint)
-1. Refactor authentication architecture
-2. Implement proper Firebase persistence
-3. Add integration test suite
-4. Consider migrating to single deployment URL
-
----
-
-## Rollback Plan
-If deployment causes critical issues:
-```bash
-# Rollback to previous revision
-gcloud run revisions list --service=sociallyfed-mobile-sqdd3g2eea --region=us-central1
-
-# Deploy previous working revision
-gcloud run services update-traffic sociallyfed-mobile-sqdd3g2eea \
-  --region=us-central1 \
-  --to-revisions=PREVIOUS_REVISION_ID=100
+### ✅ Debugging Verification
+```javascript
+// All these should work in browser console:
+window.firebase                    // Returns Firebase object
+firebase.auth().currentUser        // Returns user after login
+localStorage.getItem('user')       // Has user data
+// Network tab should show:
+// - POST to /api/accounts/sync (200 OK)
+// - Authorization: Bearer [token]
+// - X-Platform: mobile
 ```
 
 ---
 
-## Critical Notes
+## Success Metrics
 
-### ⚠️ Known Issues Not Yet Fixed
-1. **Server Missing Endpoint**: `/api/auth/exchange` doesn't exist - needs server deployment
-2. **Firebase Persistence**: Auth doesn't survive page refresh
-3. **Token Management**: No automatic token refresh implemented
-4. **Error Handling**: No user-friendly error messages
+### Stage 1 Success Criteria
+1. **Authentication**: User can log in and stay logged in across refresh
+2. **API Communication**: Sync endpoint returns 200 OK
+3. **Performance**: Login + sync completes in < 10 seconds
+4. **Stability**: No stuck screens or infinite loops
+5. **Simplicity**: < 50% of original code active
 
-### 🔴 Deployment Confusion
-- Two different Cloud Run services with different URLs
-- Fixes deployed to wrong URL in previous attempt
-- Need to consolidate or clearly document which is production
+### Failure Indicators
+- Any "Getting encryption keys" screen = FAIL
+- Any 401 errors after login = FAIL
+- Platform showing as 'web' = FAIL
+- Sync using wrong path = FAIL
+- Login taking > 30 seconds = FAIL
 
-### ✅ What IS Working
-- Server is fully operational at correct URL
-- CORS partially configured
-- Health endpoints responding
-- Static assets serving correctly
+### Rollback Triggers
+If any of these occur, rollback immediately:
+- App crashes on load
+- Login always fails
+- Infinite redirect loops
+- Console shows > 10 errors
 
 ---
 
-*Brief generated for deployment audit on 2025-08-09*
-*Priority: P0 CRITICAL - Mobile app non-functional without these fixes*
-*Estimated completion: 4-6 hours including testing*
+## Progressive Enhancement Plan
+
+### Stage Progression Criteria
+Move to next stage only when ALL criteria met:
+
+**Stage 1 → Stage 2**: 
+- 5 successful logins in a row
+- Zero 401 errors for 1 hour
+- Sync working consistently
+
+**Stage 2 → Stage 3**:
+- Offline mode working
+- Background sync successful
+- No data loss issues
+
+**Stage 3 → Stage 4**:
+- Professional features stable
+- WebSocket connections reliable
+- No memory leaks
+
+**Stage 4 → Stage 5**:
+- Multi-tenant isolation verified
+- Performance acceptable with all features
+- Zero critical bugs for 1 week
+
+---
+
+## Testing Scripts
+
+### Manual Test Checklist
+```
+1. [ ] Clear all browser data
+2. [ ] Open app fresh
+3. [ ] Click login
+4. [ ] Complete Google auth
+5. [ ] Verify no stuck screens
+6. [ ] Check network tab for /api/accounts/sync
+7. [ ] Verify 200 OK response
+8. [ ] Refresh page
+9. [ ] Verify still logged in
+10. [ ] Check console for errors
+```
+
+### Automated Test Script
+```javascript
+// Run in console after deployment
+async function testStage1() {
+  console.log('🧪 Starting Stage 1 Tests...');
+  
+  // Test 1: Firebase available
+  if (!window.firebase) {
+    console.error('❌ Test 1 FAILED: Firebase not available');
+    return false;
+  }
+  console.log('✅ Test 1 PASSED: Firebase available');
+  
+  // Test 2: Auth state
+  const user = firebase.auth().currentUser;
+  if (!user) {
+    console.error('❌ Test 2 FAILED: Not logged in');
+    return false;
+  }
+  console.log('✅ Test 2 PASSED: User logged in');
+  
+  // Test 3: Platform check
+  const logs = console.logs || [];
+  const hasWebPlatform = logs.some(log => log.includes('platform":"web"'));
+  if (hasWebPlatform) {
+    console.error('❌ Test 3 FAILED: Still sending platform as web');
+    return false;
+  }
+  console.log('✅ Test 3 PASSED: Platform correctly set');
+  
+  console.log('🎉 All Stage 1 tests passed!');
+  return true;
+}
+
+// Run the test
+testStage1();
+```
+
+---
+
+## Rollback Plan
+
+### If Stage 1 Deployment Fails:
+```bash
+# 1. List previous revisions
+gcloud run revisions list --service=sociallyfed-mobile --region=us-central1
+
+# 2. Rollback to last known working revision
+gcloud run services update-traffic sociallyfed-mobile \
+  --region=us-central1 \
+  --to-revisions=PREVIOUS_REVISION=100
+
+# 3. Or deploy a minimal "maintenance mode" version
+gcloud run deploy sociallyfed-mobile \
+  --image=gcr.io/sociallyfed/maintenance:latest \
+  --region=us-central1
+```
+
+### Emergency Fixes:
+```javascript
+// If app is stuck, users can run this in console:
+localStorage.clear();
+sessionStorage.clear();
+location.reload();
+```
+
+---
+
+## Notes for Implementation Team
+
+### Critical Do's:
+- ✅ DO test locally with all flags OFF first
+- ✅ DO verify Firebase config is correct
+- ✅ DO hardcode platform as 'mobile'
+- ✅ DO use correct API path `/api/accounts/sync`
+- ✅ DO keep console logging for debugging
+
+### Critical Don'ts:
+- ❌ DON'T enable any complex features in Stage 1
+- ❌ DON'T show encryption keys screen
+- ❌ DON'T make tenant configuration calls
+- ❌ DON'T initialize WebSocket connections
+- ❌ DON'T remove logging until Stage 2
+
+### Debug Commands for Developers:
+```javascript
+// Check current feature flags
+console.log('Feature Flags:', window.FEATURE_FLAGS);
+
+// Force enable a feature (testing only)
+window.FEATURE_FLAGS.ENCRYPTION_KEYS = true;
+
+// Check auth state
+firebase.auth().currentUser
+
+// Manually trigger sync
+window.testSync = async () => {
+  const user = firebase.auth().currentUser;
+  if (!user) return;
+  const token = await user.getIdToken();
+  return fetch('/api/accounts/sync', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'X-Platform': 'mobile'
+    },
+    body: JSON.stringify({
+      userId: user.uid,
+      platform: 'mobile',
+      timestamp: new Date().toISOString()
+    })
+  });
+};
+```
+
+---
+
+*Brief generated for Stage 1 Feature Flag Implementation on 2025-08-09*
+*Estimated Time: 6 hours including testing*
+*Success Rate Target: 100% authentication success after implementation*
 ### Current Sprint:
 # Current Sprint Status - SociallyFed Unified Architecture Deployment
 
@@ -1539,341 +2175,977 @@ interface UnifiedProfessionalWorkflow {
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# Daily Brief - Mobile Deployment Audit & Recovery
+# Daily Brief - Feature Flag Implementation & Simplified Authentication
 ## Date: 2025-08-09
-## Priority: P0 CRITICAL - Verify & Deploy Authentication Fixes
+## Priority: P0 CRITICAL - Strip Complexity, Enable Basic Authentication
 
 ### Executive Summary
-Analysis reveals that the August 9th mobile authentication fixes were NOT successfully deployed to the active URL (`sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`). The mobile app continues to exhibit all original bugs: wrong API paths, incorrect platform identification, and broken Firebase integration. The server is confirmed operational. Today's sprint will audit the supposedly fixed code, rebuild, and deploy to the correct Google Cloud Run instance.
+The mobile application is currently overengineered with multi-tenant, professional services, and complex encryption features that are preventing basic authentication from working. Today's sprint will implement comprehensive feature flags to disable all complex features, focusing solely on getting a single user to successfully authenticate and sync with the server. This staged approach will establish a working baseline before progressively re-enabling advanced features.
 
 ---
 
 ## Today's Implementation Priorities
 
-### Priority 1: Code Audit & Verification (CRITICAL)
-**Objective**: Verify that authentication fixes actually exist in the codebase
-**Time Estimate**: 1 hour
-**Blocking**: All subsequent deployment activities
-
-### Priority 2: Firebase Integration Repair (CRITICAL)
-**Objective**: Fix Firebase initialization and accessibility issues
-**Time Estimate**: 2 hours
-**Blocking**: Entire authentication flow
-
-### Priority 3: Build & Deploy to Correct URL (CRITICAL)
-**Objective**: Deploy working code to the active mobile URL
-**Time Estimate**: 1-2 hours
-**Impact**: All mobile functionality
-
-### Priority 4: Integration Testing (HIGH)
-**Objective**: Verify end-to-end authentication flow works
-**Time Estimate**: 1 hour
-**Impact**: User experience
-
-### Priority 5: URL Consolidation (MEDIUM)
-**Objective**: Eliminate confusion between multiple deployment URLs
+### Priority 1: Create Feature Flag Infrastructure (CRITICAL)
+**Objective**: Implement centralized feature flag system to control all complex features
 **Time Estimate**: 30 minutes
-**Impact**: Future maintenance
+**Blocking**: All subsequent simplification work
+**Impact**: Enables/disables entire feature sets with single configuration change
+
+### Priority 2: Disable Encryption Keys Flow (CRITICAL)
+**Objective**: Bypass "Getting your encryption keys" stuck screen
+**Time Estimate**: 1 hour
+**Blocking**: User login completion
+**Impact**: Removes primary authentication blocker
+
+### Priority 3: Simplify Authentication Flow (CRITICAL)
+**Objective**: Strip authentication to Firebase auth + basic JWT exchange only
+**Time Estimate**: 1.5 hours
+**Blocking**: All authenticated operations
+**Impact**: Establishes working authentication baseline
+
+### Priority 4: Remove Multi-Tenant Logic (HIGH)
+**Objective**: Eliminate tenant configuration checks and merging
+**Time Estimate**: 1 hour
+**Impact**: Simplifies sync operations and data flow
+
+### Priority 5: Disable Professional Services (HIGH)
+**Objective**: Remove professional dashboard, WebSocket, and related APIs
+**Time Estimate**: 45 minutes
+**Impact**: Reduces application complexity by ~40%
+
+### Priority 6: Fix API Endpoint Paths (HIGH)
+**Objective**: Ensure all sync calls use `/api/accounts/sync` (not `/accounts/sync`)
+**Time Estimate**: 30 minutes
+**Impact**: Corrects 401 authentication errors
+
+### Priority 7: Correct Platform Identification (MEDIUM)
+**Objective**: Hardcode platform as 'mobile' throughout application
+**Time Estimate**: 30 minutes
+**Impact**: Ensures proper server-side request handling
 
 ---
 
-## Specific Tasks to Complete
+## Specific Features to Build
 
-### 1. Audit Mobile Codebase for Claimed Fixes
-```bash
-# Navigate to mobile repository
-cd /home/ben/Development/sociallyfed-mobile
-
-# Check if authentication fixes exist
-echo "=== Checking for AuthenticationService ==="
-ls -la baseline/src/services/AuthenticationService.ts
-
-echo "=== Checking for ApiInterceptor ==="
-ls -la baseline/src/services/ApiInterceptor.ts
-
-echo "=== Checking ServerApiService for correct path ==="
-grep -n "accounts/sync" baseline/src/services/ServerApiService.ts
-grep -n "/api/accounts/sync" baseline/src/services/ServerApiService.ts
-
-echo "=== Checking platform identification ==="
-grep -n "platform.*web" baseline/src/services/*.ts
-grep -n "platform.*mobile" baseline/src/services/*.ts
-
-echo "=== Checking Firebase configuration ==="
-grep -n "firebase" baseline/src/firebase.ts
-grep -n "Firebase" baseline/src/App.tsx
-```
-
-### 2. Fix Critical Issues If Not Present
+### 1. Core Feature Flag System
 ```typescript
-// File: baseline/src/services/ServerApiService.ts
-// MUST CHANGE: Line with wrong path
-// FROM: const syncUrl = `${this.baseUrl}/accounts/sync`;
-// TO:   const syncUrl = `${this.baseUrl}/api/accounts/sync`;
+// File: baseline/src/config/featureFlags.ts
+/**
+ * Centralized feature flag configuration
+ * Stage 1: All complex features disabled for basic authentication testing
+ */
 
-// File: baseline/src/helpers.tsx
-// MUST UPDATE: getPlatformIdentifier function
-export function getPlatformIdentifier(): string {
-    // Fix platform detection
-    if (typeof window !== 'undefined' && window.navigator) {
-        const userAgent = window.navigator.userAgent.toLowerCase();
-        if (userAgent.includes('mobile') || userAgent.includes('android') || userAgent.includes('iphone')) {
-            return 'mobile';
-        }
-    }
-    return 'mobile'; // Default to mobile for this app
+interface FeatureFlags {
+  // Core Features (Stage 1: ON)
+  BASIC_AUTH: boolean;
+  SIMPLE_SYNC: boolean;
+  
+  // Complex Features (Stage 1: OFF)
+  MULTI_TENANT: boolean;
+  PROFESSIONAL_SERVICES: boolean;
+  WEBSOCKET_SYNC: boolean;
+  ENCRYPTION_KEYS: boolean;
+  TENANT_CONFIG: boolean;
+  ADVANCED_ANALYTICS: boolean;
+  COLLABORATIVE_FEATURES: boolean;
+  FIREBASE_REALTIME_SYNC: boolean;
+  BACKGROUND_SYNC: boolean;
+  OFFLINE_MODE: boolean;
+  CLIENT_MANAGEMENT: boolean;
+  SESSION_MANAGEMENT: boolean;
+  INSIGHT_TRACKING: boolean;
+  MEDIA_ENCRYPTION: boolean;
+  VIRTUE_ALIGNMENT: boolean;
+  CYBERNETICS_FEATURES: boolean;
 }
 
-// File: baseline/src/firebase.ts
-// ENSURE: Firebase is properly initialized and exported
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-
-const firebaseConfig = {
-    // Your config here
+// Get flags from environment or use defaults
+const getFeatureFlag = (envKey: string, defaultValue: boolean): boolean => {
+  const envValue = process.env[`REACT_APP_ENABLE_${envKey}`];
+  if (envValue === undefined) return defaultValue;
+  return envValue === 'true';
 };
+
+export const FEATURE_FLAGS: FeatureFlags = {
+  // Core Features - Always enabled in Stage 1
+  BASIC_AUTH: true,
+  SIMPLE_SYNC: true,
+  
+  // Complex Features - All disabled in Stage 1
+  MULTI_TENANT: getFeatureFlag('MULTI_TENANT', false),
+  PROFESSIONAL_SERVICES: getFeatureFlag('PROFESSIONAL', false),
+  WEBSOCKET_SYNC: getFeatureFlag('WEBSOCKET', false),
+  ENCRYPTION_KEYS: getFeatureFlag('ENCRYPTION', false),
+  TENANT_CONFIG: getFeatureFlag('TENANT_CONFIG', false),
+  ADVANCED_ANALYTICS: getFeatureFlag('ANALYTICS', false),
+  COLLABORATIVE_FEATURES: getFeatureFlag('COLLABORATIVE', false),
+  FIREBASE_REALTIME_SYNC: getFeatureFlag('REALTIME_SYNC', false),
+  BACKGROUND_SYNC: getFeatureFlag('BACKGROUND_SYNC', false),
+  OFFLINE_MODE: getFeatureFlag('OFFLINE', false),
+  CLIENT_MANAGEMENT: getFeatureFlag('CLIENT_MGMT', false),
+  SESSION_MANAGEMENT: getFeatureFlag('SESSION_MGMT', false),
+  INSIGHT_TRACKING: getFeatureFlag('INSIGHTS', false),
+  MEDIA_ENCRYPTION: getFeatureFlag('MEDIA_ENCRYPT', false),
+  VIRTUE_ALIGNMENT: getFeatureFlag('VIRTUE', false),
+  CYBERNETICS_FEATURES: getFeatureFlag('CYBERNETICS', false),
+};
+
+// Debug logging
+if (process.env.NODE_ENV === 'development') {
+  console.log('🚩 Feature Flags Configuration:', FEATURE_FLAGS);
+}
+
+// Export helper to check multiple flags
+export const areFeaturesEnabled = (...flags: (keyof FeatureFlags)[]): boolean => {
+  return flags.every(flag => FEATURE_FLAGS[flag]);
+};
+
+// Export feature groups for easier checking
+export const FEATURE_GROUPS = {
+  isProfessionalEnabled: (): boolean => 
+    FEATURE_FLAGS.PROFESSIONAL_SERVICES || 
+    FEATURE_FLAGS.CLIENT_MANAGEMENT || 
+    FEATURE_FLAGS.SESSION_MANAGEMENT,
+    
+  isMultiTenantEnabled: (): boolean => 
+    FEATURE_FLAGS.MULTI_TENANT || 
+    FEATURE_FLAGS.TENANT_CONFIG,
+    
+  isAdvancedSyncEnabled: (): boolean => 
+    FEATURE_FLAGS.WEBSOCKET_SYNC || 
+    FEATURE_FLAGS.FIREBASE_REALTIME_SYNC || 
+    FEATURE_FLAGS.BACKGROUND_SYNC,
+    
+  isDataTrackingEnabled: (): boolean => 
+    FEATURE_FLAGS.ADVANCED_ANALYTICS || 
+    FEATURE_FLAGS.INSIGHT_TRACKING || 
+    FEATURE_FLAGS.VIRTUE_ALIGNMENT,
+};
+```
+
+### 2. Simplified App.tsx with Feature Flags
+```typescript
+// File: baseline/src/App.tsx
+import React, { useEffect, useState } from 'react';
+import { auth, signInWithGoogle } from './firebase';
+import { FEATURE_FLAGS } from './config/featureFlags';
+import { SimpleLogin } from './components/SimpleLogin';
+import { MainApp } from './components/MainApp';
+import { LoadingScreen } from './components/LoadingScreen';
+
+// Import complex features only if enabled
+const ProfessionalDashboard = FEATURE_FLAGS.PROFESSIONAL_SERVICES 
+  ? React.lazy(() => import('./components/ProfessionalDashboard'))
+  : null;
+
+const TenantConfig = FEATURE_FLAGS.MULTI_TENANT
+  ? React.lazy(() => import('./services/TenantConfigService'))
+  : null;
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('idle');
+
+  useEffect(() => {
+    console.log('🚀 App initializing with features:', {
+      basicAuth: FEATURE_FLAGS.BASIC_AUTH,
+      encryption: FEATURE_FLAGS.ENCRYPTION_KEYS,
+      multiTenant: FEATURE_FLAGS.MULTI_TENANT,
+    });
+
+    // Simple auth state listener
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      console.log('🔐 Auth state changed:', firebaseUser ? 'User logged in' : 'No user');
+      
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        
+        // Only sync if simple sync is enabled
+        if (FEATURE_FLAGS.SIMPLE_SYNC) {
+          await performSimpleSync(firebaseUser);
+        }
+        
+        // Skip all complex initialization
+        if (!FEATURE_FLAGS.ENCRYPTION_KEYS) {
+          console.log('✅ Skipping encryption keys - feature disabled');
+        }
+        
+        if (!FEATURE_FLAGS.MULTI_TENANT) {
+          console.log('✅ Skipping tenant configuration - feature disabled');
+        }
+        
+        if (!FEATURE_FLAGS.PROFESSIONAL_SERVICES) {
+          console.log('✅ Skipping professional services - feature disabled');
+        }
+      } else {
+        setUser(null);
+        setSyncStatus('idle');
+      }
+      
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const performSimpleSync = async (firebaseUser) => {
+    try {
+      setSyncStatus('syncing');
+      console.log('🔄 Starting simple sync for user:', firebaseUser.uid);
+      
+      const token = await firebaseUser.getIdToken();
+      
+      // CRITICAL: Use correct API path
+      const apiUrl = `${process.env.REACT_APP_API_BASE_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app'}/api/accounts/sync`;
+      
+      console.log('📡 Sync URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Platform': 'mobile', // Hardcoded for Stage 1
+        },
+        body: JSON.stringify({
+          userId: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          platform: 'mobile', // Hardcoded for Stage 1
+          timestamp: new Date().toISOString(),
+          version: '1.0.0-stage1',
+          features: {
+            stage: 1,
+            enabledFlags: Object.entries(FEATURE_FLAGS)
+              .filter(([_, enabled]) => enabled)
+              .map(([flag]) => flag),
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Sync successful:', data);
+        setSyncStatus('success');
+      } else {
+        console.error('❌ Sync failed:', response.status, response.statusText);
+        setSyncStatus('error');
+      }
+    } catch (error) {
+      console.error('❌ Sync error:', error);
+      setSyncStatus('error');
+    }
+  };
+
+  // Render logic with feature flags
+  if (loading) {
+    return <LoadingScreen message="Initializing app..." />;
+  }
+
+  if (!user) {
+    return (
+      <SimpleLogin 
+        onLogin={signInWithGoogle}
+        skipEncryption={!FEATURE_FLAGS.ENCRYPTION_KEYS}
+      />
+    );
+  }
+
+  // Main app with conditional features
+  return (
+    <div className="app">
+      <MainApp 
+        user={user} 
+        syncStatus={syncStatus}
+        features={{
+          showProfessional: FEATURE_FLAGS.PROFESSIONAL_SERVICES,
+          showTenantSwitcher: FEATURE_FLAGS.MULTI_TENANT,
+          showAnalytics: FEATURE_FLAGS.ADVANCED_ANALYTICS,
+          showOfflineIndicator: FEATURE_FLAGS.OFFLINE_MODE,
+        }}
+      />
+    </div>
+  );
+}
+
+export default App;
+```
+
+### 3. Bypass Encryption Keys Screen
+```typescript
+// File: baseline/src/components/SimpleLogin.tsx
+import React, { useState } from 'react';
+import { FEATURE_FLAGS } from '../config/featureFlags';
+
+export const SimpleLogin = ({ onLogin, skipEncryption }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      console.log('🔐 Starting Google login...');
+      
+      const result = await onLogin();
+      
+      // CRITICAL: Skip encryption keys screen
+      if (FEATURE_FLAGS.ENCRYPTION_KEYS) {
+        console.log('🔑 Encryption keys feature enabled - showing screen');
+        // Would show encryption screen here
+        // But for Stage 1, we skip it
+      } else {
+        console.log('✅ Skipping encryption keys - proceeding to app');
+        // Login successful, App.tsx will handle the rest
+      }
+      
+    } catch (error) {
+      console.error('❌ Login failed:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-container">
+      <h1>SociallyFed Mobile</h1>
+      <p>Stage 1: Basic Authentication</p>
+      
+      {error && (
+        <div className="error-message">
+          Login failed: {error}
+        </div>
+      )}
+      
+      <button 
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
+        className="login-button"
+      >
+        {isLoading ? 'Signing in...' : 'Sign in with Google'}
+      </button>
+      
+      <div className="feature-status">
+        <h3>Feature Status:</h3>
+        <ul>
+          <li>✅ Basic Auth: Enabled</li>
+          <li>{FEATURE_FLAGS.ENCRYPTION_KEYS ? '⚠️' : '✅'} Encryption: {FEATURE_FLAGS.ENCRYPTION_KEYS ? 'Enabled' : 'Disabled'}</li>
+          <li>{FEATURE_FLAGS.MULTI_TENANT ? '⚠️' : '✅'} Multi-Tenant: {FEATURE_FLAGS.MULTI_TENANT ? 'Enabled' : 'Disabled'}</li>
+          <li>{FEATURE_FLAGS.PROFESSIONAL_SERVICES ? '⚠️' : '✅'} Professional: {FEATURE_FLAGS.PROFESSIONAL_SERVICES ? 'Enabled' : 'Disabled'}</li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+```
+
+### 4. Simplified ServerApiService
+```typescript
+// File: baseline/src/services/ServerApiService.ts
+import { FEATURE_FLAGS } from '../config/featureFlags';
+
+export class ServerApiService {
+  private baseUrl: string;
+  
+  constructor() {
+    this.baseUrl = process.env.REACT_APP_API_BASE_URL || 
+                   'https://sociallyfed-server-512204327023.us-central1.run.app';
+    console.log('📡 ServerApiService initialized with base URL:', this.baseUrl);
+  }
+
+  async syncAccount(user: any): Promise<any> {
+    console.log('🔄 ServerApiService.syncAccount called for user:', user.uid);
+    
+    // Stage 1: Simple sync only
+    if (!FEATURE_FLAGS.SIMPLE_SYNC) {
+      console.log('⏭️ Simple sync disabled, skipping');
+      return { skipped: true };
+    }
+
+    try {
+      const token = await user.getIdToken();
+      
+      // CRITICAL FIX: Use correct API path
+      const syncUrl = `${this.baseUrl}/api/accounts/sync`;
+      console.log('📡 Sync URL:', syncUrl);
+      
+      const response = await fetch(syncUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Platform': 'mobile', // CRITICAL FIX: Hardcode as mobile
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          email: user.email,
+          platform: 'mobile', // CRITICAL FIX: Hardcode as mobile
+          timestamp: new Date().toISOString(),
+          
+          // Only include complex data if features enabled
+          ...(FEATURE_FLAGS.MULTI_TENANT && { tenantId: null }),
+          ...(FEATURE_FLAGS.PROFESSIONAL_SERVICES && { professionalData: null }),
+          ...(FEATURE_FLAGS.ADVANCED_ANALYTICS && { analytics: null }),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sync failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Sync successful:', data);
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Sync error:', error);
+      throw error;
+    }
+  }
+
+  // Complex methods only if features enabled
+  async fetchTenantConfig(tenantId: string): Promise<any> {
+    if (!FEATURE_FLAGS.MULTI_TENANT) {
+      console.log('⏭️ Multi-tenant disabled, returning default config');
+      return { tenantId: 'default', features: {} };
+    }
+    // Original complex implementation here
+  }
+
+  async fetchProfessionalData(userId: string): Promise<any> {
+    if (!FEATURE_FLAGS.PROFESSIONAL_SERVICES) {
+      console.log('⏭️ Professional services disabled, returning empty data');
+      return { clients: [], sessions: [] };
+    }
+    // Original complex implementation here
+  }
+}
+```
+
+### 5. Environment Configuration for Stage 1
+```bash
+# File: baseline/.env.production
+# Stage 1: Minimal Configuration - Complex Features Disabled
+
+# Core Configuration (Required)
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_ENV=production
+REACT_APP_STAGE=1
+
+# Firebase Configuration (Required for Auth)
+REACT_APP_FIREBASE_API_KEY=AIzaSyDZ...your-key
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed
+
+# Feature Flags - Stage 1 (All Complex Features OFF)
+REACT_APP_ENABLE_MULTI_TENANT=false
+REACT_APP_ENABLE_PROFESSIONAL=false
+REACT_APP_ENABLE_WEBSOCKET=false
+REACT_APP_ENABLE_ENCRYPTION=false
+REACT_APP_ENABLE_TENANT_CONFIG=false
+REACT_APP_ENABLE_ANALYTICS=false
+REACT_APP_ENABLE_COLLABORATIVE=false
+REACT_APP_ENABLE_REALTIME_SYNC=false
+REACT_APP_ENABLE_BACKGROUND_SYNC=false
+REACT_APP_ENABLE_OFFLINE=false
+REACT_APP_ENABLE_CLIENT_MGMT=false
+REACT_APP_ENABLE_SESSION_MGMT=false
+REACT_APP_ENABLE_INSIGHTS=false
+REACT_APP_ENABLE_MEDIA_ENCRYPT=false
+REACT_APP_ENABLE_VIRTUE=false
+REACT_APP_ENABLE_CYBERNETICS=false
+
+# Debug Settings
+REACT_APP_DEBUG_MODE=true
+REACT_APP_LOG_LEVEL=debug
+```
+
+### 6. Simplified Firebase Configuration
+```typescript
+// File: baseline/src/firebase.ts
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { FEATURE_FLAGS } from './config/featureFlags';
+
+// Stage 1: Minimal Firebase configuration
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  // Conditionally add complex features
+  ...(FEATURE_FLAGS.FIREBASE_REALTIME_SYNC && {
+    databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
+  }),
+  ...(FEATURE_FLAGS.MEDIA_ENCRYPTION && {
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  }),
+};
+
+console.log('🔥 Initializing Firebase with config:', {
+  ...firebaseConfig,
+  apiKey: '***hidden***',
+});
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
+// Set persistence to LOCAL so auth survives refresh
+setPersistence(auth, browserLocalPersistence)
+  .then(() => console.log('✅ Firebase persistence set to LOCAL'))
+  .catch((error) => console.error('❌ Failed to set persistence:', error));
+
 // Make Firebase globally accessible for debugging
 if (typeof window !== 'undefined') {
-    window.firebase = { app, auth };
-}
-```
-
-### 3. Build Production Version
-```bash
-# Clean previous builds
-rm -rf build/
-rm -rf node_modules/.cache/
-
-# Install dependencies
-npm install
-
-# Build with production environment
-export NODE_ENV=production
-export REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-npm run build
-
-# Verify build output
-echo "=== Checking build for correct API URL ==="
-grep -r "sociallyfed-server" build/
-grep -r "/accounts/sync" build/
-grep -r "/api/accounts/sync" build/
-
-# Check bundle size
-du -sh build/static/js/*.js
-```
-
-### 4. Deploy to Google Cloud Run
-```bash
-# Build Docker image
-docker build -t gcr.io/sociallyfed/sociallyfed-mobile:latest .
-
-# Push to Google Container Registry
-docker push gcr.io/sociallyfed/sociallyfed-mobile:latest
-
-# Deploy to the ACTIVE URL (sqdd3g2eea)
-gcloud run deploy sociallyfed-mobile-sqdd3g2eea \
-  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
-  --platform managed \
-  --region us-central1 \
-  --memory 1Gi \
-  --cpu 1 \
-  --timeout 300 \
-  --concurrency 1000 \
-  --max-instances 20 \
-  --allow-unauthenticated
-
-# Get deployment URL
-echo "=== Deployment URL ==="
-gcloud run services describe sociallyfed-mobile-sqdd3g2eea \
-  --platform managed \
-  --region us-central1 \
-  --format 'value(status.url)'
-
-# Also update the other deployment for consistency
-gcloud run deploy sociallyfed-mobile \
-  --image gcr.io/sociallyfed/sociallyfed-mobile:latest \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated
-```
-
-### 5. Post-Deployment Verification Tests
-```javascript
-// Run these tests in browser console after deployment
-
-// Test 1: Verify correct API path
-console.log('Test 1: API Path Check');
-fetch('https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app/test', {
-    method: 'POST',
-    body: JSON.stringify({test: true})
-}).then(() => {
-    // Check Network tab - should show /api/accounts/sync not /accounts/sync
-    console.log('Check Network tab for API paths');
-});
-
-// Test 2: Verify Firebase is accessible
-console.log('Test 2: Firebase Availability');
-if (typeof firebase !== 'undefined') {
-    console.log('✅ Firebase is accessible');
-    console.log('Firebase auth:', firebase.auth);
-} else {
-    console.log('❌ Firebase NOT accessible - critical issue');
+  window.firebase = { app, auth };
+  console.log('🔧 Firebase available in window.firebase for debugging');
 }
 
-// Test 3: Platform identification
-console.log('Test 3: Platform Check');
-// Create a test sync request and check the platform value
-const testData = {
-    platform: 'web', // This should be changed to 'mobile' by the app
-    timestamp: new Date().toISOString()
+// Simple Google sign-in
+export const signInWithGoogle = async () => {
+  try {
+    console.log('🔐 Starting Google sign-in...');
+    const provider = new GoogleAuthProvider();
+    
+    // Stage 1: Basic scopes only
+    provider.addScope('email');
+    provider.addScope('profile');
+    
+    const result = await signInWithPopup(auth, provider);
+    console.log('✅ Google sign-in successful:', result.user.email);
+    return result;
+  } catch (error) {
+    console.error('❌ Google sign-in failed:', error);
+    throw error;
+  }
 };
-console.log('Original platform:', testData.platform);
-// The app should change this to 'mobile'
 
-// Test 4: Authentication flow
-console.log('Test 4: Login Flow');
-// Try to login and watch for "getting encryption keys" stuck state
-console.log('Attempt login and check if it completes successfully');
+// Sign out
+export const signOut = async () => {
+  try {
+    await auth.signOut();
+    console.log('✅ Signed out successfully');
+  } catch (error) {
+    console.error('❌ Sign out failed:', error);
+    throw error;
+  }
+};
 ```
+
+### 7. Backend Feature Flag Configuration
+```typescript
+// File: backend/src/config/featureFlags.ts
+export const BACKEND_FEATURE_FLAGS = {
+  // Core features
+  BASIC_AUTH: true,
+  SIMPLE_SYNC: true,
+  
+  // Complex features - disabled for Stage 1
+  MULTI_TENANT: process.env.ENABLE_MULTI_TENANT === 'true',
+  PROFESSIONAL_SERVICES: process.env.ENABLE_PROFESSIONAL === 'true',
+  WEBSOCKET_SERVER: process.env.ENABLE_WEBSOCKET === 'true',
+  TOKEN_EXCHANGE: process.env.ENABLE_TOKEN_EXCHANGE === 'true',
+  TENANT_CONFIG: process.env.ENABLE_TENANT_CONFIG === 'true',
+};
+
+// File: backend/src/app.ts
+import express from 'express';
+import { BACKEND_FEATURE_FLAGS } from './config/featureFlags';
+
+const app = express();
+
+// Core middleware - always enabled
+app.use(express.json());
+app.use(cors({
+  origin: [
+    'https://sociallyfed-mobile-sqdd3g2eea-uc.a.run.app',
+    'https://sociallyfed-mobile-512204327023.us-central1.run.app',
+    'http://localhost:3000',
+  ],
+  credentials: true,
+}));
+
+// Basic routes - always enabled
+app.use('/health', (req, res) => res.send('Healthy'));
+app.use('/api/auth', authRoutes);
+app.use('/api/accounts', accountRoutes);
+
+// Complex routes - conditionally enabled
+if (BACKEND_FEATURE_FLAGS.PROFESSIONAL_SERVICES) {
+  console.log('📊 Professional services enabled');
+  app.use('/api/professional', professionalRoutes);
+} else {
+  console.log('⏭️ Professional services disabled');
+}
+
+if (BACKEND_FEATURE_FLAGS.MULTI_TENANT) {
+  console.log('🏢 Multi-tenant features enabled');
+  app.use('/api/tenants', tenantRoutes);
+} else {
+  console.log('⏭️ Multi-tenant features disabled');
+}
+
+if (BACKEND_FEATURE_FLAGS.WEBSOCKET_SERVER) {
+  console.log('🔌 WebSocket server enabled');
+  setupWebSocketServer(server);
+} else {
+  console.log('⏭️ WebSocket server disabled');
+}
+```
+
+---
+
+## Technical Requirements
+
+### Frontend Requirements
+1. **Dependencies to Keep**:
+   - `firebase` (^9.x) - Core authentication
+   - `react` (^18.x) - UI framework
+   - `react-dom` - React DOM rendering
+   - Essential build tools
+
+2. **Dependencies to Conditionally Load**:
+   - Load WebSocket libraries only if `WEBSOCKET_SYNC` enabled
+   - Load analytics SDKs only if `ADVANCED_ANALYTICS` enabled
+   - Load encryption libraries only if `ENCRYPTION_KEYS` enabled
+
+3. **Build Configuration**:
+   ```json
+   // package.json scripts
+   {
+     "scripts": {
+       "build:stage1": "REACT_APP_STAGE=1 react-scripts build",
+       "build:stage2": "REACT_APP_STAGE=2 react-scripts build",
+       "build:full": "REACT_APP_STAGE=5 react-scripts build"
+     }
+   }
+   ```
+
+### Backend Requirements
+1. **Simplified Endpoints for Stage 1**:
+   - `/health` - Health check
+   - `/api/auth/login` - Basic authentication
+   - `/api/accounts/sync` - Simple sync endpoint
+   
+2. **Disabled Endpoints**:
+   - `/api/professional/*` - All professional services
+   - `/api/tenants/*` - All multi-tenant endpoints
+   - `/api/analytics/*` - All analytics endpoints
+   - `/ws/*` - All WebSocket endpoints
+
+3. **Database Requirements**:
+   - Stage 1: Single user table, simple key-value for user data
+   - No tenant tables
+   - No professional services tables
+   - No complex relationships
+
+### Infrastructure Requirements
+1. **Google Cloud Run**:
+   ```yaml
+   # Stage 1 Configuration
+   memory: 512Mi  # Reduced from 1Gi
+   cpu: 1
+   max-instances: 5  # Reduced from 20
+   min-instances: 0
+   ```
+
+2. **Environment Variables**:
+   - Minimal set for Stage 1
+   - All feature flags set to false
+   - Only essential API keys
 
 ---
 
 ## Integration Points to Consider
 
-### 1. Multiple Deployment URLs
-- **Primary**: `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app` (currently active)
-- **Secondary**: `sociallyfed-mobile-512204327023.us-central1.run.app` (claimed fixes)
-- **Action**: Consolidate to single deployment or implement proper routing
+### Stage 1 Integration Points (Active)
+1. **Firebase Auth ↔ Mobile App**:
+   - Google Sign-In only
+   - Token generation
+   - Session persistence
 
-### 2. Firebase Configuration
-- Ensure Firebase config matches between environments
-- Verify Firebase project ID is correct
-- Check Firebase auth domain is whitelisted
+2. **Mobile App ↔ Server API**:
+   - Single endpoint: `/api/accounts/sync`
+   - Bearer token authentication
+   - Platform header: 'mobile'
 
-### 3. Server Endpoints
-- **Working**: `/api/accounts/sync` (correct path)
-- **Not Working**: `/accounts/sync` (wrong path mobile is using)
-- **Missing**: `/api/auth/exchange` (needs server implementation)
+3. **Server ↔ Database**:
+   - Simple user storage
+   - No complex queries
+   - No joins or relationships
 
-### 4. CORS Configuration
-- Server must whitelist both mobile URLs
-- Include proper headers for authentication
-- Handle preflight requests correctly
+### Disabled Integration Points (Stage 1)
+1. ❌ **Multi-Tenant Systems** - Completely disabled
+2. ❌ **WebSocket Connections** - Not initialized
+3. ❌ **Professional Dashboard** - Routes not registered
+4. ❌ **Background Sync** - Service workers disabled
+5. ❌ **Offline Mode** - Cache strategies disabled
+6. ❌ **Analytics Tracking** - No events sent
+7. ❌ **Encryption Services** - Keys not generated
+
+### Critical Path Dependencies
+```
+User → Google Auth → Firebase → JWT Token → Server Sync → Success
+         ↓                          ↓           ↓
+    (No encryption)          (No tenant)   (No complex data)
+```
 
 ---
 
 ## Definition of Done for Today's Work
 
-### ✅ Code Audit Complete
-- [ ] Verified AuthenticationService.ts exists
-- [ ] Verified ApiInterceptor.ts exists
-- [ ] Confirmed ServerApiService uses `/api/accounts/sync`
-- [ ] Confirmed platform sends "mobile" not "web"
-- [ ] Firebase properly initialized and exported
+### ✅ Feature Flag Infrastructure
+- [ ] Feature flags file created and exported
+- [ ] All 16+ feature flags defined
+- [ ] Environment variables mapped to flags
+- [ ] Debug logging shows flag status
+- [ ] Feature groups helper functions work
 
-### ✅ Critical Fixes Applied
-- [ ] API path corrected to `/api/accounts/sync`
-- [ ] Platform identification returns "mobile"
-- [ ] Firebase accessible in window scope
-- [ ] Encryption keys loading screen can be bypassed
+### ✅ Authentication Simplification
+- [ ] Google Sign-In works without errors
+- [ ] Firebase auth state persists on refresh
+- [ ] JWT token obtained successfully
+- [ ] No "Getting encryption keys" screen appears
+- [ ] Login completes in < 5 seconds
 
-### ✅ Build Successful
-- [ ] Production build completes without errors
-- [ ] Build output contains correct API URLs
-- [ ] Bundle size < 1MB gzipped
-- [ ] Environment variables properly injected
+### ✅ API Path Corrections
+- [ ] All sync calls use `/api/accounts/sync`
+- [ ] No references to `/accounts/sync` remain
+- [ ] Network tab shows correct paths
+- [ ] No 404 errors on API calls
 
-### ✅ Deployment Verified
-- [ ] Deployed to `sociallyfed-mobile-sqdd3g2eea-uc.a.run.app`
+### ✅ Platform Identification
+- [ ] Platform hardcoded as 'mobile' everywhere
+- [ ] X-Platform header shows 'mobile'
+- [ ] Request body platform field shows 'mobile'
+- [ ] No 'web' platform values sent
+
+### ✅ Complex Feature Removal
+- [ ] Professional services code wrapped in feature flags
+- [ ] Multi-tenant logic bypassed
+- [ ] WebSocket initialization skipped
+- [ ] Background sync disabled
+- [ ] Offline mode indicators hidden
+
+### ✅ Build and Deployment
+- [ ] Stage 1 build completes without errors
+- [ ] Bundle size < 500KB (reduced from 767KB)
+- [ ] No references to disabled features in bundle
+- [ ] Deployment to Cloud Run successful
 - [ ] Health check returns 200 OK
-- [ ] No 404 errors on static resources
-- [ ] Deployment URL confirmed and documented
 
-### ✅ Integration Tests Pass
-- [ ] Login flow completes without getting stuck
-- [ ] Network requests use `/api/accounts/sync`
-- [ ] Platform header shows "mobile"
-- [ ] Firebase accessible in browser console
-- [ ] Authentication token can be obtained
+### ✅ End-to-End Testing
+- [ ] User can open app
+- [ ] Login button visible and clickable
+- [ ] Google auth popup appears
+- [ ] Auth completes without stuck screens
+- [ ] User email displayed after login
+- [ ] Sync request sent automatically
+- [ ] Sync returns 200 OK (not 401)
+- [ ] No console errors
 
-### ✅ Documentation Updated
-- [ ] Deployment URLs documented
-- [ ] Known issues list updated
-- [ ] Implementation report generated
-- [ ] Runbook for future deployments created
-
----
-
-## Success Metrics
-1. **Primary**: Zero 401 errors after successful login
-2. **API Paths**: 100% of sync requests use `/api/accounts/sync`
-3. **Platform**: All requests identify as "mobile"
-4. **Firebase**: `window.firebase` accessible in console
-5. **Login Flow**: Completes in < 5 seconds without getting stuck
-
----
-
-## Next Steps After Deployment
-
-### Immediate (Today)
-1. Monitor Cloud Run logs for errors
-2. Test complete user journey from login to sync
-3. Verify professional services integration
-4. Document any remaining issues
-
-### Short-term (This Week)
-1. Implement `/api/auth/exchange` endpoint on server
-2. Add comprehensive error handling
-3. Implement token refresh mechanism
-4. Set up monitoring and alerting
-
-### Long-term (Next Sprint)
-1. Refactor authentication architecture
-2. Implement proper Firebase persistence
-3. Add integration test suite
-4. Consider migrating to single deployment URL
-
----
-
-## Rollback Plan
-If deployment causes critical issues:
-```bash
-# Rollback to previous revision
-gcloud run revisions list --service=sociallyfed-mobile-sqdd3g2eea --region=us-central1
-
-# Deploy previous working revision
-gcloud run services update-traffic sociallyfed-mobile-sqdd3g2eea \
-  --region=us-central1 \
-  --to-revisions=PREVIOUS_REVISION_ID=100
+### ✅ Debugging Verification
+```javascript
+// All these should work in browser console:
+window.firebase                    // Returns Firebase object
+firebase.auth().currentUser        // Returns user after login
+localStorage.getItem('user')       // Has user data
+// Network tab should show:
+// - POST to /api/accounts/sync (200 OK)
+// - Authorization: Bearer [token]
+// - X-Platform: mobile
 ```
 
 ---
 
-## Critical Notes
+## Success Metrics
 
-### ⚠️ Known Issues Not Yet Fixed
-1. **Server Missing Endpoint**: `/api/auth/exchange` doesn't exist - needs server deployment
-2. **Firebase Persistence**: Auth doesn't survive page refresh
-3. **Token Management**: No automatic token refresh implemented
-4. **Error Handling**: No user-friendly error messages
+### Stage 1 Success Criteria
+1. **Authentication**: User can log in and stay logged in across refresh
+2. **API Communication**: Sync endpoint returns 200 OK
+3. **Performance**: Login + sync completes in < 10 seconds
+4. **Stability**: No stuck screens or infinite loops
+5. **Simplicity**: < 50% of original code active
 
-### 🔴 Deployment Confusion
-- Two different Cloud Run services with different URLs
-- Fixes deployed to wrong URL in previous attempt
-- Need to consolidate or clearly document which is production
+### Failure Indicators
+- Any "Getting encryption keys" screen = FAIL
+- Any 401 errors after login = FAIL
+- Platform showing as 'web' = FAIL
+- Sync using wrong path = FAIL
+- Login taking > 30 seconds = FAIL
 
-### ✅ What IS Working
-- Server is fully operational at correct URL
-- CORS partially configured
-- Health endpoints responding
-- Static assets serving correctly
+### Rollback Triggers
+If any of these occur, rollback immediately:
+- App crashes on load
+- Login always fails
+- Infinite redirect loops
+- Console shows > 10 errors
 
 ---
 
-*Brief generated for deployment audit on 2025-08-09*
-*Priority: P0 CRITICAL - Mobile app non-functional without these fixes*
-*Estimated completion: 4-6 hours including testing*
+## Progressive Enhancement Plan
+
+### Stage Progression Criteria
+Move to next stage only when ALL criteria met:
+
+**Stage 1 → Stage 2**: 
+- 5 successful logins in a row
+- Zero 401 errors for 1 hour
+- Sync working consistently
+
+**Stage 2 → Stage 3**:
+- Offline mode working
+- Background sync successful
+- No data loss issues
+
+**Stage 3 → Stage 4**:
+- Professional features stable
+- WebSocket connections reliable
+- No memory leaks
+
+**Stage 4 → Stage 5**:
+- Multi-tenant isolation verified
+- Performance acceptable with all features
+- Zero critical bugs for 1 week
+
+---
+
+## Testing Scripts
+
+### Manual Test Checklist
+```
+1. [ ] Clear all browser data
+2. [ ] Open app fresh
+3. [ ] Click login
+4. [ ] Complete Google auth
+5. [ ] Verify no stuck screens
+6. [ ] Check network tab for /api/accounts/sync
+7. [ ] Verify 200 OK response
+8. [ ] Refresh page
+9. [ ] Verify still logged in
+10. [ ] Check console for errors
+```
+
+### Automated Test Script
+```javascript
+// Run in console after deployment
+async function testStage1() {
+  console.log('🧪 Starting Stage 1 Tests...');
+  
+  // Test 1: Firebase available
+  if (!window.firebase) {
+    console.error('❌ Test 1 FAILED: Firebase not available');
+    return false;
+  }
+  console.log('✅ Test 1 PASSED: Firebase available');
+  
+  // Test 2: Auth state
+  const user = firebase.auth().currentUser;
+  if (!user) {
+    console.error('❌ Test 2 FAILED: Not logged in');
+    return false;
+  }
+  console.log('✅ Test 2 PASSED: User logged in');
+  
+  // Test 3: Platform check
+  const logs = console.logs || [];
+  const hasWebPlatform = logs.some(log => log.includes('platform":"web"'));
+  if (hasWebPlatform) {
+    console.error('❌ Test 3 FAILED: Still sending platform as web');
+    return false;
+  }
+  console.log('✅ Test 3 PASSED: Platform correctly set');
+  
+  console.log('🎉 All Stage 1 tests passed!');
+  return true;
+}
+
+// Run the test
+testStage1();
+```
+
+---
+
+## Rollback Plan
+
+### If Stage 1 Deployment Fails:
+```bash
+# 1. List previous revisions
+gcloud run revisions list --service=sociallyfed-mobile --region=us-central1
+
+# 2. Rollback to last known working revision
+gcloud run services update-traffic sociallyfed-mobile \
+  --region=us-central1 \
+  --to-revisions=PREVIOUS_REVISION=100
+
+# 3. Or deploy a minimal "maintenance mode" version
+gcloud run deploy sociallyfed-mobile \
+  --image=gcr.io/sociallyfed/maintenance:latest \
+  --region=us-central1
+```
+
+### Emergency Fixes:
+```javascript
+// If app is stuck, users can run this in console:
+localStorage.clear();
+sessionStorage.clear();
+location.reload();
+```
+
+---
+
+## Notes for Implementation Team
+
+### Critical Do's:
+- ✅ DO test locally with all flags OFF first
+- ✅ DO verify Firebase config is correct
+- ✅ DO hardcode platform as 'mobile'
+- ✅ DO use correct API path `/api/accounts/sync`
+- ✅ DO keep console logging for debugging
+
+### Critical Don'ts:
+- ❌ DON'T enable any complex features in Stage 1
+- ❌ DON'T show encryption keys screen
+- ❌ DON'T make tenant configuration calls
+- ❌ DON'T initialize WebSocket connections
+- ❌ DON'T remove logging until Stage 2
+
+### Debug Commands for Developers:
+```javascript
+// Check current feature flags
+console.log('Feature Flags:', window.FEATURE_FLAGS);
+
+// Force enable a feature (testing only)
+window.FEATURE_FLAGS.ENCRYPTION_KEYS = true;
+
+// Check auth state
+firebase.auth().currentUser
+
+// Manually trigger sync
+window.testSync = async () => {
+  const user = firebase.auth().currentUser;
+  if (!user) return;
+  const token = await user.getIdToken();
+  return fetch('/api/accounts/sync', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'X-Platform': 'mobile'
+    },
+    body: JSON.stringify({
+      userId: user.uid,
+      platform: 'mobile',
+      timestamp: new Date().toISOString()
+    })
+  });
+};
+```
+
+---
+
+*Brief generated for Stage 1 Feature Flag Implementation on 2025-08-09*
+*Estimated Time: 6 hours including testing*
+*Success Rate Target: 100% authentication success after implementation*
