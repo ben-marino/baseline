@@ -175,420 +175,435 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Mon 18 Aug 2025 06:00:34 AEST
+## Session Started: Thu 21 Aug 2025 15:45:44 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - Mobile Client Focus
-**Date**: January 13, 2025  
-**Sprint**: Terra API Integration & Wellness Professional Features  
-**Day**: 1 of 7 (Week 1)  
-**Focus**: Mobile Terra Service Implementation & API Gateway Integration
+# Daily Brief - SociallyFed Mobile Authentication Audit & Debug
+## Date: 2025-01-13
+
+### Mission Critical: Fix Firebase Authentication Flow
+**Priority**: P0 - CRITICAL  
+**Objective**: Audit current authentication configuration, fix the "Getting your encryption keys" stuck screen, and establish working Firebase → JWT → Server sync flow
 
 ---
 
-## 📱 **TODAY'S MOBILE PRIORITIES**
+## Current Situation Analysis
 
-### **Primary Objective**
-Implement Terra API integration foundation in mobile client with API Gateway routing for wellness professional features.
+### Known Issues
+1. **Authentication Flow Blocked**: App gets stuck on "Getting your encryption keys" screen after Firebase auth
+2. **Token Exchange Failure**: Firebase tokens not properly exchanged for server JWTs
+3. **Platform Identification**: Incorrect platform ('web' instead of 'mobile') causing API failures
+4. **API Path Mismatches**: Endpoints using wrong paths (`/accounts/sync` vs `/api/accounts/sync`)
 
-### **Critical Path Items** (Must Complete)
-1. **Terra Service Implementation** (2-3 hours)
-   - Create `src/services/TerraService.ts`
-   - Implement widget session generation
-   - Add encryption for Terra tokens using existing helpers
-   - PWA-compatible OAuth flow (no native SDK)
-
-2. **API Gateway Terra Routes** (1-2 hours)
-   - Configure Terra endpoints in API Gateway
-   - Add Terra webhook route with signature validation
-   - Implement caching strategy for health data
-   - Set up professional service health data access
-
-3. **Database Schema Updates** (1 hour)
-   - Add `terra_health_context` JSONB to logs table
-   - Add `terra_user_id` to users table
-   - Create `terra_health_data` history table
-   - Apply migrations to development environment
-
-4. **Environment Configuration** (30 min)
-   - Add Terra API keys to `.env`
-   - Configure webhook URL in Terra dashboard
-   - Update `appsettings.json` with Terra config
-   - Set up development webhook testing
+### Previous Solutions Implemented (Need Verification)
+- Feature flag system to bypass encryption flow
+- Authentication service for Firebase → JWT exchange
+- API interceptor for automatic auth headers
+- Platform identification fixes
 
 ---
 
-## 🔗 **INTEGRATION PRIORITIES**
+## Today's Audit & Debug Tasks
 
-### **API Gateway Development Tasks**
+### Phase 1: Configuration Audit (30 minutes)
+
+#### 1.1 Verify Feature Flags
+**File**: `src/services/SociallyFedConfigService.ts`
 ```typescript
-// Priority 1: Terra Widget Session Route
-POST /api/gateway/terra/session
+// Check these flags are properly set:
 {
-  userId: string,
-  providers?: string[], // Default: PWA-compatible only
-  returnUrl?: string
-}
-Response: { sessionUrl: string, sessionId: string }
-
-// Priority 2: Terra Data Access Route  
-GET /api/gateway/terra/health-data/{userId}
-Headers: { Authorization: "Bearer {token}" }
-Response: { 
-  latest: TerraHealthData,
-  history: TerraHealthData[],
-  correlations: HealthCorrelations
-}
-
-// Priority 3: Professional Terra Access
-GET /api/gateway/professional/client-health/{clientId}
-Headers: { 
-  Authorization: "Bearer {counselorToken}",
-  "X-Tenant-ID": "tenantId"
-}
-Response: {
-  healthMetrics: TerraHealthData,
-  moodCorrelations: MoodHealthCorrelation,
-  insights: string[]
+  enableBasicAuth: true,           // ✓ Must be true
+  enableServerSync: true,          // ✓ Must be true
+  enableMultiTenant: false,        // ✓ Must be false (simplified mode)
+  enableProfessionalServices: false, // ✓ Must be false
+  enableEncryptionFlow: false,     // ✓ CRITICAL - Must be false
+  enableWebSocket: false,          // ✓ Must be false
+  forceMobilePlatform: true,       // ✓ Must be true
+  useCorrectApiPaths: true        // ✓ Must be true
 }
 ```
 
-### **Mobile-Server Communication Features**
+**Action Items**:
+- [ ] Verify `SimplifiedFeatureFlags` interface exists
+- [ ] Check `enableBasicMode()` method is implemented
+- [ ] Ensure flags persist to localStorage/sessionStorage
+- [ ] Add console logging to verify flags on app startup
+
+#### 1.2 Verify Environment Configuration
+**Files**: `.env`, `.env.production`, `.env.development`
+```bash
+# Check these are correctly set:
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_FIREBASE_API_KEY=[verify present]
+REACT_APP_FIREBASE_AUTH_DOMAIN=[verify present]
+REACT_APP_FIREBASE_PROJECT_ID=[verify present]
+```
+
+**Action Items**:
+- [ ] Verify all Firebase config values are present
+- [ ] Confirm server URL is correct and accessible
+- [ ] Check for any hardcoded API URLs that need updating
+
+### Phase 2: Authentication Flow Audit (45 minutes)
+
+#### 2.1 Login Component Analysis
+**File**: `src/pages/Login.tsx`
+
+**Required Modifications**:
 ```typescript
-// Mobile Implementation Requirements
-class TerraApiGatewayService {
-  // 1. Session Management
-  async initiateTerraConnection(): Promise<void> {
-    const session = await this.apiGateway.post('/terra/session', {
-      userId: this.currentUser.uid,
-      providers: this.getPWACompatibleProviders()
+// Add comprehensive debug logging
+const continueLoginFlow = async () => {
+  console.log('🔐 Starting login flow...');
+  console.log('Current feature flags:', configService.getSimplifiedFlags());
+  
+  // Check if encryption should be bypassed
+  if (!configService.isSimplifiedFlagEnabled('enableEncryptionFlow')) {
+    console.log('✅ Bypassing encryption flow (feature flag disabled)');
+    setCheckingEncryption(false);
+    
+    // Direct to JWT exchange
+    try {
+      console.log('🔄 Exchanging Firebase token for JWT...');
+      const firebaseToken = await auth.currentUser?.getIdToken();
+      console.log('Firebase token obtained:', !!firebaseToken);
+      
+      const jwt = await authService.exchangeFirebaseToken(firebaseToken);
+      console.log('JWT obtained:', !!jwt);
+      
+      // Proceed to sync
+      await performSync(jwt);
+    } catch (error) {
+      console.error('❌ Auth flow failed:', error);
+    }
+    return; // Skip encryption flow entirely
+  }
+  
+  // Original encryption flow (should not reach here if flag is false)
+  console.log('⚠️ Encryption flow enabled - this may cause issues');
+  setCheckingEncryption(true);
+  // ... existing encryption code
+};
+```
+
+**Action Items**:
+- [ ] Add debug logging at every decision point
+- [ ] Verify `setCheckingEncryption(false)` is called when bypassing
+- [ ] Ensure early return prevents encryption flow execution
+- [ ] Add try-catch blocks with detailed error logging
+
+#### 2.2 Authentication Service Verification
+**File**: `src/services/AuthenticationService.ts`
+
+**Verify Implementation**:
+```typescript
+class AuthenticationService {
+  async exchangeFirebaseToken(firebaseToken: string): Promise<string> {
+    console.log('📤 Exchanging Firebase token at /api/auth/exchange');
+    
+    const response = await fetch(`${API_URL}/api/auth/exchange`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Platform': 'mobile' // Critical header
+      },
+      body: JSON.stringify({ firebaseToken })
     });
     
-    // Open Terra widget in PWA-compatible window
-    window.open(session.sessionUrl, 'terra-connect', 'width=500,height=700');
-  }
-  
-  // 2. Health Data Synchronization
-  async syncHealthData(): Promise<TerraHealthData> {
-    // Check cache first (5-minute TTL)
-    const cached = await this.getCachedHealthData();
-    if (cached && !this.isStale(cached)) return cached.data;
+    if (!response.ok) {
+      console.error('Token exchange failed:', response.status, await response.text());
+      throw new Error(`Token exchange failed: ${response.status}`);
+    }
     
-    // Fetch from API Gateway
-    const response = await this.apiGateway.get('/terra/health-data/' + this.currentUser.uid);
+    const { token, refreshToken } = await response.json();
+    console.log('✅ JWT received, storing tokens');
     
-    // Store in IndexedDB with encryption
-    await this.storeEncryptedData(response.latest);
-    
-    return response.latest;
-  }
-  
-  // 3. Professional Context
-  async getClientHealthAsCoach(clientId: string): Promise<ClientHealthView> {
-    return this.apiGateway.get(`/professional/client-health/${clientId}`, {
-      headers: { 'X-Tenant-ID': this.tenantContext.currentTenantId }
-    });
+    // Store tokens securely
+    await this.storeTokens(token, refreshToken);
+    return token;
   }
 }
 ```
 
-### **Professional Services APIs**
-```csharp
-// Server-side implementation priorities
-[ApiController]
-[Route("api/v1/gateway/terra")]
-public class TerraGatewayController : ControllerBase
-{
-    // Priority 1: Webhook Handler (Backend only, no mobile involvement)
-    [HttpPost("webhook")]
-    [AllowAnonymous]
-    public async Task<IActionResult> HandleTerraWebhook(
-        [FromBody] TerraWebhookPayload payload,
-        [FromHeader(Name = "terra-signature")] string signature)
-    {
-        // Validate signature
-        // Process async with Hangfire
-        // Generate AI insights
-        // Cache in Redis
-    }
-    
-    // Priority 2: Mobile Session Generation
-    [HttpPost("session")]
-    [Authorize]
-    public async Task<IActionResult> GenerateTerraSession(
-        [FromBody] TerraSessionRequest request)
-    {
-        // Call Terra API
-        // Return session URL for mobile
-        // Store session reference
-    }
-    
-    // Priority 3: Health Data Retrieval
-    [HttpGet("health-data/{userId}")]
-    [Authorize]
-    public async Task<IActionResult> GetHealthData(string userId)
-    {
-        // Check cache first
-        // Return latest + history
-        // Calculate correlations
-    }
-}
-```
+**Action Items**:
+- [ ] Verify service exists or create it
+- [ ] Ensure proper error handling
+- [ ] Check token storage mechanism
+- [ ] Verify refresh token logic
 
-### **Deployment Configuration Needs**
-```yaml
-# Mobile Deployment Configuration
-ENV_VARIABLES:
-  REACT_APP_TERRA_API_KEY: ${TERRA_API_KEY}
-  REACT_APP_TERRA_DEV_ID: ${TERRA_DEV_ID}
-  REACT_APP_API_GATEWAY_URL: https://api.sociallyfed.com
-  REACT_APP_TERRA_SUCCESS_URL: /terra-success
-  REACT_APP_TERRA_ERROR_URL: /terra-error
+#### 2.3 API Interceptor Setup
+**File**: `src/services/ApiInterceptor.ts`
 
-# Server Deployment Configuration  
-TERRA_CONFIG:
-  ApiKey: ${TERRA_API_KEY}
-  DevId: ${TERRA_DEV_ID}
-  WebhookSecret: ${TERRA_WEBHOOK_SECRET}
-  WebhookUrl: https://api.sociallyfed.com/api/terra/webhook
-  CacheTTL: 300 # 5 minutes
-  
-# Database Migrations
-MIGRATIONS:
-  - 001_AddTerraHealthContext.sql
-  - 002_CreateTerraHealthDataTable.sql
-  - 003_AddTerraUserIdToUsers.sql
-```
-
----
-
-## 🤝 **COORDINATION REQUIREMENTS**
-
-### **Dependencies Between Mobile and Server Work**
-
-| Time | Mobile Team | Server Team | Dependency | Status |
-|------|-------------|-------------|------------|--------|
-| 9:00 AM | Terra Service class setup | Terra webhook controller | API contract agreement | 🟡 Ready |
-| 10:00 AM | Widget session implementation | Session generation endpoint | Endpoint must be live | 🔴 Blocking |
-| 11:00 AM | Health data sync UI | Health data retrieval API | API response format | 🟡 Ready |
-| 12:00 PM | Local encryption setup | - | Independent | ✅ |
-| 1:00 PM | Integration testing prep | Webhook testing | Test data needed | 🟡 Ready |
-| 2:00 PM | Error handling | Error response formats | Unified error codes | 🟡 Ready |
-| 3:00 PM | Cache implementation | Redis configuration | Cache key format | 🟡 Ready |
-| 4:00 PM | **Integration Testing** | **Integration Testing** | **Joint Testing** | 🔴 Critical |
-
-### **Integration Testing Requirements**
+**Required Implementation**:
 ```typescript
-// Mobile Integration Tests (Required Today)
-describe('Terra Integration Day 1', () => {
-  test('Generate Terra widget session', async () => {
-    const session = await terraService.generateWidgetSession('test-user');
-    expect(session.url).toContain('widget.tryterra.co');
-    expect(session.url).toContain(TERRA_DEV_ID);
-  });
-  
-  test('Store encrypted Terra token', async () => {
-    const token = 'test-terra-token';
-    await terraService.storeToken(token);
-    const stored = localStorage.getItem('terra_token');
-    expect(stored).toBeDefined();
-    expect(decrypt(stored, testKeys)).toBe(token);
-  });
-  
-  test('Handle Terra widget redirect', async () => {
-    const mockRedirect = '/terra-success?user=123&resource=FITBIT';
-    const result = await terraService.handleRedirect(mockRedirect);
-    expect(result.success).toBe(true);
-    expect(result.provider).toBe('FITBIT');
-  });
-  
-  test('Sync health data from cache', async () => {
-    // Mock cached data
-    const cachedData = { hrv: 45, sleep: 80, timestamp: Date.now() };
-    await ldb.terraData.put({ timestamp: Date.now(), data: encrypt(JSON.stringify(cachedData), keys) });
+class ApiInterceptor {
+  async makeRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    const token = await this.getStoredToken();
     
-    const synced = await terraService.syncHealthData();
-    expect(synced).toEqual(cachedData);
-  });
-});
-
-// Server Integration Tests (Required Today)
-[TestClass]
-public class TerraIntegrationTests
-{
-    [TestMethod]
-    public async Task GenerateSession_ReturnsValidUrl()
-    {
-        var response = await _client.PostAsync("/api/terra/session", 
-            new { userId = "test-user" });
-        var session = await response.Content.ReadAsAsync<TerraSession>();
-        
-        Assert.IsTrue(session.Url.Contains("widget.tryterra.co"));
-        Assert.IsNotNull(session.SessionId);
+    const headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'X-Platform': 'mobile',
+      'Content-Type': 'application/json'
+    };
+    
+    console.log(`🌐 API Request: ${url}`);
+    console.log('Headers:', headers);
+    
+    const response = await fetch(url, { ...options, headers });
+    
+    if (response.status === 401) {
+      console.log('🔄 Token expired, attempting refresh...');
+      const newToken = await this.refreshToken();
+      // Retry with new token
+      return this.makeRequest(url, options);
     }
     
-    [TestMethod]
-    public async Task WebhookHandler_ValidatesSignature()
-    {
-        var payload = new TerraWebhookPayload { /* test data */ };
-        var signature = GenerateValidSignature(payload);
-        
-        var response = await _client.PostAsync("/api/terra/webhook", 
-            payload, 
-            headers: new { "terra-signature" = signature });
-            
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-    }
+    return response;
+  }
 }
 ```
 
-### **Unified Architecture Validation Steps**
-```mermaid
-graph TD
-    A[Mobile: Terra Service Init] -->|1. Request Session| B[Gateway: Generate Session]
-    B -->|2. Return URL| C[Mobile: Open Widget]
-    C -->|3. User Connects| D[Terra: OAuth Flow]
-    D -->|4. Webhook| E[Server: Process Data]
-    E -->|5. Cache| F[Redis: Store Data]
-    E -->|6. Store| G[Database: History]
-    H[Mobile: Request Data] -->|7. Get Health| I[Gateway: Retrieve]
-    I -->|8. Check Cache| F
-    I -->|9. Return| J[Mobile: Display]
-    
-    style A fill:#90EE90
-    style B fill:#87CEEB
-    style E fill:#87CEEB
-    style J fill:#90EE90
+**Action Items**:
+- [ ] Verify interceptor is properly integrated
+- [ ] Check automatic token refresh on 401
+- [ ] Ensure all API calls use interceptor
+- [ ] Add request/response logging
+
+### Phase 3: Integration Testing (1 hour)
+
+#### 3.1 Create Debug Test Component
+**Create File**: `src/components/Debug/AuthFlowDebugger.tsx`
+
+```typescript
+import React, { useState } from 'react';
+import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle } from '@ionic/react';
+
+const AuthFlowDebugger: React.FC = () => {
+  const [results, setResults] = useState<any>({});
+  
+  const tests = [
+    {
+      name: 'Check Feature Flags',
+      test: async () => {
+        const config = new SociallyFedConfigService();
+        return config.getSimplifiedFlags();
+      }
+    },
+    {
+      name: 'Firebase Auth Status',
+      test: async () => {
+        const user = auth.currentUser;
+        return {
+          authenticated: !!user,
+          uid: user?.uid,
+          email: user?.email
+        };
+      }
+    },
+    {
+      name: 'Get Firebase Token',
+      test: async () => {
+        const token = await auth.currentUser?.getIdToken();
+        return {
+          hasToken: !!token,
+          tokenLength: token?.length
+        };
+      }
+    },
+    {
+      name: 'Exchange for JWT',
+      test: async () => {
+        const firebaseToken = await auth.currentUser?.getIdToken();
+        const authService = new AuthenticationService();
+        const jwt = await authService.exchangeFirebaseToken(firebaseToken);
+        return {
+          success: !!jwt,
+          jwtLength: jwt?.length
+        };
+      }
+    },
+    {
+      name: 'Test Sync Endpoint',
+      test: async () => {
+        const response = await apiInterceptor.makeRequest(
+          `${API_URL}/api/accounts/sync`,
+          { method: 'POST', body: JSON.stringify({ platform: 'mobile' }) }
+        );
+        return {
+          status: response.status,
+          ok: response.ok
+        };
+      }
+    }
+  ];
+  
+  const runAllTests = async () => {
+    for (const test of tests) {
+      try {
+        console.log(`Running: ${test.name}`);
+        const result = await test.test();
+        setResults(prev => ({ ...prev, [test.name]: { success: true, data: result }}));
+      } catch (error) {
+        console.error(`Failed: ${test.name}`, error);
+        setResults(prev => ({ ...prev, [test.name]: { success: false, error: error.message }}));
+      }
+    }
+  };
+  
+  return (
+    <IonCard>
+      <IonCardHeader>
+        <IonCardTitle>Authentication Flow Debugger</IonCardTitle>
+      </IonCardHeader>
+      <IonCardContent>
+        <IonButton onClick={runAllTests}>Run All Tests</IonButton>
+        <pre>{JSON.stringify(results, null, 2)}</pre>
+      </IonCardContent>
+    </IonCard>
+  );
+};
 ```
 
-**Validation Checkpoints:**
-- [ ] ✅ Mobile can generate Terra session through API Gateway
-- [ ] ✅ Terra widget opens and completes OAuth flow
-- [ ] ✅ Server receives and validates webhook
-- [ ] ✅ Health data is cached and encrypted
-- [ ] ✅ Mobile can retrieve and display health data
-- [ ] ✅ Professional service can access client health data
-- [ ] ✅ All data remains encrypted at rest
+**Action Items**:
+- [ ] Create debug component
+- [ ] Add to a test route or settings page
+- [ ] Run tests and document results
+- [ ] Screenshot or copy test output for analysis
+
+#### 3.2 Manual Testing Checklist
+Execute these steps in order and document results:
+
+1. **Clear Application State**
+   - [ ] Clear localStorage/sessionStorage
+   - [ ] Sign out of Firebase
+   - [ ] Clear any cached tokens
+
+2. **Enable Basic Mode**
+   ```javascript
+   // In browser console:
+   const config = new SociallyFedConfigService();
+   config.enableBasicMode();
+   console.log(config.getSimplifiedFlags());
+   ```
+
+3. **Attempt Login Flow**
+   - [ ] Open browser developer tools (Network + Console tabs)
+   - [ ] Attempt login with test credentials
+   - [ ] Document where flow stops/fails
+   - [ ] Copy all console errors
+   - [ ] Check network requests for 401/403 errors
+
+4. **Verify API Calls**
+   - [ ] Check `/api/auth/exchange` is called
+   - [ ] Verify `X-Platform: mobile` header present
+   - [ ] Confirm `/api/accounts/sync` endpoint used (not `/accounts/sync`)
+   - [ ] Check Authorization header format
+
+### Phase 4: Server-Side Verification (30 minutes)
+
+#### 4.1 Verify Server CORS Configuration
+**Check server allows**:
+- Origin: `https://sociallyfed-mobile-512204327023.us-central1.run.app`
+- Headers: `Authorization`, `X-Platform`, `Content-Type`
+- Methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
+
+#### 4.2 Verify Token Exchange Endpoint
+**Test with curl**:
+```bash
+curl -X POST https://sociallyfed-server-512204327023.us-central1.run.app/api/auth/exchange \
+  -H "Content-Type: application/json" \
+  -H "X-Platform: mobile" \
+  -d '{"firebaseToken": "YOUR_FIREBASE_TOKEN"}'
+```
 
 ---
 
-## ✅ **DEFINITION OF DONE - DAY 1**
+## Unified Architecture Validation Steps
 
-### **Mobile Client**
-- [ ] `TerraService.ts` implemented with all core methods
-- [ ] Terra token encryption using existing helpers
-- [ ] Widget session generation functional
-- [ ] Health data sync from cache/API working
-- [ ] Error handling for Terra API failures
-- [ ] Unit tests passing (4/4 required tests)
+### 1. Authentication Flow Validation
+- [ ] Firebase Auth → Success
+- [ ] Skip Encryption Keys → Success
+- [ ] Firebase Token Exchange → JWT
+- [ ] JWT includes correct claims (tenant, role)
+- [ ] Server accepts JWT for protected endpoints
 
-### **API Gateway**
-- [ ] `/api/terra/session` endpoint operational
-- [ ] `/api/terra/health-data/{userId}` endpoint functional
-- [ ] Terra webhook route configured and validated
-- [ ] Redis caching configured for Terra data
-- [ ] Professional service health data access working
-- [ ] Integration tests passing (2/2 required tests)
+### 2. Data Flow Validation
+- [ ] Mobile creates journal entry
+- [ ] Entry syncs to server with correct platform identifier
+- [ ] Server stores with proper tenant association
+- [ ] Mobile can retrieve synced data
 
-### **Database**
-- [ ] Terra health context column added to logs
-- [ ] Terra user ID column added to users
-- [ ] Terra health data history table created
-- [ ] Indexes applied for performance
-- [ ] Migrations executed successfully
-
-### **Configuration**
-- [ ] Terra API keys in environment variables
-- [ ] Webhook URL registered with Terra
-- [ ] Development environment fully configured
-- [ ] Staging environment prepared for testing
-
-### **Integration**
-- [ ] Mobile can connect to Terra through API Gateway
-- [ ] Webhook data flows to database
-- [ ] Health data accessible from mobile
-- [ ] Encryption working end-to-end
-- [ ] No performance degradation (maintain <200ms API response)
-
-### **Documentation**
-- [ ] API endpoints documented
-- [ ] Terra integration flow documented
-- [ ] Error codes and handling documented
-- [ ] Configuration guide updated
+### 3. Platform Consistency
+- [ ] All API calls include `X-Platform: mobile`
+- [ ] Server logs show 'mobile' platform
+- [ ] No 'web' platform identifiers from mobile app
 
 ---
 
-## 🚨 **CRITICAL SUCCESS FACTORS**
+## Definition of Done
 
-### **Must Complete Today**
-1. **Terra Service Foundation**: Core service class with encryption
-2. **API Gateway Routes**: Session and health data endpoints
-3. **Database Schema**: All Terra-related schema changes
-4. **End-to-End Test**: One complete flow from widget to data display
+### Authentication System
+✅ **Done when**:
+1. User can login without seeing "Getting your encryption keys" screen
+2. Firebase token successfully exchanges for JWT
+3. JWT is automatically included in all API requests
+4. 401 responses trigger automatic token refresh
+5. User remains authenticated across app restarts
 
-### **Acceptable Delays**
-- UI polish (can be refined Day 2)
-- Advanced correlations (can be added Day 3)
-- Performance optimizations (can be tuned Day 4)
+### Integration Testing
+✅ **Done when**:
+1. AuthFlowDebugger component shows all green tests
+2. Manual login flow completes in < 3 seconds
+3. Network tab shows correct API paths and headers
+4. No 401/403 errors in normal operation
+5. Server logs confirm mobile platform identification
 
-### **Blockers to Resolve**
-- **Terra API Keys**: Must be obtained and configured by 10 AM
-- **Webhook URL**: Must be publicly accessible for testing by 11 AM
-- **Database Migrations**: Must complete before integration testing at 4 PM
-
----
-
-## 📊 **SUCCESS METRICS - DAY 1**
-
-### **Quantitative**
-- Terra session generation: <2 seconds response time ✅
-- Webhook processing: <500ms from receipt to storage ✅
-- Health data retrieval: <200ms with cache hit ✅
-- Mobile bundle size increase: <50KB ✅
-- Test coverage: 100% of new code ✅
-
-### **Qualitative**
-- Clean separation between Terra logic and existing code ✅
-- Reuse of existing infrastructure (encryption, cache, auth) ✅
-- No breaking changes to current functionality ✅
-- Clear error messages for Terra connection issues ✅
-- Smooth developer experience for testing ✅
+### Code Quality
+✅ **Done when**:
+1. All debug logging removed or behind feature flag
+2. Error handling implemented at every auth step
+3. User-friendly error messages for auth failures
+4. No hardcoded URLs or credentials
+5. TypeScript compilation with no errors
 
 ---
 
-## 🎯 **END OF DAY CHECKPOINT**
+## Critical Success Metrics
 
-By 5:00 PM today, we should have:
-
-1. **Working Terra Integration**
-   - Mobile app can open Terra widget
-   - Users can connect wearables
-   - Server receives webhook data
-   - Mobile can display health metrics
-
-2. **Secure Data Flow**
-   - All Terra tokens encrypted
-   - Webhook signatures validated
-   - Health data cached securely
-   - Professional access controlled
-
-3. **Foundation for Week**
-   - Core services implemented
-   - Database schema ready
-   - API routes operational
-   - Testing framework in place
-
-**Tomorrow's Focus**: UI components and journal integration with Terra health context.
+1. **Authentication Success Rate**: > 95%
+2. **Token Exchange Latency**: < 500ms
+3. **Total Login Time**: < 3 seconds
+4. **Token Refresh Success**: 100%
+5. **Platform Identification Accuracy**: 100% 'mobile'
 
 ---
 
-**Generated**: January 13, 2025 - Day 1/7 Terra Integration Sprint  
-**Priority**: Mobile Terra Service & API Gateway Foundation  
-**Critical Path**: Terra Service → API Routes → Database → Integration Test  
-**Success Criteria**: End-to-end Terra connection flow operational  
-**Risk Level**: Low - Leveraging existing architecture (95% reuse)
+## Emergency Fallback Plan
+
+If authentication cannot be fixed today:
+1. Create temporary bypass with hardcoded test JWT
+2. Document all blocking issues with screenshots
+3. Check if server-side changes are needed
+4. Consider simplified auth flow without Firebase
+5. Escalate to senior review with all debug data
+
+---
+
+## Required Outputs
+
+By end of session, provide:
+1. **Debug Report**: All test results from AuthFlowDebugger
+2. **Console Logs**: Complete authentication flow logs
+3. **Network Trace**: HAR file of login attempt
+4. **Code Changes**: Git diff of all modifications
+5. **Next Steps**: Clear action items if not fully resolved
+
+---
+
+*Use this brief to systematically debug and fix the authentication flow. Document everything. Good luck!*
 ### Current Sprint:
 # Current Sprint Status - Terra API Integration & Professional Services Enhancement
 
@@ -596,1121 +611,723 @@ By 5:00 PM today, we should have:
 **Previous Sprint:** Unified Architecture Deployment ✅ **COMPLETED**  
 **Current Phase:** **TERRA API INTEGRATION & WELLNESS PROFESSIONAL FEATURES** (Week 1)  
 **Phase Duration:** January 13-19, 2025 (7 days)  
-**Current Day:** Day 1 (January 13, 2025) **🚀 TERRA INTEGRATION KICKOFF**  
-**Phase Health:** 🟢 **OPTIMAL START** - Clear integration path with existing architecture
+**Current Day:** Day 2 (January 14, 2025) **🔧 INTEGRATION & BUILD FIX DAY**  
+**Phase Health:** 🟡 **CRITICAL ISSUES** - Server build blocked, mobile ready to integrate
 
 ---
 
-## 🎯 **WEEK 1 TERRA INTEGRATION GOALS - JANUARY 13-19, 2025**
+## 📊 **DAY 1 PROGRESS SUMMARY**
 
-### **🚀 MISSION: INTEGRATE TERRA API FOR WELLNESS PROFESSIONALS**
-**Status**: 🟢 **WEEK 1 START** - Leverage existing architecture for rapid Terra integration  
-**Timeline**: Complete core integration by end of Week 1 for wellness coach MVP  
-**Achievement**: Transform existing platform into comprehensive wellness professional solution with wearable data
+### **✅ Mobile Achievements (100% Day 1-2 Objectives)**
+- Terra Service implementation with OAuth flow complete
+- PWA-compatible widget integration supporting 11+ providers
+- Health data caching with 5-minute TTL implemented
+- Terra Health Widget component (full and compact views)
+- Database migration to v2 with Terra tables
+- 100% test coverage on new Terra code
+- OAuth success/error pages implemented
 
-#### **Terra Integration Architecture - WEEK 1 IMPLEMENTATION**
+### **⚠️ Server Progress (85% Complete, Build Blocked)**
+- Terra webhook controller implemented with HMAC validation
+- Database schema migration executed successfully
+- Redis caching configured with intelligent TTL
+- Professional service interface extended (8 methods pending implementation)
+- Hangfire background processing integrated
+- AI correlation engine built (Pearson only)
+- **BLOCKING ISSUE**: Build compilation errors preventing deployment
+
+---
+
+## 🎯 **DAY 2 OBJECTIVES - JANUARY 14, 2025**
+
+### **🔴 CRITICAL PATH (Must Complete by 12:00)**
+
+#### **Server Team - Fix Build Issues**
+```csharp
+// IMMEDIATE FIXES REQUIRED:
+1. Type ambiguity: Use fully qualified Models.Terra.HealthCorrelation
+2. Implement 8 missing ProfessionalService methods
+3. Add missing using statements for Hangfire
+4. Configure Terra API environment variables
+5. Commit all code changes to prevent loss
+```
+
+#### **Mobile Team - API Gateway Integration**
+```typescript
+// BLOCKED UNTIL SERVER BUILD FIXED:
+1. Create TerraAPIGateway service class
+2. Implement webhook registration flow
+3. Configure health data sync with retry logic
+4. Set up error handling and offline queue
+5. Add telemetry for API monitoring
+```
+
+### **📱 Mobile Integration Priorities**
+
+#### **1. API Gateway Development** (After Server Fix)
+- [ ] TerraAPIGateway service implementation
+- [ ] Webhook registration on Terra connection
+- [ ] Health data sync with exponential backoff
+- [ ] Professional route authentication
+- [ ] Request/response interceptors
+
+#### **2. Multi-Tenant Database** (In Progress)
+- [ ] Migrate to IndexedDB v3 with tenant support
+- [ ] Add ClientCoachMapping table
+- [ ] Implement data partitioning
+- [ ] Create coach permission checks
+- [ ] Add HIPAA consent tracking
+
+#### **3. WebSocket Integration** (Afternoon)
+- [ ] SignalR client for health updates
+- [ ] Real-time event handlers
+- [ ] Connection state management
+- [ ] Offline message queue
+- [ ] Health alert notifications
+
+#### **4. Journal Enhancement** (In Progress)
+- [ ] Integrate TerraHealthWidget into FinishJournal
+- [ ] Add health context to mood submissions
+- [ ] Create opt-in/opt-out toggle
+- [ ] Display health-mood correlations
+- [ ] Test data submission flow
+
+### **🖥️ Server Priorities**
+
+#### **1. Build Fix** (CRITICAL - Morning)
+- [ ] Resolve type ambiguity issues
+- [ ] Implement 8 ProfessionalService methods
+- [ ] Add missing using statements
+- [ ] Achieve clean compilation
+- [ ] Run integration tests
+
+#### **2. Smart Correlation** (ENHANCED - Afternoon)
+- [ ] Implement Spearman correlation alongside Pearson
+- [ ] Create SmartCorrelation class
+- [ ] Add pattern detection logic
+- [ ] Generate user-friendly interpretations
+- [ ] Integrate with health analysis
+
+#### **3. Environment Configuration** (HIGH)
+- [ ] Configure Terra API credentials
+- [ ] Set up Redis connection
+- [ ] Configure Hangfire queues
+- [ ] Set rate limiting parameters
+- [ ] Update CORS settings
+
+#### **4. Integration Testing** (Afternoon)
+- [ ] End-to-end webhook flow
+- [ ] Professional access validation
+- [ ] Correlation calculation tests
+- [ ] Performance benchmarks
+- [ ] Security validation
+
+---
+
+## 🔄 **COORDINATION TIMELINE - DAY 2**
+
 ```mermaid
-graph TB
-    M[Mobile App<br/>✅ 727.66 kB Bundle<br/>PWA Ready] -->|Terra Widget<br/>OAuth Flow| TW[Terra Connect<br/>🟢 90+ Wearables<br/>Web Compatible]
-    M -->|Health Context<br/>Enhanced Journaling| G[API Gateway<br/>✅ Existing<br/>Professional Routes]
+gantt
+    title Day 2 Integration Timeline
+    dateFormat HH:mm
+    axisFormat %H:%M
     
-    TW -->|Webhook Data| TH[Terra Handler<br/>🔵 NEW<br/>.NET Integration]
-    TH -->|Store & Process| DB[(Enhanced DB<br/>✅ Existing Schema<br/>+ Terra Tables)]
+    section Server
+    Fix Build Issues        :crit, s1, 09:00, 2h
+    Professional Methods    :crit, s2, after s1, 1h
+    Environment Config      :s3, 11:00, 30m
+    Smart Correlation       :s4, 13:00, 2h
+    Integration Tests       :s5, 15:00, 1h
     
-    G -->|Professional APIs<br/>Health-Enhanced| PS[Professional Service<br/>✅ Existing<br/>+ Terra Context]
-    PS -->|AI Insights| LLM[LLM Service<br/>✅ Existing<br/>+ Health Context]
+    section Mobile
+    Wait for Server Fix     :crit, m1, 09:00, 2h
+    API Gateway Setup       :crit, m2, after m1, 1h
+    WebSocket Integration   :m3, 13:00, 2h
+    Journal Enhancement     :m4, 14:00, 1h
+    E2E Testing            :m5, 15:00, 1h
     
-    G -->|Coach Dashboard<br/>Client Health View| CD[Coach Dashboard<br/>🔵 ENHANCED<br/>Wearable Metrics]
-    CD -->|Real-time Data| WS[WebSocket Hub<br/>✅ Existing<br/>Health Updates]
-    
-    style M fill:#c8e6c9
-    style TW fill:#bbdefb
-    style TH fill:#bbdefb
-    style DB fill:#c8e6c9
-    style CD fill:#bbdefb
+    section Joint
+    Integration Sync        :milestone, 11:00, 0h
+    API Testing            :j1, 14:00, 1h
+    Performance Validation  :j2, 16:00, 30m
+    Deployment Prep        :j3, 16:30, 30m
 ```
 
 ---
 
-## **📅 WEEK 1 IMPLEMENTATION SCHEDULE**
+## ✅ **DEFINITION OF DONE - DAY 2**
 
-### **Day 1-2: Terra Service & Basic Auth (Jan 13-14)**
+### **Critical Requirements** (MUST HAVE by 17:00)
+- [x] **Server Build**: Clean compilation achieved
+- [ ] **Professional Methods**: All 8 methods implemented
+- [ ] **Webhook Processing**: End-to-end test successful
+- [ ] **Mobile Integration**: API Gateway connected
+- [ ] **Journal Enhancement**: Health context working
+- [ ] **Database Migration**: v3 with tenant support
+- [ ] **Code Committed**: All changes in version control
 
-#### **Mobile Terra Service Implementation**
+### **Quality Gates** (MUST PASS)
+- [ ] **Performance**: <500ms webhook, <1s API responses
+- [ ] **Security**: HMAC validation, RLS policies active
+- [ ] **Testing**: >80% coverage on new code
+- [ ] **Documentation**: API endpoints documented
+- [ ] **Monitoring**: Logging configured
+
+### **Enhanced Features** (SHOULD COMPLETE)
+- [ ] **Smart Correlation**: Spearman + Pearson working
+- [ ] **WebSocket**: Real-time updates functional
+- [ ] **Caching**: Redis with intelligent invalidation
+- [ ] **Offline Queue**: Mobile resilience implemented
+- [ ] **Telemetry**: API monitoring active
+
+---
+
+## 📊 **WEEK 1 UPDATED METRICS**
+
+### **Progress Tracking**
+| Component | Day 1 Target | Day 1 Actual | Day 2 Target | Status |
+|-----------|-------------|--------------|--------------|--------|
+| Mobile Terra Service | 100% | 100% ✅ | API Integration | 🟢 On Track |
+| Server Webhook | 100% | 85% ⚠️ | Fix + Complete | 🔴 Blocked |
+| Database Schema | 100% | 100% ✅ | v3 Migration | 🟢 Ready |
+| UI Components | 50% | 60% ✅ | Journal Integration | 🟢 Ahead |
+| Professional APIs | 50% | 40% ⚠️ | 100% Complete | 🟡 At Risk |
+| Testing | 50% | 80% ✅ | E2E Complete | 🟢 Ahead |
+
+### **Risk Assessment Update**
+| Risk | Level | Status | Mitigation |
+|------|-------|--------|------------|
+| Server Build Failure | 🔴 HIGH | Active | Pair programming, 2-hour timebox |
+| API Integration Delay | 🟡 MEDIUM | Pending | Mobile using mock data temporarily |
+| Terra API Limits | 🟢 LOW | Monitored | Rate limiting implemented |
+| Data Security | 🟢 LOW | Controlled | Encryption verified |
+
+### **Performance Metrics**
+- **Mobile Bundle**: +47KB (under 50KB target ✅)
+- **API Response**: Pending (server build blocked)
+- **Webhook Processing**: Pending (needs testing)
+- **Cache Hit Rate**: Not measured yet
+- **Test Coverage**: 92% mobile, pending server
+
+---
+
+## 🚨 **BLOCKING ISSUES & RESOLUTIONS**
+
+### **Issue #1: Server Build Compilation Errors**
+**Impact**: Blocks all server testing and deployment  
+**Resolution**: 
+1. Fix type ambiguity with fully qualified names (30 min)
+2. Implement 8 ProfessionalService methods (90 min)
+3. Add missing using statements (15 min)
+**Owner**: Server team  
+**Deadline**: 11:00 AM
+
+### **Issue #2: Mobile-Server Integration Blocked**
+**Impact**: Mobile cannot test real API integration  
+**Resolution**: 
+1. Use mock data until server fixed (temporary)
+2. Prepare integration tests for quick validation
+3. Have fallback to sandbox environment
+**Owner**: Mobile team  
+**Deadline**: Unblocked by 11:00 AM
+
+### **Issue #3: Uncommitted Code Risk**
+**Impact**: Potential code loss from both teams  
+**Resolution**: 
+1. Immediate commit of all changes
+2. Create feature branches for WIP
+3. Set up hourly auto-commit reminder
+**Owner**: Both teams  
+**Deadline**: IMMEDIATE
+
+---
+
+## 📈 **EXPECTED DAY 2 OUTCOMES**
+
+### **By Noon (12:00)**
+- ✅ Server build compiling cleanly
+- ✅ Professional methods implemented
+- ✅ Mobile API Gateway ready
+- ✅ Initial integration test passing
+
+### **By Close of Business (17:00)**
+- ✅ End-to-end Terra flow functional
+- ✅ Journal entries with health context
+- ✅ Coach dashboard with basic health view
+- ✅ Smart correlation (Pearson + Spearman)
+- ✅ All code committed and documented
+
+### **Stretch Goals (If Time Permits)**
+- 🎯 WebSocket real-time updates
+- 🎯 Advanced correlation visualizations
+- 🎯 Offline queue implementation
+- 🎯 Performance optimizations
+- 🎯 Staging deployment
+
+---
+
+## 🔮 **WEEK 1 REMAINING SCHEDULE**
+
+### **Day 3-4: UI Polish & Professional Features (Jan 15-16)**
+- Complete coach dashboard enhancements
+- Implement correlation visualizations
+- Add health trend analysis
+- Create wellness plan generation
+- Implement alert system
+
+### **Day 5: Advanced Integration (Jan 17)**
+- Group analytics for coaches
+- Bulk client operations
+- Export functionality
+- Advanced AI insights
+- Performance optimization
+
+### **Day 6-7: Testing & Deployment (Jan 18-19)**
+- Comprehensive E2E testing
+- Load testing with 100+ users
+- Security audit
+- Production deployment
+- Beta user onboarding
+
+---
+
+**Last Updated**: January 14, 2025 06:00 AM - **DAY 2: INTEGRATION & BUILD FIX**  
+**Sprint Health**: 🟡 **CRITICAL** - Server build blocking progress  
+**Critical Path**: Fix build → Complete APIs → Integration testing → Coach features  
+**Day 2 Target**: Unblock server, complete integration, test E2E flow  
+**Business Impact**: On track for wellness professional MVP if issues resolved by noon
+
+---
+
+*Generated: January 14, 2025 - Terra API Integration Sprint - Day 2*  
+*Priority Level: CRITICAL - Build issues must be resolved*  
+*Success Probability: 85% - Clear path once build fixed*  
+*Architecture Leverage: Still achieving 95% infrastructure reuse*  
+*Beta Readiness: Friday target achievable with focused execution*
+
+## 📅 TODAY'S DEVELOPMENT BRIEF
+
+# Daily Brief - SociallyFed Mobile Authentication Audit & Debug
+## Date: 2025-01-13
+
+### Mission Critical: Fix Firebase Authentication Flow
+**Priority**: P0 - CRITICAL  
+**Objective**: Audit current authentication configuration, fix the "Getting your encryption keys" stuck screen, and establish working Firebase → JWT → Server sync flow
+
+---
+
+## Current Situation Analysis
+
+### Known Issues
+1. **Authentication Flow Blocked**: App gets stuck on "Getting your encryption keys" screen after Firebase auth
+2. **Token Exchange Failure**: Firebase tokens not properly exchanged for server JWTs
+3. **Platform Identification**: Incorrect platform ('web' instead of 'mobile') causing API failures
+4. **API Path Mismatches**: Endpoints using wrong paths (`/accounts/sync` vs `/api/accounts/sync`)
+
+### Previous Solutions Implemented (Need Verification)
+- Feature flag system to bypass encryption flow
+- Authentication service for Firebase → JWT exchange
+- API interceptor for automatic auth headers
+- Platform identification fixes
+
+---
+
+## Today's Audit & Debug Tasks
+
+### Phase 1: Configuration Audit (30 minutes)
+
+#### 1.1 Verify Feature Flags
+**File**: `src/services/SociallyFedConfigService.ts`
 ```typescript
-// src/services/TerraService.ts - NEW SERVICE
-export class TerraService {
-  private readonly API_KEY = process.env.REACT_APP_TERRA_API_KEY;
-  private readonly DEV_ID = process.env.REACT_APP_TERRA_DEV_ID;
-  private encryptedToken: string | null = null;
+// Check these flags are properly set:
+{
+  enableBasicAuth: true,           // ✓ Must be true
+  enableServerSync: true,          // ✓ Must be true
+  enableMultiTenant: false,        // ✓ Must be false (simplified mode)
+  enableProfessionalServices: false, // ✓ Must be false
+  enableEncryptionFlow: false,     // ✓ CRITICAL - Must be false
+  enableWebSocket: false,          // ✓ Must be false
+  forceMobilePlatform: true,       // ✓ Must be true
+  useCorrectApiPaths: true        // ✓ Must be true
+}
+```
+
+**Action Items**:
+- [ ] Verify `SimplifiedFeatureFlags` interface exists
+- [ ] Check `enableBasicMode()` method is implemented
+- [ ] Ensure flags persist to localStorage/sessionStorage
+- [ ] Add console logging to verify flags on app startup
+
+#### 1.2 Verify Environment Configuration
+**Files**: `.env`, `.env.production`, `.env.development`
+```bash
+# Check these are correctly set:
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_FIREBASE_API_KEY=[verify present]
+REACT_APP_FIREBASE_AUTH_DOMAIN=[verify present]
+REACT_APP_FIREBASE_PROJECT_ID=[verify present]
+```
+
+**Action Items**:
+- [ ] Verify all Firebase config values are present
+- [ ] Confirm server URL is correct and accessible
+- [ ] Check for any hardcoded API URLs that need updating
+
+### Phase 2: Authentication Flow Audit (45 minutes)
+
+#### 2.1 Login Component Analysis
+**File**: `src/pages/Login.tsx`
+
+**Required Modifications**:
+```typescript
+// Add comprehensive debug logging
+const continueLoginFlow = async () => {
+  console.log('🔐 Starting login flow...');
+  console.log('Current feature flags:', configService.getSimplifiedFlags());
   
-  async initialize(): Promise<boolean> {
-    // Leverage existing encryption from helpers.tsx
-    const keys = checkKeys();
-    if (!keys) return false;
+  // Check if encryption should be bypassed
+  if (!configService.isSimplifiedFlagEnabled('enableEncryptionFlow')) {
+    console.log('✅ Bypassing encryption flow (feature flag disabled)');
+    setCheckingEncryption(false);
     
-    // Check for existing Terra connection
-    const storedToken = localStorage.getItem('terra_token');
-    if (storedToken) {
-      this.encryptedToken = storedToken;
-      return true;
+    // Direct to JWT exchange
+    try {
+      console.log('🔄 Exchanging Firebase token for JWT...');
+      const firebaseToken = await auth.currentUser?.getIdToken();
+      console.log('Firebase token obtained:', !!firebaseToken);
+      
+      const jwt = await authService.exchangeFirebaseToken(firebaseToken);
+      console.log('JWT obtained:', !!jwt);
+      
+      // Proceed to sync
+      await performSync(jwt);
+    } catch (error) {
+      console.error('❌ Auth flow failed:', error);
     }
-    return false;
+    return; // Skip encryption flow entirely
   }
   
-  async connectDevice(): Promise<void> {
-    // Generate Terra widget session
-    const session = await this.generateWidgetSession(auth.currentUser.uid);
+  // Original encryption flow (should not reach here if flag is false)
+  console.log('⚠️ Encryption flow enabled - this may cause issues');
+  setCheckingEncryption(true);
+  // ... existing encryption code
+};
+```
+
+**Action Items**:
+- [ ] Add debug logging at every decision point
+- [ ] Verify `setCheckingEncryption(false)` is called when bypassing
+- [ ] Ensure early return prevents encryption flow execution
+- [ ] Add try-catch blocks with detailed error logging
+
+#### 2.2 Authentication Service Verification
+**File**: `src/services/AuthenticationService.ts`
+
+**Verify Implementation**:
+```typescript
+class AuthenticationService {
+  async exchangeFirebaseToken(firebaseToken: string): Promise<string> {
+    console.log('📤 Exchanging Firebase token at /api/auth/exchange');
     
-    // Open Terra widget (PWA compatible - no native SDK needed)
-    window.open(session.url, '_blank', 'width=500,height=700');
-  }
-  
-  async generateWidgetSession(userId: string): Promise<{ url: string }> {
-    const response = await fetch('https://api.tryterra.co/v2/auth/generateWidgetSession', {
+    const response = await fetch(`${API_URL}/api/auth/exchange`, {
       method: 'POST',
       headers: {
-        'dev-id': this.DEV_ID,
-        'x-api-key': this.API_KEY,
-        'content-type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Platform': 'mobile' // Critical header
       },
-      body: JSON.stringify({
-        reference_id: userId, // Link to existing user
-        providers: 'GARMIN,FITBIT,OURA,WHOOP,POLAR,WITHINGS', // PWA-compatible only
-        language: 'en',
-        auth_success_redirect_url: `${window.location.origin}/terra-success`,
-        auth_failure_redirect_url: `${window.location.origin}/terra-error`
-      })
+      body: JSON.stringify({ firebaseToken })
     });
     
-    return response.json();
-  }
-  
-  async syncHealthData(): Promise<TerraHealthData | null> {
-    // This will be called from backend webhook, not directly
-    // Frontend just displays cached data
-    const cachedData = await ldb.terraData
-      .orderBy('timestamp')
-      .reverse()
-      .first();
-      
-    if (cachedData) {
-      const keys = checkKeys();
-      return JSON.parse(decrypt(cachedData.data, keys));
+    if (!response.ok) {
+      console.error('Token exchange failed:', response.status, await response.text());
+      throw new Error(`Token exchange failed: ${response.status}`);
     }
-    return null;
+    
+    const { token, refreshToken } = await response.json();
+    console.log('✅ JWT received, storing tokens');
+    
+    // Store tokens securely
+    await this.storeTokens(token, refreshToken);
+    return token;
   }
 }
-
-export const terraService = new TerraService();
 ```
 
-#### **Backend Terra Webhook Handler**
-```csharp
-// SociallyFedAPI/Controllers/TerraWebhookController.cs - NEW CONTROLLER
-[ApiController]
-[Route("api/terra")]
-public class TerraWebhookController : ControllerBase
-{
-    private readonly IMediator _mediator;
-    private readonly IDistributedCache _cache;
-    private readonly IBackgroundJobClient _hangfire;
-    private readonly string _terraSecret;
+**Action Items**:
+- [ ] Verify service exists or create it
+- [ ] Ensure proper error handling
+- [ ] Check token storage mechanism
+- [ ] Verify refresh token logic
+
+#### 2.3 API Interceptor Setup
+**File**: `src/services/ApiInterceptor.ts`
+
+**Required Implementation**:
+```typescript
+class ApiInterceptor {
+  async makeRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    const token = await this.getStoredToken();
     
-    public TerraWebhookController(
-        IMediator mediator,
-        IDistributedCache cache,
-        IBackgroundJobClient hangfire,
-        IConfiguration configuration)
-    {
-        _mediator = mediator;
-        _cache = cache;
-        _hangfire = hangfire;
-        _terraSecret = configuration["Terra:WebhookSecret"];
+    const headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'X-Platform': 'mobile',
+      'Content-Type': 'application/json'
+    };
+    
+    console.log(`🌐 API Request: ${url}`);
+    console.log('Headers:', headers);
+    
+    const response = await fetch(url, { ...options, headers });
+    
+    if (response.status === 401) {
+      console.log('🔄 Token expired, attempting refresh...');
+      const newToken = await this.refreshToken();
+      // Retry with new token
+      return this.makeRequest(url, options);
     }
     
-    [HttpPost("webhook")]
-    [AllowAnonymous] // Terra sends without auth
-    public async Task<IActionResult> HandleTerraWebhook(
-        [FromBody] TerraWebhookPayload payload,
-        [FromHeader(Name = "terra-signature")] string signature)
+    return response;
+  }
+}
+```
+
+**Action Items**:
+- [ ] Verify interceptor is properly integrated
+- [ ] Check automatic token refresh on 401
+- [ ] Ensure all API calls use interceptor
+- [ ] Add request/response logging
+
+### Phase 3: Integration Testing (1 hour)
+
+#### 3.1 Create Debug Test Component
+**Create File**: `src/components/Debug/AuthFlowDebugger.tsx`
+
+```typescript
+import React, { useState } from 'react';
+import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle } from '@ionic/react';
+
+const AuthFlowDebugger: React.FC = () => {
+  const [results, setResults] = useState<any>({});
+  
+  const tests = [
     {
-        // Verify webhook signature
-        if (!VerifyTerraSignature(Request.Body, signature))
-            return Unauthorized();
-        
-        // Use existing Hangfire for async processing
-        BackgroundJob.Enqueue(() => ProcessTerraData(payload));
-        
-        return Ok();
-    }
-    
-    private async Task ProcessTerraData(TerraWebhookPayload payload)
+      name: 'Check Feature Flags',
+      test: async () => {
+        const config = new SociallyFedConfigService();
+        return config.getSimplifiedFlags();
+      }
+    },
     {
-        // Store in existing cache infrastructure
-        var cacheKey = $"terra_{payload.User.ReferenceId}_{payload.Type}";
-        await _cache.SetAsync(cacheKey, JsonSerializer.SerializeToUtf8Bytes(payload.Data),
-            new DistributedCacheEntryOptions
-            {
-                SlidingExpiration = TimeSpan.FromHours(1)
-            });
-        
-        // Store in database for historical tracking
-        var command = new StoreTerraDataCommand
-        {
-            UserId = payload.User.ReferenceId,
-            TerraUserId = payload.User.UserId,
-            DataType = payload.Type,
-            Data = payload.Data,
-            Timestamp = payload.Timestamp
+      name: 'Firebase Auth Status',
+      test: async () => {
+        const user = auth.currentUser;
+        return {
+          authenticated: !!user,
+          uid: user?.uid,
+          email: user?.email
         };
-        
-        await _mediator.Send(command);
-        
-        // Generate AI insights if sleep or daily data
-        if (payload.Type == "sleep" || payload.Type == "daily")
-        {
-            await GenerateHealthInsight(payload);
-        }
-    }
-    
-    private async Task GenerateHealthInsight(TerraWebhookPayload payload)
+      }
+    },
     {
-        // Leverage existing SemanticKernelLLMService
-        var prompt = $@"
-            Analyze this health data and provide wellness coaching insights:
-            Type: {payload.Type}
-            HRV: {payload.Data.Hrv?.Rmssd}
-            Sleep Duration: {payload.Data.Sleep?.Duration}
-            Sleep Efficiency: {payload.Data.Sleep?.Efficiency}
-            Activity Level: {payload.Data.Activity?.Score}
-            
-            Provide actionable wellness recommendations.";
-        
-        var insight = await _llmService.GenerateResponseAsync(prompt);
-        
-        // Store using existing CreateInsightCommand
-        await _mediator.Send(new CreateInsightCommand
-        {
-            UserId = payload.User.ReferenceId,
-            Title = $"Health Insight - {DateTime.Now:MMM dd}",
-            Content = insight,
-            Category = "Terra Health",
-            Metadata = new { Source = "Terra", DataType = payload.Type }
-        });
+      name: 'Get Firebase Token',
+      test: async () => {
+        const token = await auth.currentUser?.getIdToken();
+        return {
+          hasToken: !!token,
+          tokenLength: token?.length
+        };
+      }
+    },
+    {
+      name: 'Exchange for JWT',
+      test: async () => {
+        const firebaseToken = await auth.currentUser?.getIdToken();
+        const authService = new AuthenticationService();
+        const jwt = await authService.exchangeFirebaseToken(firebaseToken);
+        return {
+          success: !!jwt,
+          jwtLength: jwt?.length
+        };
+      }
+    },
+    {
+      name: 'Test Sync Endpoint',
+      test: async () => {
+        const response = await apiInterceptor.makeRequest(
+          `${API_URL}/api/accounts/sync`,
+          { method: 'POST', body: JSON.stringify({ platform: 'mobile' }) }
+        );
+        return {
+          status: response.status,
+          ok: response.ok
+        };
+      }
     }
-}
-```
-
----
-
-### **Day 3-4: UI Components & Journal Enhancement (Jan 15-16)**
-
-#### **Terra Health Widget Component**
-```tsx
-// src/components/Terra/TerraHealthWidget.tsx - NEW COMPONENT
-import React, { useEffect, useState } from 'react';
-import { IonCard, IonCardContent, IonGrid, IonRow, IonCol, IonIcon, IonLabel, IonChip } from '@ionic/react';
-import { heartOutline, bedOutline, flashOutline, walkOutline } from 'ionicons/icons';
-import { terraService } from '@/services/TerraService';
-
-interface TerraHealthData {
-  hrv?: { rmssd: number; timestamp: string };
-  sleep?: { score: number; duration: number; efficiency: number };
-  activity?: { steps: number; calories: number; distance: number };
-  recovery?: number;
-}
-
-export const TerraHealthWidget: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
-  const [healthData, setHealthData] = useState<TerraHealthData | null>(null);
-  const [loading, setLoading] = useState(true);
+  ];
   
-  useEffect(() => {
-    loadHealthData();
-  }, []);
-  
-  const loadHealthData = async () => {
-    try {
-      const data = await terraService.syncHealthData();
-      setHealthData(data);
-    } catch (error) {
-      console.error('Failed to load Terra data:', error);
-    } finally {
-      setLoading(false);
+  const runAllTests = async () => {
+    for (const test of tests) {
+      try {
+        console.log(`Running: ${test.name}`);
+        const result = await test.test();
+        setResults(prev => ({ ...prev, [test.name]: { success: true, data: result }}));
+      } catch (error) {
+        console.error(`Failed: ${test.name}`, error);
+        setResults(prev => ({ ...prev, [test.name]: { success: false, error: error.message }}));
+      }
     }
   };
   
-  if (loading || !healthData) return null;
-  
-  const getHRVColor = (hrv: number): string => {
-    if (hrv > 50) return 'success';
-    if (hrv > 30) return 'warning';
-    return 'danger';
-  };
-  
-  const getSleepColor = (score: number): string => {
-    if (score > 80) return 'success';
-    if (score > 60) return 'warning';
-    return 'danger';
-  };
-  
-  if (compact) {
-    // Inline chips for journal view
-    return (
-      <div className="terra-health-chips">
-        {healthData.hrv && (
-          <IonChip color={getHRVColor(healthData.hrv.rmssd)}>
-            <IonIcon icon={heartOutline} />
-            <IonLabel>HRV: {healthData.hrv.rmssd}ms</IonLabel>
-          </IonChip>
-        )}
-        {healthData.sleep && (
-          <IonChip color={getSleepColor(healthData.sleep.score)}>
-            <IonIcon icon={bedOutline} />
-            <IonLabel>Sleep: {healthData.sleep.score}/100</IonLabel>
-          </IonChip>
-        )}
-        {healthData.recovery !== undefined && (
-          <IonChip color={healthData.recovery > 70 ? 'success' : 'warning'}>
-            <IonIcon icon={flashOutline} />
-            <IonLabel>Recovery: {healthData.recovery}%</IonLabel>
-          </IonChip>
-        )}
-      </div>
-    );
-  }
-  
-  // Full card view for dashboard
   return (
     <IonCard>
+      <IonCardHeader>
+        <IonCardTitle>Authentication Flow Debugger</IonCardTitle>
+      </IonCardHeader>
       <IonCardContent>
-        <h3>Today's Health Metrics</h3>
-        <IonGrid>
-          <IonRow>
-            <IonCol size="6">
-              <div className="metric-item">
-                <IonIcon icon={heartOutline} color={getHRVColor(healthData.hrv?.rmssd || 0)} />
-                <div className="metric-value">{healthData.hrv?.rmssd || '--'}ms</div>
-                <div className="metric-label">HRV</div>
-              </div>
-            </IonCol>
-            <IonCol size="6">
-              <div className="metric-item">
-                <IonIcon icon={bedOutline} color={getSleepColor(healthData.sleep?.score || 0)} />
-                <div className="metric-value">{healthData.sleep?.score || '--'}/100</div>
-                <div className="metric-label">Sleep Score</div>
-              </div>
-            </IonCol>
-          </IonRow>
-          <IonRow>
-            <IonCol size="6">
-              <div className="metric-item">
-                <IonIcon icon={walkOutline} />
-                <div className="metric-value">{healthData.activity?.steps?.toLocaleString() || '--'}</div>
-                <div className="metric-label">Steps</div>
-              </div>
-            </IonCol>
-            <IonCol size="6">
-              <div className="metric-item">
-                <IonIcon icon={flashOutline} color={healthData.recovery > 70 ? 'success' : 'warning'} />
-                <div className="metric-value">{healthData.recovery || '--'}%</div>
-                <div className="metric-label">Recovery</div>
-              </div>
-            </IonCol>
-          </IonRow>
-        </IonGrid>
+        <IonButton onClick={runAllTests}>Run All Tests</IonButton>
+        <pre>{JSON.stringify(results, null, 2)}</pre>
       </IonCardContent>
     </IonCard>
   );
 };
 ```
 
-#### **Enhanced Journal Integration**
-```tsx
-// Modify src/components/Journal/FinishJournal.tsx
-import { TerraHealthWidget } from '@/components/Terra/TerraHealthWidget';
+**Action Items**:
+- [ ] Create debug component
+- [ ] Add to a test route or settings page
+- [ ] Run tests and document results
+- [ ] Screenshot or copy test output for analysis
 
-const FinishJournal: React.FC<Props> = ({ mood, journal, average }) => {
-  const [terraContext, setTerraContext] = useState<any>(null);
-  const [includeHealthData, setIncludeHealthData] = useState(true);
-  
-  useEffect(() => {
-    // Auto-load Terra context if available
-    terraService.syncHealthData().then(setTerraContext);
-  }, []);
-  
-  const handleSubmit = async () => {
-    const formData = new FormData();
-    // Existing fields...
-    formData.append('mood', mood.toString());
-    formData.append('journal', journal);
-    formData.append('average', average);
-    
-    // Add Terra health context if available and enabled
-    if (includeHealthData && terraContext) {
-      formData.append('terraHealthContext', JSON.stringify({
-        hrv: terraContext.hrv?.rmssd,
-        sleepScore: terraContext.sleep?.score,
-        sleepDuration: terraContext.sleep?.duration,
-        activityLevel: terraContext.activity?.score,
-        steps: terraContext.activity?.steps,
-        recovery: terraContext.recovery,
-        timestamp: new Date().toISOString()
-      }));
-    }
-    
-    // Use existing makeRequest helper
-    await makeRequest('moodLog', user, formData);
-  };
-  
-  return (
-    <>
-      {/* Existing journal UI */}
-      
-      {/* New: Terra health context section */}
-      {terraContext && (
-        <IonCard>
-          <IonCardContent>
-            <IonItem lines="none">
-              <IonLabel>Include health data with entry</IonLabel>
-              <IonToggle 
-                checked={includeHealthData}
-                onIonChange={e => setIncludeHealthData(e.detail.checked)}
-              />
-            </IonItem>
-            {includeHealthData && (
-              <TerraHealthWidget compact={true} />
-            )}
-          </IonCardContent>
-        </IonCard>
-      )}
-      
-      <IonButton expand="block" onClick={handleSubmit}>
-        Save Journal Entry
-      </IonButton>
-    </>
-  );
-};
+#### 3.2 Manual Testing Checklist
+Execute these steps in order and document results:
+
+1. **Clear Application State**
+   - [ ] Clear localStorage/sessionStorage
+   - [ ] Sign out of Firebase
+   - [ ] Clear any cached tokens
+
+2. **Enable Basic Mode**
+   ```javascript
+   // In browser console:
+   const config = new SociallyFedConfigService();
+   config.enableBasicMode();
+   console.log(config.getSimplifiedFlags());
+   ```
+
+3. **Attempt Login Flow**
+   - [ ] Open browser developer tools (Network + Console tabs)
+   - [ ] Attempt login with test credentials
+   - [ ] Document where flow stops/fails
+   - [ ] Copy all console errors
+   - [ ] Check network requests for 401/403 errors
+
+4. **Verify API Calls**
+   - [ ] Check `/api/auth/exchange` is called
+   - [ ] Verify `X-Platform: mobile` header present
+   - [ ] Confirm `/api/accounts/sync` endpoint used (not `/accounts/sync`)
+   - [ ] Check Authorization header format
+
+### Phase 4: Server-Side Verification (30 minutes)
+
+#### 4.1 Verify Server CORS Configuration
+**Check server allows**:
+- Origin: `https://sociallyfed-mobile-512204327023.us-central1.run.app`
+- Headers: `Authorization`, `X-Platform`, `Content-Type`
+- Methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
+
+#### 4.2 Verify Token Exchange Endpoint
+**Test with curl**:
+```bash
+curl -X POST https://sociallyfed-server-512204327023.us-central1.run.app/api/auth/exchange \
+  -H "Content-Type: application/json" \
+  -H "X-Platform: mobile" \
+  -d '{"firebaseToken": "YOUR_FIREBASE_TOKEN"}'
 ```
 
 ---
 
-### **Day 5: Coach Dashboard Enhancement (Jan 17)**
+## Unified Architecture Validation Steps
 
-#### **Coach Dashboard with Health Metrics**
-```tsx
-// src/components/Professional/CoachDashboard.tsx - ENHANCED
-import { TerraHealthWidget } from '@/components/Terra/TerraHealthWidget';
+### 1. Authentication Flow Validation
+- [ ] Firebase Auth → Success
+- [ ] Skip Encryption Keys → Success
+- [ ] Firebase Token Exchange → JWT
+- [ ] JWT includes correct claims (tenant, role)
+- [ ] Server accepts JWT for protected endpoints
 
-export const CoachDashboard: React.FC = () => {
-  const [clients, setClients] = useState<ClientSummary[]>([]);
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [clientHealthData, setClientHealthData] = useState<any>(null);
-  
-  const loadClientHealthData = async (clientId: string) => {
-    try {
-      // Fetch through existing professional service
-      const response = await professionalService.getClientHealthData(clientId);
-      setClientHealthData(response);
-    } catch (error) {
-      console.error('Failed to load client health data:', error);
-    }
-  };
-  
-  return (
-    <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Wellness Coach Dashboard</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      
-      <IonContent>
-        {/* Client list */}
-        <IonList>
-          {clients.map(client => (
-            <IonItem 
-              key={client.id} 
-              button 
-              onClick={() => {
-                setSelectedClient(client.id);
-                loadClientHealthData(client.id);
-              }}
-            >
-              <IonAvatar slot="start">
-                <img src={client.avatar || '/default-avatar.png'} />
-              </IonAvatar>
-              <IonLabel>
-                <h2>{client.name}</h2>
-                <p>Last session: {client.lastSession}</p>
-                {client.hasWearable && (
-                  <IonChip color="primary">
-                    <IonIcon icon={watchOutline} />
-                    <IonLabel>Wearable Connected</IonLabel>
-                  </IonChip>
-                )}
-              </IonLabel>
-              {client.healthAlert && (
-                <IonNote slot="end" color="warning">
-                  Health Alert
-                </IonNote>
-              )}
-            </IonItem>
-          ))}
-        </IonList>
-        
-        {/* Selected client health view */}
-        {selectedClient && clientHealthData && (
-          <IonCard>
-            <IonCardHeader>
-              <IonCardTitle>Health Overview</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <TerraHealthWidget data={clientHealthData} />
-              
-              {/* Mood-health correlation */}
-              <IonGrid>
-                <IonRow>
-                  <IonCol>
-                    <div className="correlation-metric">
-                      <IonLabel>Mood-Sleep Correlation</IonLabel>
-                      <IonProgressBar 
-                        value={clientHealthData.correlations.moodSleep / 100} 
-                        color={clientHealthData.correlations.moodSleep > 50 ? 'success' : 'warning'}
-                      />
-                      <span>{clientHealthData.correlations.moodSleep}%</span>
-                    </div>
-                  </IonCol>
-                </IonRow>
-                <IonRow>
-                  <IonCol>
-                    <div className="correlation-metric">
-                      <IonLabel>HRV Trend</IonLabel>
-                      <IonChip color={clientHealthData.trends.hrv === 'improving' ? 'success' : 'warning'}>
-                        {clientHealthData.trends.hrv}
-                      </IonChip>
-                    </div>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-              
-              {/* AI-generated insight */}
-              {clientHealthData.latestInsight && (
-                <IonCard color="light">
-                  <IonCardContent>
-                    <IonLabel color="primary">
-                      <h3>Latest Health Insight</h3>
-                    </IonLabel>
-                    <p>{clientHealthData.latestInsight}</p>
-                  </IonCardContent>
-                </IonCard>
-              )}
-            </IonCardContent>
-          </IonCard>
-        )}
-      </IonContent>
-    </IonPage>
-  );
-};
-```
+### 2. Data Flow Validation
+- [ ] Mobile creates journal entry
+- [ ] Entry syncs to server with correct platform identifier
+- [ ] Server stores with proper tenant association
+- [ ] Mobile can retrieve synced data
+
+### 3. Platform Consistency
+- [ ] All API calls include `X-Platform: mobile`
+- [ ] Server logs show 'mobile' platform
+- [ ] No 'web' platform identifiers from mobile app
 
 ---
 
-### **Day 6-7: Testing & Optimization (Jan 18-19)**
+## Definition of Done
 
-#### **Integration Testing Suite**
-```typescript
-// src/tests/TerraIntegration.test.ts
-describe('Terra API Integration', () => {
-  let terraService: TerraService;
-  
-  beforeEach(() => {
-    terraService = new TerraService();
-  });
-  
-  test('Widget session generation', async () => {
-    const session = await terraService.generateWidgetSession('test-user');
-    expect(session.url).toBeDefined();
-    expect(session.url).toContain('https://widget.tryterra.co');
-  });
-  
-  test('Webhook signature verification', async () => {
-    const payload = { /* test payload */ };
-    const signature = generateTestSignature(payload);
-    const isValid = terraService.verifyWebhookSignature(payload, signature);
-    expect(isValid).toBe(true);
-  });
-  
-  test('Health data correlation with mood', async () => {
-    const moodEntry = { mood: 3, timestamp: Date.now() };
-    const healthData = { hrv: { rmssd: 45 }, sleep: { score: 75 } };
-    const correlation = calculateMoodHealthCorrelation(moodEntry, healthData);
-    expect(correlation).toBeDefined();
-  });
-});
-```
+### Authentication System
+✅ **Done when**:
+1. User can login without seeing "Getting your encryption keys" screen
+2. Firebase token successfully exchanges for JWT
+3. JWT is automatically included in all API requests
+4. 401 responses trigger automatic token refresh
+5. User remains authenticated across app restarts
 
-#### **Performance Optimization**
-```typescript
-// Caching strategy for Terra data
-class TerraDataCache {
-  private cache = new Map<string, { data: any; timestamp: number }>();
-  private readonly TTL = 5 * 60 * 1000; // 5 minutes
-  
-  async get(userId: string): Promise<any> {
-    const cached = this.cache.get(userId);
-    if (cached && Date.now() - cached.timestamp < this.TTL) {
-      return cached.data;
-    }
-    
-    // Fetch from database if not cached
-    const data = await this.fetchFromDatabase(userId);
-    this.cache.set(userId, { data, timestamp: Date.now() });
-    return data;
-  }
-}
-```
+### Integration Testing
+✅ **Done when**:
+1. AuthFlowDebugger component shows all green tests
+2. Manual login flow completes in < 3 seconds
+3. Network tab shows correct API paths and headers
+4. No 401/403 errors in normal operation
+5. Server logs confirm mobile platform identification
+
+### Code Quality
+✅ **Done when**:
+1. All debug logging removed or behind feature flag
+2. Error handling implemented at every auth step
+3. User-friendly error messages for auth failures
+4. No hardcoded URLs or credentials
+5. TypeScript compilation with no errors
 
 ---
 
-## **📊 WEEK 1 SUCCESS METRICS**
+## Critical Success Metrics
 
-### **Core Integration Targets**
-- ✅ **Terra Authentication**: Widget integration supporting 90+ wearables (PWA-compatible)
-- ✅ **Webhook Processing**: Real-time data reception with <500ms processing time
-- ✅ **Data Storage**: Encrypted Terra data in existing database schema
-- ✅ **UI Integration**: Health widgets in journal flow and coach dashboard
-- ✅ **AI Enhancement**: LLM insights incorporating health context
-
-### **Performance Metrics**
-- **Widget Load Time**: <2 seconds for Terra Connect widget
-- **Webhook Processing**: <500ms from receipt to storage
-- **Dashboard Load**: <1 second for coach dashboard with health data
-- **Mobile Performance**: Maintain 94/100 score with Terra features
-- **Cache Hit Rate**: >80% for frequently accessed health data
-
-### **User Experience Goals**
-- **Seamless Connection**: One-click wearable connection through Terra widget
-- **Automatic Context**: Health data auto-attached to journal entries
-- **Coach Visibility**: Real-time client health metrics in professional dashboard
-- **Actionable Insights**: AI-generated wellness recommendations daily
-- **Privacy Maintained**: All Terra data encrypted using existing security
+1. **Authentication Success Rate**: > 95%
+2. **Token Exchange Latency**: < 500ms
+3. **Total Login Time**: < 3 seconds
+4. **Token Refresh Success**: 100%
+5. **Platform Identification Accuracy**: 100% 'mobile'
 
 ---
 
-## **🔧 IMPLEMENTATION NOTES**
+## Emergency Fallback Plan
 
-### **Configuration Updates**
-```javascript
-// .env additions
-REACT_APP_TERRA_API_KEY=your_terra_api_key
-REACT_APP_TERRA_DEV_ID=your_terra_dev_id
-
-// appsettings.json additions
-{
-  "Terra": {
-    "ApiKey": "${TERRA_API_KEY}",
-    "DevId": "${TERRA_DEV_ID}",
-    "WebhookSecret": "${TERRA_WEBHOOK_SECRET}",
-    "WebhookUrl": "https://api.sociallyfed.com/api/terra/webhook"
-  }
-}
-```
-
-### **Database Schema Extension**
-```sql
--- Add to existing schema (non-breaking changes)
-ALTER TABLE logs ADD COLUMN terra_health_context JSONB;
-ALTER TABLE users ADD COLUMN terra_user_id VARCHAR(255);
-ALTER TABLE users ADD COLUMN wearable_connected BOOLEAN DEFAULT FALSE;
-
--- New table for Terra data history
-CREATE TABLE terra_health_data (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id VARCHAR(255) REFERENCES users(id),
-  terra_user_id VARCHAR(255),
-  data_type VARCHAR(50),
-  data JSONB,
-  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_terra_data_user_timestamp ON terra_health_data(user_id, timestamp DESC);
-```
-
-### **Key Integration Points**
-1. **Leverage Existing Auth**: Use Firebase auth tokens for Terra session generation
-2. **Reuse Encryption**: Apply existing encryption helpers for Terra data
-3. **Extend Professional Service**: Add health data methods to IProfessionalService
-4. **Cache Strategy**: Use existing Redis cache for Terra data with 5-minute TTL
-5. **WebSocket Updates**: Push health updates through existing SignalR hub
+If authentication cannot be fixed today:
+1. Create temporary bypass with hardcoded test JWT
+2. Document all blocking issues with screenshots
+3. Check if server-side changes are needed
+4. Consider simplified auth flow without Firebase
+5. Escalate to senior review with all debug data
 
 ---
 
-## **📈 EXPECTED OUTCOMES**
+## Required Outputs
 
-### **Week 1 Deliverables**
-- ✅ Functional Terra integration supporting 90+ wearables (web-compatible only)
-- ✅ Health data automatically attached to journal entries
-- ✅ Coach dashboard showing client wearable metrics
-- ✅ AI insights incorporating sleep, HRV, and activity data
-- ✅ Production deployment with monitoring
-
-### **Business Value**
-- **Wellness Coaches**: Complete view of client health + mood patterns
-- **Personal Trainers**: Track client recovery and readiness
-- **Individual Users**: Understand health-mood correlations
-- **Competitive Advantage**: First mood tracker with comprehensive wearable integration
-
-### **Technical Achievements**
-- **Minimal Code Changes**: <1000 lines of new code leveraging existing architecture
-- **PWA Compatible**: No native app changes required for core wearables
-- **Performance Maintained**: No degradation of existing 94/100 score
-- **Security Preserved**: Terra data encrypted with existing infrastructure
-- **Scalable Design**: Ready for 1000+ concurrent Terra users
+By end of session, provide:
+1. **Debug Report**: All test results from AuthFlowDebugger
+2. **Console Logs**: Complete authentication flow logs
+3. **Network Trace**: HAR file of login attempt
+4. **Code Changes**: Git diff of all modifications
+5. **Next Steps**: Clear action items if not fully resolved
 
 ---
 
-## **🚀 NEXT STEPS (Week 2+)**
-
-### **Advanced Features**
-- Real-time BLE streaming (requires Capacitor for native features)
-- Apple Health/Google Fit integration (native SDK required)
-- Custom health scores and ML models
-- Automated wellness alerts based on patterns
-- Group coaching with aggregated health metrics
-
-### **Business Expansion**
-- Partnership with wellness coaching platforms
-- Integration with corporate wellness programs
-- White-label solution for fitness businesses
-- Terra-powered premium subscription tier
-- Health insurance integration opportunities
-
----
-
-**Last Updated**: January 13, 2025 - **WEEK 1: TERRA API INTEGRATION START**  
-**Sprint Health**: 🟢 **OPTIMAL** - Clear path leveraging existing architecture  
-**Critical Path**: Terra service → Webhook handler → UI components → Coach dashboard  
-**Week 1 Target**: Complete Terra integration with professional wellness features  
-**Business Impact**: Transform platform into comprehensive wellness professional solution
-
----
-
-*Generated: January 13, 2025 - Terra API Integration Sprint - Week 1*  
-*Priority Level: HIGH - Wellness Professional MVP*  
-*Success Target: End of Week - Complete Terra integration with coach features*  
-*Architecture Leverage: 95% existing infrastructure reuse*  
-*Business Readiness: Wellness coaches and personal trainers MVP ready*
-
-## 📅 TODAY'S DEVELOPMENT BRIEF
-
-# Daily Brief - Mobile Client Focus
-**Date**: January 13, 2025  
-**Sprint**: Terra API Integration & Wellness Professional Features  
-**Day**: 1 of 7 (Week 1)  
-**Focus**: Mobile Terra Service Implementation & API Gateway Integration
-
----
-
-## 📱 **TODAY'S MOBILE PRIORITIES**
-
-### **Primary Objective**
-Implement Terra API integration foundation in mobile client with API Gateway routing for wellness professional features.
-
-### **Critical Path Items** (Must Complete)
-1. **Terra Service Implementation** (2-3 hours)
-   - Create `src/services/TerraService.ts`
-   - Implement widget session generation
-   - Add encryption for Terra tokens using existing helpers
-   - PWA-compatible OAuth flow (no native SDK)
-
-2. **API Gateway Terra Routes** (1-2 hours)
-   - Configure Terra endpoints in API Gateway
-   - Add Terra webhook route with signature validation
-   - Implement caching strategy for health data
-   - Set up professional service health data access
-
-3. **Database Schema Updates** (1 hour)
-   - Add `terra_health_context` JSONB to logs table
-   - Add `terra_user_id` to users table
-   - Create `terra_health_data` history table
-   - Apply migrations to development environment
-
-4. **Environment Configuration** (30 min)
-   - Add Terra API keys to `.env`
-   - Configure webhook URL in Terra dashboard
-   - Update `appsettings.json` with Terra config
-   - Set up development webhook testing
-
----
-
-## 🔗 **INTEGRATION PRIORITIES**
-
-### **API Gateway Development Tasks**
-```typescript
-// Priority 1: Terra Widget Session Route
-POST /api/gateway/terra/session
-{
-  userId: string,
-  providers?: string[], // Default: PWA-compatible only
-  returnUrl?: string
-}
-Response: { sessionUrl: string, sessionId: string }
-
-// Priority 2: Terra Data Access Route  
-GET /api/gateway/terra/health-data/{userId}
-Headers: { Authorization: "Bearer {token}" }
-Response: { 
-  latest: TerraHealthData,
-  history: TerraHealthData[],
-  correlations: HealthCorrelations
-}
-
-// Priority 3: Professional Terra Access
-GET /api/gateway/professional/client-health/{clientId}
-Headers: { 
-  Authorization: "Bearer {counselorToken}",
-  "X-Tenant-ID": "tenantId"
-}
-Response: {
-  healthMetrics: TerraHealthData,
-  moodCorrelations: MoodHealthCorrelation,
-  insights: string[]
-}
-```
-
-### **Mobile-Server Communication Features**
-```typescript
-// Mobile Implementation Requirements
-class TerraApiGatewayService {
-  // 1. Session Management
-  async initiateTerraConnection(): Promise<void> {
-    const session = await this.apiGateway.post('/terra/session', {
-      userId: this.currentUser.uid,
-      providers: this.getPWACompatibleProviders()
-    });
-    
-    // Open Terra widget in PWA-compatible window
-    window.open(session.sessionUrl, 'terra-connect', 'width=500,height=700');
-  }
-  
-  // 2. Health Data Synchronization
-  async syncHealthData(): Promise<TerraHealthData> {
-    // Check cache first (5-minute TTL)
-    const cached = await this.getCachedHealthData();
-    if (cached && !this.isStale(cached)) return cached.data;
-    
-    // Fetch from API Gateway
-    const response = await this.apiGateway.get('/terra/health-data/' + this.currentUser.uid);
-    
-    // Store in IndexedDB with encryption
-    await this.storeEncryptedData(response.latest);
-    
-    return response.latest;
-  }
-  
-  // 3. Professional Context
-  async getClientHealthAsCoach(clientId: string): Promise<ClientHealthView> {
-    return this.apiGateway.get(`/professional/client-health/${clientId}`, {
-      headers: { 'X-Tenant-ID': this.tenantContext.currentTenantId }
-    });
-  }
-}
-```
-
-### **Professional Services APIs**
-```csharp
-// Server-side implementation priorities
-[ApiController]
-[Route("api/v1/gateway/terra")]
-public class TerraGatewayController : ControllerBase
-{
-    // Priority 1: Webhook Handler (Backend only, no mobile involvement)
-    [HttpPost("webhook")]
-    [AllowAnonymous]
-    public async Task<IActionResult> HandleTerraWebhook(
-        [FromBody] TerraWebhookPayload payload,
-        [FromHeader(Name = "terra-signature")] string signature)
-    {
-        // Validate signature
-        // Process async with Hangfire
-        // Generate AI insights
-        // Cache in Redis
-    }
-    
-    // Priority 2: Mobile Session Generation
-    [HttpPost("session")]
-    [Authorize]
-    public async Task<IActionResult> GenerateTerraSession(
-        [FromBody] TerraSessionRequest request)
-    {
-        // Call Terra API
-        // Return session URL for mobile
-        // Store session reference
-    }
-    
-    // Priority 3: Health Data Retrieval
-    [HttpGet("health-data/{userId}")]
-    [Authorize]
-    public async Task<IActionResult> GetHealthData(string userId)
-    {
-        // Check cache first
-        // Return latest + history
-        // Calculate correlations
-    }
-}
-```
-
-### **Deployment Configuration Needs**
-```yaml
-# Mobile Deployment Configuration
-ENV_VARIABLES:
-  REACT_APP_TERRA_API_KEY: ${TERRA_API_KEY}
-  REACT_APP_TERRA_DEV_ID: ${TERRA_DEV_ID}
-  REACT_APP_API_GATEWAY_URL: https://api.sociallyfed.com
-  REACT_APP_TERRA_SUCCESS_URL: /terra-success
-  REACT_APP_TERRA_ERROR_URL: /terra-error
-
-# Server Deployment Configuration  
-TERRA_CONFIG:
-  ApiKey: ${TERRA_API_KEY}
-  DevId: ${TERRA_DEV_ID}
-  WebhookSecret: ${TERRA_WEBHOOK_SECRET}
-  WebhookUrl: https://api.sociallyfed.com/api/terra/webhook
-  CacheTTL: 300 # 5 minutes
-  
-# Database Migrations
-MIGRATIONS:
-  - 001_AddTerraHealthContext.sql
-  - 002_CreateTerraHealthDataTable.sql
-  - 003_AddTerraUserIdToUsers.sql
-```
-
----
-
-## 🤝 **COORDINATION REQUIREMENTS**
-
-### **Dependencies Between Mobile and Server Work**
-
-| Time | Mobile Team | Server Team | Dependency | Status |
-|------|-------------|-------------|------------|--------|
-| 9:00 AM | Terra Service class setup | Terra webhook controller | API contract agreement | 🟡 Ready |
-| 10:00 AM | Widget session implementation | Session generation endpoint | Endpoint must be live | 🔴 Blocking |
-| 11:00 AM | Health data sync UI | Health data retrieval API | API response format | 🟡 Ready |
-| 12:00 PM | Local encryption setup | - | Independent | ✅ |
-| 1:00 PM | Integration testing prep | Webhook testing | Test data needed | 🟡 Ready |
-| 2:00 PM | Error handling | Error response formats | Unified error codes | 🟡 Ready |
-| 3:00 PM | Cache implementation | Redis configuration | Cache key format | 🟡 Ready |
-| 4:00 PM | **Integration Testing** | **Integration Testing** | **Joint Testing** | 🔴 Critical |
-
-### **Integration Testing Requirements**
-```typescript
-// Mobile Integration Tests (Required Today)
-describe('Terra Integration Day 1', () => {
-  test('Generate Terra widget session', async () => {
-    const session = await terraService.generateWidgetSession('test-user');
-    expect(session.url).toContain('widget.tryterra.co');
-    expect(session.url).toContain(TERRA_DEV_ID);
-  });
-  
-  test('Store encrypted Terra token', async () => {
-    const token = 'test-terra-token';
-    await terraService.storeToken(token);
-    const stored = localStorage.getItem('terra_token');
-    expect(stored).toBeDefined();
-    expect(decrypt(stored, testKeys)).toBe(token);
-  });
-  
-  test('Handle Terra widget redirect', async () => {
-    const mockRedirect = '/terra-success?user=123&resource=FITBIT';
-    const result = await terraService.handleRedirect(mockRedirect);
-    expect(result.success).toBe(true);
-    expect(result.provider).toBe('FITBIT');
-  });
-  
-  test('Sync health data from cache', async () => {
-    // Mock cached data
-    const cachedData = { hrv: 45, sleep: 80, timestamp: Date.now() };
-    await ldb.terraData.put({ timestamp: Date.now(), data: encrypt(JSON.stringify(cachedData), keys) });
-    
-    const synced = await terraService.syncHealthData();
-    expect(synced).toEqual(cachedData);
-  });
-});
-
-// Server Integration Tests (Required Today)
-[TestClass]
-public class TerraIntegrationTests
-{
-    [TestMethod]
-    public async Task GenerateSession_ReturnsValidUrl()
-    {
-        var response = await _client.PostAsync("/api/terra/session", 
-            new { userId = "test-user" });
-        var session = await response.Content.ReadAsAsync<TerraSession>();
-        
-        Assert.IsTrue(session.Url.Contains("widget.tryterra.co"));
-        Assert.IsNotNull(session.SessionId);
-    }
-    
-    [TestMethod]
-    public async Task WebhookHandler_ValidatesSignature()
-    {
-        var payload = new TerraWebhookPayload { /* test data */ };
-        var signature = GenerateValidSignature(payload);
-        
-        var response = await _client.PostAsync("/api/terra/webhook", 
-            payload, 
-            headers: new { "terra-signature" = signature });
-            
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-    }
-}
-```
-
-### **Unified Architecture Validation Steps**
-```mermaid
-graph TD
-    A[Mobile: Terra Service Init] -->|1. Request Session| B[Gateway: Generate Session]
-    B -->|2. Return URL| C[Mobile: Open Widget]
-    C -->|3. User Connects| D[Terra: OAuth Flow]
-    D -->|4. Webhook| E[Server: Process Data]
-    E -->|5. Cache| F[Redis: Store Data]
-    E -->|6. Store| G[Database: History]
-    H[Mobile: Request Data] -->|7. Get Health| I[Gateway: Retrieve]
-    I -->|8. Check Cache| F
-    I -->|9. Return| J[Mobile: Display]
-    
-    style A fill:#90EE90
-    style B fill:#87CEEB
-    style E fill:#87CEEB
-    style J fill:#90EE90
-```
-
-**Validation Checkpoints:**
-- [ ] ✅ Mobile can generate Terra session through API Gateway
-- [ ] ✅ Terra widget opens and completes OAuth flow
-- [ ] ✅ Server receives and validates webhook
-- [ ] ✅ Health data is cached and encrypted
-- [ ] ✅ Mobile can retrieve and display health data
-- [ ] ✅ Professional service can access client health data
-- [ ] ✅ All data remains encrypted at rest
-
----
-
-## ✅ **DEFINITION OF DONE - DAY 1**
-
-### **Mobile Client**
-- [ ] `TerraService.ts` implemented with all core methods
-- [ ] Terra token encryption using existing helpers
-- [ ] Widget session generation functional
-- [ ] Health data sync from cache/API working
-- [ ] Error handling for Terra API failures
-- [ ] Unit tests passing (4/4 required tests)
-
-### **API Gateway**
-- [ ] `/api/terra/session` endpoint operational
-- [ ] `/api/terra/health-data/{userId}` endpoint functional
-- [ ] Terra webhook route configured and validated
-- [ ] Redis caching configured for Terra data
-- [ ] Professional service health data access working
-- [ ] Integration tests passing (2/2 required tests)
-
-### **Database**
-- [ ] Terra health context column added to logs
-- [ ] Terra user ID column added to users
-- [ ] Terra health data history table created
-- [ ] Indexes applied for performance
-- [ ] Migrations executed successfully
-
-### **Configuration**
-- [ ] Terra API keys in environment variables
-- [ ] Webhook URL registered with Terra
-- [ ] Development environment fully configured
-- [ ] Staging environment prepared for testing
-
-### **Integration**
-- [ ] Mobile can connect to Terra through API Gateway
-- [ ] Webhook data flows to database
-- [ ] Health data accessible from mobile
-- [ ] Encryption working end-to-end
-- [ ] No performance degradation (maintain <200ms API response)
-
-### **Documentation**
-- [ ] API endpoints documented
-- [ ] Terra integration flow documented
-- [ ] Error codes and handling documented
-- [ ] Configuration guide updated
-
----
-
-## 🚨 **CRITICAL SUCCESS FACTORS**
-
-### **Must Complete Today**
-1. **Terra Service Foundation**: Core service class with encryption
-2. **API Gateway Routes**: Session and health data endpoints
-3. **Database Schema**: All Terra-related schema changes
-4. **End-to-End Test**: One complete flow from widget to data display
-
-### **Acceptable Delays**
-- UI polish (can be refined Day 2)
-- Advanced correlations (can be added Day 3)
-- Performance optimizations (can be tuned Day 4)
-
-### **Blockers to Resolve**
-- **Terra API Keys**: Must be obtained and configured by 10 AM
-- **Webhook URL**: Must be publicly accessible for testing by 11 AM
-- **Database Migrations**: Must complete before integration testing at 4 PM
-
----
-
-## 📊 **SUCCESS METRICS - DAY 1**
-
-### **Quantitative**
-- Terra session generation: <2 seconds response time ✅
-- Webhook processing: <500ms from receipt to storage ✅
-- Health data retrieval: <200ms with cache hit ✅
-- Mobile bundle size increase: <50KB ✅
-- Test coverage: 100% of new code ✅
-
-### **Qualitative**
-- Clean separation between Terra logic and existing code ✅
-- Reuse of existing infrastructure (encryption, cache, auth) ✅
-- No breaking changes to current functionality ✅
-- Clear error messages for Terra connection issues ✅
-- Smooth developer experience for testing ✅
-
----
-
-## 🎯 **END OF DAY CHECKPOINT**
-
-By 5:00 PM today, we should have:
-
-1. **Working Terra Integration**
-   - Mobile app can open Terra widget
-   - Users can connect wearables
-   - Server receives webhook data
-   - Mobile can display health metrics
-
-2. **Secure Data Flow**
-   - All Terra tokens encrypted
-   - Webhook signatures validated
-   - Health data cached securely
-   - Professional access controlled
-
-3. **Foundation for Week**
-   - Core services implemented
-   - Database schema ready
-   - API routes operational
-   - Testing framework in place
-
-**Tomorrow's Focus**: UI components and journal integration with Terra health context.
-
----
-
-**Generated**: January 13, 2025 - Day 1/7 Terra Integration Sprint  
-**Priority**: Mobile Terra Service & API Gateway Foundation  
-**Critical Path**: Terra Service → API Routes → Database → Integration Test  
-**Success Criteria**: End-to-end Terra connection flow operational  
-**Risk Level**: Low - Leveraging existing architecture (95% reuse)
+*Use this brief to systematically debug and fix the authentication flow. Document everything. Good luck!*
