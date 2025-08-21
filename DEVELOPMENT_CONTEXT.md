@@ -175,435 +175,607 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Thu 21 Aug 2025 15:45:44 AEST
+## Session Started: Thu 21 Aug 2025 16:17:51 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - SociallyFed Mobile Authentication Audit & Debug
+# Daily Brief - Firebase Authentication Fix Implementation
 ## Date: 2025-01-13
 
-### Mission Critical: Fix Firebase Authentication Flow
+### Mission: Complete Firebase Authentication Integration
 **Priority**: P0 - CRITICAL  
-**Objective**: Audit current authentication configuration, fix the "Getting your encryption keys" stuck screen, and establish working Firebase → JWT → Server sync flow
+**Estimated Time**: 2 hours  
+**Objective**: Add Firebase configuration, fix Login.tsx integration, and establish working authentication flow
 
 ---
 
-## Current Situation Analysis
+## Phase 1: Firebase Configuration Setup (15 minutes)
 
-### Known Issues
-1. **Authentication Flow Blocked**: App gets stuck on "Getting your encryption keys" screen after Firebase auth
-2. **Token Exchange Failure**: Firebase tokens not properly exchanged for server JWTs
-3. **Platform Identification**: Incorrect platform ('web' instead of 'mobile') causing API failures
-4. **API Path Mismatches**: Endpoints using wrong paths (`/accounts/sync` vs `/api/accounts/sync`)
+### 1.1 Add Firebase Variables to Environment Files
 
-### Previous Solutions Implemented (Need Verification)
-- Feature flag system to bypass encryption flow
-- Authentication service for Firebase → JWT exchange
-- API interceptor for automatic auth headers
-- Platform identification fixes
+#### Step 1: Update `.env` file
+Add these exact lines to `/home/ben/Development/sociallyfed-mobile/baseline/.env`:
 
----
-
-## Today's Audit & Debug Tasks
-
-### Phase 1: Configuration Audit (30 minutes)
-
-#### 1.1 Verify Feature Flags
-**File**: `src/services/SociallyFedConfigService.ts`
-```typescript
-// Check these flags are properly set:
-{
-  enableBasicAuth: true,           // ✓ Must be true
-  enableServerSync: true,          // ✓ Must be true
-  enableMultiTenant: false,        // ✓ Must be false (simplified mode)
-  enableProfessionalServices: false, // ✓ Must be false
-  enableEncryptionFlow: false,     // ✓ CRITICAL - Must be false
-  enableWebSocket: false,          // ✓ Must be false
-  forceMobilePlatform: true,       // ✓ Must be true
-  useCorrectApiPaths: true        // ✓ Must be true
-}
-```
-
-**Action Items**:
-- [ ] Verify `SimplifiedFeatureFlags` interface exists
-- [ ] Check `enableBasicMode()` method is implemented
-- [ ] Ensure flags persist to localStorage/sessionStorage
-- [ ] Add console logging to verify flags on app startup
-
-#### 1.2 Verify Environment Configuration
-**Files**: `.env`, `.env.production`, `.env.development`
 ```bash
-# Check these are correctly set:
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=AIzaSyA9tz1zzdeETq_j_F04SAE65t5enjaasaA
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
+REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=481907664524
+REACT_APP_FIREBASE_APP_ID=1:481907664524:web:471b37efc8d3365f987da9
+
+# Server Configuration (verify these are present)
 REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
 REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_FIREBASE_API_KEY=[verify present]
-REACT_APP_FIREBASE_AUTH_DOMAIN=[verify present]
-REACT_APP_FIREBASE_PROJECT_ID=[verify present]
 ```
 
-**Action Items**:
-- [ ] Verify all Firebase config values are present
-- [ ] Confirm server URL is correct and accessible
-- [ ] Check for any hardcoded API URLs that need updating
+#### Step 2: Update `.env.production` file
+Add the same Firebase configuration to `/home/ben/Development/sociallyfed-mobile/baseline/.env.production`:
 
-### Phase 2: Authentication Flow Audit (45 minutes)
+```bash
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=AIzaSyA9tz1zzdeETq_j_F04SAE65t5enjaasaA
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
+REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=481907664524
+REACT_APP_FIREBASE_APP_ID=1:481907664524:web:471b37efc8d3365f987da9
 
-#### 2.1 Login Component Analysis
-**File**: `src/pages/Login.tsx`
+# Server Configuration
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+```
 
-**Required Modifications**:
+#### Step 3: Update `.env.development` file (if exists)
+If `.env.development` exists, add the same configuration there as well.
+
+#### Step 4: Verify Firebase Initialization
+Check `src/firebaseConfig.ts` or similar file to ensure it reads these environment variables:
+
 ```typescript
-// Add comprehensive debug logging
-const continueLoginFlow = async () => {
-  console.log('🔐 Starting login flow...');
-  console.log('Current feature flags:', configService.getSimplifiedFlags());
-  
-  // Check if encryption should be bypassed
-  if (!configService.isSimplifiedFlagEnabled('enableEncryptionFlow')) {
-    console.log('✅ Bypassing encryption flow (feature flag disabled)');
-    setCheckingEncryption(false);
-    
-    // Direct to JWT exchange
-    try {
-      console.log('🔄 Exchanging Firebase token for JWT...');
-      const firebaseToken = await auth.currentUser?.getIdToken();
-      console.log('Firebase token obtained:', !!firebaseToken);
-      
-      const jwt = await authService.exchangeFirebaseToken(firebaseToken);
-      console.log('JWT obtained:', !!jwt);
-      
-      // Proceed to sync
-      await performSync(jwt);
-    } catch (error) {
-      console.error('❌ Auth flow failed:', error);
-    }
-    return; // Skip encryption flow entirely
-  }
-  
-  // Original encryption flow (should not reach here if flag is false)
-  console.log('⚠️ Encryption flow enabled - this may cause issues');
-  setCheckingEncryption(true);
-  // ... existing encryption code
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 ```
 
-**Action Items**:
-- [ ] Add debug logging at every decision point
-- [ ] Verify `setCheckingEncryption(false)` is called when bypassing
-- [ ] Ensure early return prevents encryption flow execution
-- [ ] Add try-catch blocks with detailed error logging
+### ✅ Phase 1 Checklist
+- [ ] Firebase variables added to `.env`
+- [ ] Firebase variables added to `.env.production`
+- [ ] Firebase variables added to `.env.development` (if exists)
+- [ ] Verified firebaseConfig.ts uses environment variables
+- [ ] Restart development server after adding variables
 
-#### 2.2 Authentication Service Verification
-**File**: `src/services/AuthenticationService.ts`
+---
 
-**Verify Implementation**:
+## Phase 2: Fix Login.tsx Integration (60 minutes)
+
+### 2.1 Enable Basic Mode on App Startup
+
+#### Step 1: Update `src/App.tsx`
+Add this at the beginning of the App component:
+
 ```typescript
-class AuthenticationService {
-  async exchangeFirebaseToken(firebaseToken: string): Promise<string> {
-    console.log('📤 Exchanging Firebase token at /api/auth/exchange');
-    
-    const response = await fetch(`${API_URL}/api/auth/exchange`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Platform': 'mobile' // Critical header
-      },
-      body: JSON.stringify({ firebaseToken })
-    });
-    
-    if (!response.ok) {
-      console.error('Token exchange failed:', response.status, await response.text());
-      throw new Error(`Token exchange failed: ${response.status}`);
-    }
-    
-    const { token, refreshToken } = await response.json();
-    console.log('✅ JWT received, storing tokens');
-    
-    // Store tokens securely
-    await this.storeTokens(token, refreshToken);
-    return token;
-  }
+import { SociallyFedConfigService } from './services/SociallyFedConfigService';
+
+const App: React.FC = () => {
+  // Enable basic mode on app initialization
+  useEffect(() => {
+    const configService = new SociallyFedConfigService();
+    configService.enableBasicMode();
+    console.log('🔧 Basic mode enabled:', configService.getSimplifiedFlags());
+  }, []);
+  
+  // ... rest of component
 }
 ```
 
-**Action Items**:
-- [ ] Verify service exists or create it
-- [ ] Ensure proper error handling
-- [ ] Check token storage mechanism
-- [ ] Verify refresh token logic
+### 2.2 Fix Login.tsx Authentication Flow
 
-#### 2.3 API Interceptor Setup
-**File**: `src/services/ApiInterceptor.ts`
+#### Step 2: Update `src/pages/Login.tsx` (lines 149-179)
+Replace the existing encryption bypass logic with proper JWT integration:
 
-**Required Implementation**:
 ```typescript
-class ApiInterceptor {
-  async makeRequest(url: string, options: RequestInit = {}): Promise<Response> {
-    const token = await this.getStoredToken();
-    
-    const headers = {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'X-Platform': 'mobile',
-      'Content-Type': 'application/json'
-    };
-    
-    console.log(`🌐 API Request: ${url}`);
-    console.log('Headers:', headers);
-    
-    const response = await fetch(url, { ...options, headers });
-    
-    if (response.status === 401) {
-      console.log('🔄 Token expired, attempting refresh...');
-      const newToken = await this.refreshToken();
-      // Retry with new token
-      return this.makeRequest(url, options);
+import { AuthenticationService } from '../services/AuthenticationService';
+import { ApiInterceptor } from '../services/ApiInterceptor';
+import { SociallyFedConfigService } from '../services/SociallyFedConfigService';
+
+const Login: React.FC = () => {
+  const authService = new AuthenticationService();
+  const apiInterceptor = new ApiInterceptor();
+  const configService = new SociallyFedConfigService();
+  
+  const continueLoginFlow = async () => {
+    try {
+      console.log('🔐 Starting enhanced login flow...');
+      setCheckingEncryption(true);
+      setEncryptionStatus('Authenticating...');
+      
+      // Check if encryption should be bypassed
+      const flags = configService.getSimplifiedFlags();
+      console.log('Feature flags:', flags);
+      
+      if (!flags.enableEncryptionFlow) {
+        console.log('✅ Bypassing encryption flow (feature flag disabled)');
+        setEncryptionStatus('Connecting to server...');
+        
+        // Get Firebase token
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('No authenticated user found');
+        }
+        
+        console.log('📱 Firebase user authenticated:', user.email);
+        const firebaseToken = await user.getIdToken();
+        console.log('🎫 Firebase token obtained, length:', firebaseToken?.length);
+        
+        // Exchange for JWT
+        setEncryptionStatus('Authenticating with server...');
+        console.log('🔄 Exchanging Firebase token for JWT...');
+        const jwt = await authService.exchangeFirebaseToken(firebaseToken);
+        console.log('✅ JWT obtained successfully');
+        
+        // Perform sync with proper platform identification
+        setEncryptionStatus('Syncing your data...');
+        const syncData = {
+          platform: 'mobile',
+          userId: user.uid,
+          email: user.email,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log('📤 Syncing with server:', syncData);
+        const syncResponse = await apiInterceptor.makeRequest(
+          `${process.env.REACT_APP_API_URL}/api/accounts/sync`,
+          {
+            method: 'POST',
+            body: JSON.stringify(syncData)
+          }
+        );
+        
+        if (!syncResponse.ok) {
+          throw new Error(`Sync failed: ${syncResponse.status}`);
+        }
+        
+        console.log('✅ Sync successful, navigating to app...');
+        setCheckingEncryption(false);
+        
+        // Navigate to main app
+        history.push('/tabs/journal');
+        return;
+      }
+      
+      // Original encryption flow (should not reach here with basic mode)
+      console.warn('⚠️ Encryption flow enabled - this may cause issues');
+      // ... existing encryption code
+      
+    } catch (error) {
+      console.error('❌ Login flow failed:', error);
+      setCheckingEncryption(false);
+      setEncryptionStatus('');
+      
+      // Show user-friendly error
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      presentToast({
+        message: `Login failed: ${errorMessage}`,
+        duration: 5000,
+        color: 'danger',
+        buttons: [
+          {
+            text: 'Retry',
+            handler: () => continueLoginFlow()
+          }
+        ]
+      });
     }
-    
-    return response;
-  }
+  };
+  
+  // ... rest of component
 }
 ```
 
-**Action Items**:
-- [ ] Verify interceptor is properly integrated
-- [ ] Check automatic token refresh on 401
-- [ ] Ensure all API calls use interceptor
-- [ ] Add request/response logging
+### 2.3 Ensure Services Are Properly Imported
 
-### Phase 3: Integration Testing (1 hour)
+#### Step 3: Verify Service Files Exist
+Ensure these files exist with proper exports:
 
-#### 3.1 Create Debug Test Component
-**Create File**: `src/components/Debug/AuthFlowDebugger.tsx`
+1. `src/services/AuthenticationService.ts`
+2. `src/services/ApiInterceptor.ts`
+3. `src/services/SociallyFedConfigService.ts`
+
+If any are missing, create them based on the August 9 implementation report specifications.
+
+### ✅ Phase 2 Checklist
+- [ ] Basic mode enabled in App.tsx
+- [ ] Login.tsx updated with JWT integration
+- [ ] All service imports working
+- [ ] Error handling with user feedback added
+- [ ] Console logging added for debugging
+
+---
+
+## Phase 3: Create Debug Component (30 minutes)
+
+### 3.1 Create AuthFlowDebugger Component
+
+Create file: `src/components/Debug/AuthFlowDebugger.tsx`
 
 ```typescript
 import React, { useState } from 'react';
-import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle } from '@ionic/react';
+import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonItem, IonLabel, IonList } from '@ionic/react';
+import { auth } from '../../firebaseConfig';
+import { SociallyFedConfigService } from '../../services/SociallyFedConfigService';
+import { AuthenticationService } from '../../services/AuthenticationService';
+import { ApiInterceptor } from '../../services/ApiInterceptor';
 
 const AuthFlowDebugger: React.FC = () => {
   const [results, setResults] = useState<any>({});
+  const [running, setRunning] = useState(false);
+  
+  const configService = new SociallyFedConfigService();
+  const authService = new AuthenticationService();
+  const apiInterceptor = new ApiInterceptor();
   
   const tests = [
     {
-      name: 'Check Feature Flags',
+      name: '1. Firebase Config',
       test: async () => {
-        const config = new SociallyFedConfigService();
-        return config.getSimplifiedFlags();
+        return {
+          apiKey: !!process.env.REACT_APP_FIREBASE_API_KEY,
+          authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+          projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+          configured: !!auth
+        };
       }
     },
     {
-      name: 'Firebase Auth Status',
+      name: '2. Feature Flags',
+      test: async () => {
+        const flags = configService.getSimplifiedFlags();
+        return {
+          enableBasicAuth: flags.enableBasicAuth,
+          enableEncryptionFlow: flags.enableEncryptionFlow,
+          forceMobilePlatform: flags.forceMobilePlatform,
+          useCorrectApiPaths: flags.useCorrectApiPaths
+        };
+      }
+    },
+    {
+      name: '3. Firebase Auth Status',
       test: async () => {
         const user = auth.currentUser;
         return {
           authenticated: !!user,
-          uid: user?.uid,
-          email: user?.email
+          uid: user?.uid || 'Not authenticated',
+          email: user?.email || 'Not authenticated'
         };
       }
     },
     {
-      name: 'Get Firebase Token',
+      name: '4. Get Firebase Token',
       test: async () => {
-        const token = await auth.currentUser?.getIdToken();
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const token = await user.getIdToken();
         return {
           hasToken: !!token,
-          tokenLength: token?.length
+          tokenLength: token?.length || 0,
+          tokenPreview: token ? `${token.substring(0, 20)}...` : 'None'
         };
       }
     },
     {
-      name: 'Exchange for JWT',
+      name: '5. Exchange for JWT',
       test: async () => {
-        const firebaseToken = await auth.currentUser?.getIdToken();
-        const authService = new AuthenticationService();
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const firebaseToken = await user.getIdToken();
         const jwt = await authService.exchangeFirebaseToken(firebaseToken);
         return {
           success: !!jwt,
-          jwtLength: jwt?.length
+          jwtLength: jwt?.length || 0,
+          jwtPreview: jwt ? `${jwt.substring(0, 20)}...` : 'None'
         };
       }
     },
     {
-      name: 'Test Sync Endpoint',
+      name: '6. Test Sync Endpoint',
       test: async () => {
         const response = await apiInterceptor.makeRequest(
-          `${API_URL}/api/accounts/sync`,
-          { method: 'POST', body: JSON.stringify({ platform: 'mobile' }) }
+          `${process.env.REACT_APP_API_URL}/api/accounts/sync`,
+          { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+              platform: 'mobile',
+              test: true,
+              timestamp: new Date().toISOString()
+            })
+          }
         );
         return {
           status: response.status,
-          ok: response.ok
+          ok: response.ok,
+          statusText: response.statusText
+        };
+      }
+    },
+    {
+      name: '7. Platform Identification',
+      test: async () => {
+        return {
+          forceMobilePlatform: configService.isSimplifiedFlagEnabled('forceMobilePlatform'),
+          currentPlatform: 'mobile' // Should always be mobile
+        };
+      }
+    },
+    {
+      name: '8. API Configuration',
+      test: async () => {
+        return {
+          apiUrl: process.env.REACT_APP_API_URL,
+          hasCorrectPrefix: process.env.REACT_APP_API_URL?.includes('/api'),
+          serverReachable: 'Test with sync endpoint'
         };
       }
     }
   ];
   
   const runAllTests = async () => {
+    setRunning(true);
+    setResults({});
+    
     for (const test of tests) {
       try {
-        console.log(`Running: ${test.name}`);
+        console.log(`🧪 Running: ${test.name}`);
         const result = await test.test();
-        setResults(prev => ({ ...prev, [test.name]: { success: true, data: result }}));
+        console.log(`✅ ${test.name} passed:`, result);
+        setResults(prev => ({ 
+          ...prev, 
+          [test.name]: { 
+            success: true, 
+            data: result 
+          }
+        }));
       } catch (error) {
-        console.error(`Failed: ${test.name}`, error);
-        setResults(prev => ({ ...prev, [test.name]: { success: false, error: error.message }}));
+        console.error(`❌ ${test.name} failed:`, error);
+        setResults(prev => ({ 
+          ...prev, 
+          [test.name]: { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }));
       }
     }
+    
+    setRunning(false);
+  };
+  
+  const getStatusIcon = (testName: string) => {
+    if (!results[testName]) return '⏸️';
+    return results[testName].success ? '✅' : '❌';
   };
   
   return (
     <IonCard>
       <IonCardHeader>
-        <IonCardTitle>Authentication Flow Debugger</IonCardTitle>
+        <IonCardTitle>🔐 Authentication Flow Debugger</IonCardTitle>
       </IonCardHeader>
       <IonCardContent>
-        <IonButton onClick={runAllTests}>Run All Tests</IonButton>
-        <pre>{JSON.stringify(results, null, 2)}</pre>
+        <IonButton 
+          expand="full" 
+          onClick={runAllTests}
+          disabled={running}
+        >
+          {running ? 'Running Tests...' : 'Run All Tests'}
+        </IonButton>
+        
+        <IonList>
+          {tests.map(test => (
+            <IonItem key={test.name}>
+              <IonLabel>
+                <h3>{getStatusIcon(test.name)} {test.name}</h3>
+                {results[test.name] && (
+                  <pre style={{ fontSize: '0.8em', whiteSpace: 'pre-wrap' }}>
+                    {JSON.stringify(results[test.name], null, 2)}
+                  </pre>
+                )}
+              </IonLabel>
+            </IonItem>
+          ))}
+        </IonList>
+        
+        {Object.keys(results).length === tests.length && (
+          <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
+            <h3>Summary</h3>
+            <p>✅ Passed: {Object.values(results).filter((r: any) => r.success).length}</p>
+            <p>❌ Failed: {Object.values(results).filter((r: any) => !r.success).length}</p>
+          </div>
+        )}
       </IonCardContent>
     </IonCard>
   );
 };
+
+export default AuthFlowDebugger;
 ```
 
-**Action Items**:
-- [ ] Create debug component
-- [ ] Add to a test route or settings page
-- [ ] Run tests and document results
-- [ ] Screenshot or copy test output for analysis
+### 3.2 Add Debug Route
 
-#### 3.2 Manual Testing Checklist
-Execute these steps in order and document results:
+Add to `src/App.tsx` routes:
 
-1. **Clear Application State**
-   - [ ] Clear localStorage/sessionStorage
-   - [ ] Sign out of Firebase
-   - [ ] Clear any cached tokens
+```typescript
+import AuthFlowDebugger from './components/Debug/AuthFlowDebugger';
 
-2. **Enable Basic Mode**
-   ```javascript
-   // In browser console:
-   const config = new SociallyFedConfigService();
-   config.enableBasicMode();
-   console.log(config.getSimplifiedFlags());
-   ```
-
-3. **Attempt Login Flow**
-   - [ ] Open browser developer tools (Network + Console tabs)
-   - [ ] Attempt login with test credentials
-   - [ ] Document where flow stops/fails
-   - [ ] Copy all console errors
-   - [ ] Check network requests for 401/403 errors
-
-4. **Verify API Calls**
-   - [ ] Check `/api/auth/exchange` is called
-   - [ ] Verify `X-Platform: mobile` header present
-   - [ ] Confirm `/api/accounts/sync` endpoint used (not `/accounts/sync`)
-   - [ ] Check Authorization header format
-
-### Phase 4: Server-Side Verification (30 minutes)
-
-#### 4.1 Verify Server CORS Configuration
-**Check server allows**:
-- Origin: `https://sociallyfed-mobile-512204327023.us-central1.run.app`
-- Headers: `Authorization`, `X-Platform`, `Content-Type`
-- Methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
-
-#### 4.2 Verify Token Exchange Endpoint
-**Test with curl**:
-```bash
-curl -X POST https://sociallyfed-server-512204327023.us-central1.run.app/api/auth/exchange \
-  -H "Content-Type: application/json" \
-  -H "X-Platform: mobile" \
-  -d '{"firebaseToken": "YOUR_FIREBASE_TOKEN"}'
+// Add this route inside IonRouterOutlet
+<Route path="/debug/auth" component={AuthFlowDebugger} exact />
 ```
+
+### ✅ Phase 3 Checklist
+- [ ] AuthFlowDebugger component created
+- [ ] Debug route added to App.tsx
+- [ ] Component imports all necessary services
+- [ ] Navigate to `/debug/auth` to test
 
 ---
 
-## Unified Architecture Validation Steps
+## Phase 4: Integration Testing (15 minutes)
 
-### 1. Authentication Flow Validation
-- [ ] Firebase Auth → Success
-- [ ] Skip Encryption Keys → Success
-- [ ] Firebase Token Exchange → JWT
-- [ ] JWT includes correct claims (tenant, role)
-- [ ] Server accepts JWT for protected endpoints
+### 4.1 Clear Application State
+1. Open browser developer tools
+2. Go to Application → Storage
+3. Clear all:
+   - [ ] localStorage
+   - [ ] sessionStorage
+   - [ ] IndexedDB
+   - [ ] Cookies
 
-### 2. Data Flow Validation
-- [ ] Mobile creates journal entry
-- [ ] Entry syncs to server with correct platform identifier
-- [ ] Server stores with proper tenant association
-- [ ] Mobile can retrieve synced data
+### 4.2 Test Authentication Flow
 
-### 3. Platform Consistency
-- [ ] All API calls include `X-Platform: mobile`
-- [ ] Server logs show 'mobile' platform
-- [ ] No 'web' platform identifiers from mobile app
+#### Step 1: Enable Basic Mode
+Open browser console and run:
+```javascript
+localStorage.clear();
+const configService = new SociallyFedConfigService();
+configService.enableBasicMode();
+console.log('Flags:', configService.getSimplifiedFlags());
+// Should show enableEncryptionFlow: false
+```
+
+#### Step 2: Attempt Login
+1. Open Network tab in dev tools
+2. Open Console tab
+3. Try to login with test credentials
+4. Document:
+   - [ ] Does "Getting encryption keys" screen appear? (Should NOT)
+   - [ ] Check console for authentication logs
+   - [ ] Check Network tab for:
+     - [ ] `/api/auth/exchange` call
+     - [ ] `/api/accounts/sync` call
+     - [ ] Proper headers (X-Platform: mobile)
+
+#### Step 3: Run Debug Tests
+1. Navigate to `/debug/auth`
+2. Click "Run All Tests"
+3. Screenshot or save results
+4. All tests should pass ✅
+
+### ✅ Phase 4 Checklist
+- [ ] Application state cleared
+- [ ] Basic mode enabled successfully
+- [ ] Login completes without encryption screen
+- [ ] Network requests show correct endpoints
+- [ ] Debug tests all pass
 
 ---
 
 ## Definition of Done
 
-### Authentication System
-✅ **Done when**:
-1. User can login without seeing "Getting your encryption keys" screen
-2. Firebase token successfully exchanges for JWT
-3. JWT is automatically included in all API requests
-4. 401 responses trigger automatic token refresh
-5. User remains authenticated across app restarts
+### ✅ Authentication System - DONE When:
 
-### Integration Testing
-✅ **Done when**:
-1. AuthFlowDebugger component shows all green tests
-2. Manual login flow completes in < 3 seconds
-3. Network tab shows correct API paths and headers
-4. No 401/403 errors in normal operation
-5. Server logs confirm mobile platform identification
+#### 1. **Configuration Complete**
+- [x] Firebase environment variables added to all .env files
+- [x] Server URL correctly configured
+- [x] Firebase initialization successful
 
-### Code Quality
-✅ **Done when**:
-1. All debug logging removed or behind feature flag
-2. Error handling implemented at every auth step
-3. User-friendly error messages for auth failures
-4. No hardcoded URLs or credentials
-5. TypeScript compilation with no errors
+#### 2. **Login Flow Working**
+- [x] User can login WITHOUT seeing "Getting your encryption keys" screen
+- [x] Login completes in < 3 seconds
+- [x] User successfully navigates to journal page
 
----
+#### 3. **Token Management**
+- [x] Firebase token successfully obtained
+- [x] Firebase token exchanges for JWT
+- [x] JWT automatically included in API requests
+- [x] Token refresh works on 401 responses
 
-## Critical Success Metrics
+#### 4. **Platform Identification**
+- [x] All requests include `X-Platform: mobile` header
+- [x] Server accepts mobile platform identifier
+- [x] No 'web' platform in requests from mobile
 
-1. **Authentication Success Rate**: > 95%
-2. **Token Exchange Latency**: < 500ms
-3. **Total Login Time**: < 3 seconds
-4. **Token Refresh Success**: 100%
-5. **Platform Identification Accuracy**: 100% 'mobile'
+#### 5. **Error Handling**
+- [x] Authentication errors show user-friendly messages
+- [x] Retry option available on failure
+- [x] No silent failures or stuck screens
 
----
+#### 6. **Debug Validation**
+- [x] AuthFlowDebugger shows 8/8 tests passing
+- [x] Manual testing confirms smooth login
+- [x] Network inspection shows correct API calls
 
-## Emergency Fallback Plan
-
-If authentication cannot be fixed today:
-1. Create temporary bypass with hardcoded test JWT
-2. Document all blocking issues with screenshots
-3. Check if server-side changes are needed
-4. Consider simplified auth flow without Firebase
-5. Escalate to senior review with all debug data
+#### 7. **Code Quality**
+- [x] No TypeScript compilation errors
+- [x] No console errors in production mode
+- [x] Debug logging can be disabled
 
 ---
 
-## Required Outputs
+## Success Metrics
 
-By end of session, provide:
-1. **Debug Report**: All test results from AuthFlowDebugger
-2. **Console Logs**: Complete authentication flow logs
-3. **Network Trace**: HAR file of login attempt
-4. **Code Changes**: Git diff of all modifications
-5. **Next Steps**: Clear action items if not fully resolved
+| Metric | Target | Actual |
+|--------|--------|---------|
+| Login Success Rate | > 95% | ___ |
+| Firebase Token Exchange Time | < 500ms | ___ |
+| Total Login Time | < 3 seconds | ___ |
+| Auth Debug Tests Passing | 8/8 | ___/8 |
+| Platform ID Accuracy | 100% mobile | ___ |
 
 ---
 
-*Use this brief to systematically debug and fix the authentication flow. Document everything. Good luck!*
+## Troubleshooting Guide
+
+### If Firebase Config Issues:
+1. Verify all 6 Firebase variables are in .env files
+2. Restart development server after adding variables
+3. Check firebaseConfig.ts initialization
+
+### If Still Seeing Encryption Screen:
+1. Verify `enableBasicMode()` is called in App.tsx
+2. Check console for feature flags status
+3. Ensure `enableEncryptionFlow: false`
+
+### If JWT Exchange Fails:
+1. Check server is running and accessible
+2. Verify CORS allows mobile origin
+3. Check `/api/auth/exchange` endpoint exists
+
+### If Sync Fails:
+1. Verify JWT token is valid
+2. Check API path is `/api/accounts/sync` (not `/accounts/sync`)
+3. Ensure platform is set to 'mobile'
+
+---
+
+## Final Verification
+
+Before marking complete, ensure:
+1. **Fresh Login Test**: Clear all data and login from scratch
+2. **Debug Test Suite**: All 8 tests pass in AuthFlowDebugger
+3. **Network Validation**: Correct endpoints and headers in dev tools
+4. **Error Scenarios**: Test with wrong password, network off, etc.
+5. **Documentation**: Update any relevant docs with new auth flow
+
+---
+
+## Next Steps After Completion
+
+Once authentication is working:
+1. Remove debug logging from production code
+2. Test on actual mobile device (not just browser)
+3. Performance test with multiple login attempts
+4. Security audit of token storage
+5. Proceed with Terra API integration
+
+---
+
+*This brief provides the complete path to fixing authentication. Follow each phase systematically. Document any issues encountered. Success is defined by all "Definition of Done" items being checked.*
 ### Current Sprint:
 # Current Sprint Status - Terra API Integration & Professional Services Enhancement
 
@@ -907,427 +1079,599 @@ gantt
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# Daily Brief - SociallyFed Mobile Authentication Audit & Debug
+# Daily Brief - Firebase Authentication Fix Implementation
 ## Date: 2025-01-13
 
-### Mission Critical: Fix Firebase Authentication Flow
+### Mission: Complete Firebase Authentication Integration
 **Priority**: P0 - CRITICAL  
-**Objective**: Audit current authentication configuration, fix the "Getting your encryption keys" stuck screen, and establish working Firebase → JWT → Server sync flow
+**Estimated Time**: 2 hours  
+**Objective**: Add Firebase configuration, fix Login.tsx integration, and establish working authentication flow
 
 ---
 
-## Current Situation Analysis
+## Phase 1: Firebase Configuration Setup (15 minutes)
 
-### Known Issues
-1. **Authentication Flow Blocked**: App gets stuck on "Getting your encryption keys" screen after Firebase auth
-2. **Token Exchange Failure**: Firebase tokens not properly exchanged for server JWTs
-3. **Platform Identification**: Incorrect platform ('web' instead of 'mobile') causing API failures
-4. **API Path Mismatches**: Endpoints using wrong paths (`/accounts/sync` vs `/api/accounts/sync`)
+### 1.1 Add Firebase Variables to Environment Files
 
-### Previous Solutions Implemented (Need Verification)
-- Feature flag system to bypass encryption flow
-- Authentication service for Firebase → JWT exchange
-- API interceptor for automatic auth headers
-- Platform identification fixes
+#### Step 1: Update `.env` file
+Add these exact lines to `/home/ben/Development/sociallyfed-mobile/baseline/.env`:
 
----
-
-## Today's Audit & Debug Tasks
-
-### Phase 1: Configuration Audit (30 minutes)
-
-#### 1.1 Verify Feature Flags
-**File**: `src/services/SociallyFedConfigService.ts`
-```typescript
-// Check these flags are properly set:
-{
-  enableBasicAuth: true,           // ✓ Must be true
-  enableServerSync: true,          // ✓ Must be true
-  enableMultiTenant: false,        // ✓ Must be false (simplified mode)
-  enableProfessionalServices: false, // ✓ Must be false
-  enableEncryptionFlow: false,     // ✓ CRITICAL - Must be false
-  enableWebSocket: false,          // ✓ Must be false
-  forceMobilePlatform: true,       // ✓ Must be true
-  useCorrectApiPaths: true        // ✓ Must be true
-}
-```
-
-**Action Items**:
-- [ ] Verify `SimplifiedFeatureFlags` interface exists
-- [ ] Check `enableBasicMode()` method is implemented
-- [ ] Ensure flags persist to localStorage/sessionStorage
-- [ ] Add console logging to verify flags on app startup
-
-#### 1.2 Verify Environment Configuration
-**Files**: `.env`, `.env.production`, `.env.development`
 ```bash
-# Check these are correctly set:
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=AIzaSyA9tz1zzdeETq_j_F04SAE65t5enjaasaA
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
+REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=481907664524
+REACT_APP_FIREBASE_APP_ID=1:481907664524:web:471b37efc8d3365f987da9
+
+# Server Configuration (verify these are present)
 REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
 REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-REACT_APP_FIREBASE_API_KEY=[verify present]
-REACT_APP_FIREBASE_AUTH_DOMAIN=[verify present]
-REACT_APP_FIREBASE_PROJECT_ID=[verify present]
 ```
 
-**Action Items**:
-- [ ] Verify all Firebase config values are present
-- [ ] Confirm server URL is correct and accessible
-- [ ] Check for any hardcoded API URLs that need updating
+#### Step 2: Update `.env.production` file
+Add the same Firebase configuration to `/home/ben/Development/sociallyfed-mobile/baseline/.env.production`:
 
-### Phase 2: Authentication Flow Audit (45 minutes)
+```bash
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=AIzaSyA9tz1zzdeETq_j_F04SAE65t5enjaasaA
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
+REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=481907664524
+REACT_APP_FIREBASE_APP_ID=1:481907664524:web:471b37efc8d3365f987da9
 
-#### 2.1 Login Component Analysis
-**File**: `src/pages/Login.tsx`
+# Server Configuration
+REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+REACT_APP_API_BASE_URL=https://sociallyfed-server-512204327023.us-central1.run.app
+```
 
-**Required Modifications**:
+#### Step 3: Update `.env.development` file (if exists)
+If `.env.development` exists, add the same configuration there as well.
+
+#### Step 4: Verify Firebase Initialization
+Check `src/firebaseConfig.ts` or similar file to ensure it reads these environment variables:
+
 ```typescript
-// Add comprehensive debug logging
-const continueLoginFlow = async () => {
-  console.log('🔐 Starting login flow...');
-  console.log('Current feature flags:', configService.getSimplifiedFlags());
-  
-  // Check if encryption should be bypassed
-  if (!configService.isSimplifiedFlagEnabled('enableEncryptionFlow')) {
-    console.log('✅ Bypassing encryption flow (feature flag disabled)');
-    setCheckingEncryption(false);
-    
-    // Direct to JWT exchange
-    try {
-      console.log('🔄 Exchanging Firebase token for JWT...');
-      const firebaseToken = await auth.currentUser?.getIdToken();
-      console.log('Firebase token obtained:', !!firebaseToken);
-      
-      const jwt = await authService.exchangeFirebaseToken(firebaseToken);
-      console.log('JWT obtained:', !!jwt);
-      
-      // Proceed to sync
-      await performSync(jwt);
-    } catch (error) {
-      console.error('❌ Auth flow failed:', error);
-    }
-    return; // Skip encryption flow entirely
-  }
-  
-  // Original encryption flow (should not reach here if flag is false)
-  console.log('⚠️ Encryption flow enabled - this may cause issues');
-  setCheckingEncryption(true);
-  // ... existing encryption code
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 ```
 
-**Action Items**:
-- [ ] Add debug logging at every decision point
-- [ ] Verify `setCheckingEncryption(false)` is called when bypassing
-- [ ] Ensure early return prevents encryption flow execution
-- [ ] Add try-catch blocks with detailed error logging
+### ✅ Phase 1 Checklist
+- [ ] Firebase variables added to `.env`
+- [ ] Firebase variables added to `.env.production`
+- [ ] Firebase variables added to `.env.development` (if exists)
+- [ ] Verified firebaseConfig.ts uses environment variables
+- [ ] Restart development server after adding variables
 
-#### 2.2 Authentication Service Verification
-**File**: `src/services/AuthenticationService.ts`
+---
 
-**Verify Implementation**:
+## Phase 2: Fix Login.tsx Integration (60 minutes)
+
+### 2.1 Enable Basic Mode on App Startup
+
+#### Step 1: Update `src/App.tsx`
+Add this at the beginning of the App component:
+
 ```typescript
-class AuthenticationService {
-  async exchangeFirebaseToken(firebaseToken: string): Promise<string> {
-    console.log('📤 Exchanging Firebase token at /api/auth/exchange');
-    
-    const response = await fetch(`${API_URL}/api/auth/exchange`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Platform': 'mobile' // Critical header
-      },
-      body: JSON.stringify({ firebaseToken })
-    });
-    
-    if (!response.ok) {
-      console.error('Token exchange failed:', response.status, await response.text());
-      throw new Error(`Token exchange failed: ${response.status}`);
-    }
-    
-    const { token, refreshToken } = await response.json();
-    console.log('✅ JWT received, storing tokens');
-    
-    // Store tokens securely
-    await this.storeTokens(token, refreshToken);
-    return token;
-  }
+import { SociallyFedConfigService } from './services/SociallyFedConfigService';
+
+const App: React.FC = () => {
+  // Enable basic mode on app initialization
+  useEffect(() => {
+    const configService = new SociallyFedConfigService();
+    configService.enableBasicMode();
+    console.log('🔧 Basic mode enabled:', configService.getSimplifiedFlags());
+  }, []);
+  
+  // ... rest of component
 }
 ```
 
-**Action Items**:
-- [ ] Verify service exists or create it
-- [ ] Ensure proper error handling
-- [ ] Check token storage mechanism
-- [ ] Verify refresh token logic
+### 2.2 Fix Login.tsx Authentication Flow
 
-#### 2.3 API Interceptor Setup
-**File**: `src/services/ApiInterceptor.ts`
+#### Step 2: Update `src/pages/Login.tsx` (lines 149-179)
+Replace the existing encryption bypass logic with proper JWT integration:
 
-**Required Implementation**:
 ```typescript
-class ApiInterceptor {
-  async makeRequest(url: string, options: RequestInit = {}): Promise<Response> {
-    const token = await this.getStoredToken();
-    
-    const headers = {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-      'X-Platform': 'mobile',
-      'Content-Type': 'application/json'
-    };
-    
-    console.log(`🌐 API Request: ${url}`);
-    console.log('Headers:', headers);
-    
-    const response = await fetch(url, { ...options, headers });
-    
-    if (response.status === 401) {
-      console.log('🔄 Token expired, attempting refresh...');
-      const newToken = await this.refreshToken();
-      // Retry with new token
-      return this.makeRequest(url, options);
+import { AuthenticationService } from '../services/AuthenticationService';
+import { ApiInterceptor } from '../services/ApiInterceptor';
+import { SociallyFedConfigService } from '../services/SociallyFedConfigService';
+
+const Login: React.FC = () => {
+  const authService = new AuthenticationService();
+  const apiInterceptor = new ApiInterceptor();
+  const configService = new SociallyFedConfigService();
+  
+  const continueLoginFlow = async () => {
+    try {
+      console.log('🔐 Starting enhanced login flow...');
+      setCheckingEncryption(true);
+      setEncryptionStatus('Authenticating...');
+      
+      // Check if encryption should be bypassed
+      const flags = configService.getSimplifiedFlags();
+      console.log('Feature flags:', flags);
+      
+      if (!flags.enableEncryptionFlow) {
+        console.log('✅ Bypassing encryption flow (feature flag disabled)');
+        setEncryptionStatus('Connecting to server...');
+        
+        // Get Firebase token
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('No authenticated user found');
+        }
+        
+        console.log('📱 Firebase user authenticated:', user.email);
+        const firebaseToken = await user.getIdToken();
+        console.log('🎫 Firebase token obtained, length:', firebaseToken?.length);
+        
+        // Exchange for JWT
+        setEncryptionStatus('Authenticating with server...');
+        console.log('🔄 Exchanging Firebase token for JWT...');
+        const jwt = await authService.exchangeFirebaseToken(firebaseToken);
+        console.log('✅ JWT obtained successfully');
+        
+        // Perform sync with proper platform identification
+        setEncryptionStatus('Syncing your data...');
+        const syncData = {
+          platform: 'mobile',
+          userId: user.uid,
+          email: user.email,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log('📤 Syncing with server:', syncData);
+        const syncResponse = await apiInterceptor.makeRequest(
+          `${process.env.REACT_APP_API_URL}/api/accounts/sync`,
+          {
+            method: 'POST',
+            body: JSON.stringify(syncData)
+          }
+        );
+        
+        if (!syncResponse.ok) {
+          throw new Error(`Sync failed: ${syncResponse.status}`);
+        }
+        
+        console.log('✅ Sync successful, navigating to app...');
+        setCheckingEncryption(false);
+        
+        // Navigate to main app
+        history.push('/tabs/journal');
+        return;
+      }
+      
+      // Original encryption flow (should not reach here with basic mode)
+      console.warn('⚠️ Encryption flow enabled - this may cause issues');
+      // ... existing encryption code
+      
+    } catch (error) {
+      console.error('❌ Login flow failed:', error);
+      setCheckingEncryption(false);
+      setEncryptionStatus('');
+      
+      // Show user-friendly error
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      presentToast({
+        message: `Login failed: ${errorMessage}`,
+        duration: 5000,
+        color: 'danger',
+        buttons: [
+          {
+            text: 'Retry',
+            handler: () => continueLoginFlow()
+          }
+        ]
+      });
     }
-    
-    return response;
-  }
+  };
+  
+  // ... rest of component
 }
 ```
 
-**Action Items**:
-- [ ] Verify interceptor is properly integrated
-- [ ] Check automatic token refresh on 401
-- [ ] Ensure all API calls use interceptor
-- [ ] Add request/response logging
+### 2.3 Ensure Services Are Properly Imported
 
-### Phase 3: Integration Testing (1 hour)
+#### Step 3: Verify Service Files Exist
+Ensure these files exist with proper exports:
 
-#### 3.1 Create Debug Test Component
-**Create File**: `src/components/Debug/AuthFlowDebugger.tsx`
+1. `src/services/AuthenticationService.ts`
+2. `src/services/ApiInterceptor.ts`
+3. `src/services/SociallyFedConfigService.ts`
+
+If any are missing, create them based on the August 9 implementation report specifications.
+
+### ✅ Phase 2 Checklist
+- [ ] Basic mode enabled in App.tsx
+- [ ] Login.tsx updated with JWT integration
+- [ ] All service imports working
+- [ ] Error handling with user feedback added
+- [ ] Console logging added for debugging
+
+---
+
+## Phase 3: Create Debug Component (30 minutes)
+
+### 3.1 Create AuthFlowDebugger Component
+
+Create file: `src/components/Debug/AuthFlowDebugger.tsx`
 
 ```typescript
 import React, { useState } from 'react';
-import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle } from '@ionic/react';
+import { IonButton, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonItem, IonLabel, IonList } from '@ionic/react';
+import { auth } from '../../firebaseConfig';
+import { SociallyFedConfigService } from '../../services/SociallyFedConfigService';
+import { AuthenticationService } from '../../services/AuthenticationService';
+import { ApiInterceptor } from '../../services/ApiInterceptor';
 
 const AuthFlowDebugger: React.FC = () => {
   const [results, setResults] = useState<any>({});
+  const [running, setRunning] = useState(false);
+  
+  const configService = new SociallyFedConfigService();
+  const authService = new AuthenticationService();
+  const apiInterceptor = new ApiInterceptor();
   
   const tests = [
     {
-      name: 'Check Feature Flags',
+      name: '1. Firebase Config',
       test: async () => {
-        const config = new SociallyFedConfigService();
-        return config.getSimplifiedFlags();
+        return {
+          apiKey: !!process.env.REACT_APP_FIREBASE_API_KEY,
+          authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+          projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+          configured: !!auth
+        };
       }
     },
     {
-      name: 'Firebase Auth Status',
+      name: '2. Feature Flags',
+      test: async () => {
+        const flags = configService.getSimplifiedFlags();
+        return {
+          enableBasicAuth: flags.enableBasicAuth,
+          enableEncryptionFlow: flags.enableEncryptionFlow,
+          forceMobilePlatform: flags.forceMobilePlatform,
+          useCorrectApiPaths: flags.useCorrectApiPaths
+        };
+      }
+    },
+    {
+      name: '3. Firebase Auth Status',
       test: async () => {
         const user = auth.currentUser;
         return {
           authenticated: !!user,
-          uid: user?.uid,
-          email: user?.email
+          uid: user?.uid || 'Not authenticated',
+          email: user?.email || 'Not authenticated'
         };
       }
     },
     {
-      name: 'Get Firebase Token',
+      name: '4. Get Firebase Token',
       test: async () => {
-        const token = await auth.currentUser?.getIdToken();
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const token = await user.getIdToken();
         return {
           hasToken: !!token,
-          tokenLength: token?.length
+          tokenLength: token?.length || 0,
+          tokenPreview: token ? `${token.substring(0, 20)}...` : 'None'
         };
       }
     },
     {
-      name: 'Exchange for JWT',
+      name: '5. Exchange for JWT',
       test: async () => {
-        const firebaseToken = await auth.currentUser?.getIdToken();
-        const authService = new AuthenticationService();
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const firebaseToken = await user.getIdToken();
         const jwt = await authService.exchangeFirebaseToken(firebaseToken);
         return {
           success: !!jwt,
-          jwtLength: jwt?.length
+          jwtLength: jwt?.length || 0,
+          jwtPreview: jwt ? `${jwt.substring(0, 20)}...` : 'None'
         };
       }
     },
     {
-      name: 'Test Sync Endpoint',
+      name: '6. Test Sync Endpoint',
       test: async () => {
         const response = await apiInterceptor.makeRequest(
-          `${API_URL}/api/accounts/sync`,
-          { method: 'POST', body: JSON.stringify({ platform: 'mobile' }) }
+          `${process.env.REACT_APP_API_URL}/api/accounts/sync`,
+          { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+              platform: 'mobile',
+              test: true,
+              timestamp: new Date().toISOString()
+            })
+          }
         );
         return {
           status: response.status,
-          ok: response.ok
+          ok: response.ok,
+          statusText: response.statusText
+        };
+      }
+    },
+    {
+      name: '7. Platform Identification',
+      test: async () => {
+        return {
+          forceMobilePlatform: configService.isSimplifiedFlagEnabled('forceMobilePlatform'),
+          currentPlatform: 'mobile' // Should always be mobile
+        };
+      }
+    },
+    {
+      name: '8. API Configuration',
+      test: async () => {
+        return {
+          apiUrl: process.env.REACT_APP_API_URL,
+          hasCorrectPrefix: process.env.REACT_APP_API_URL?.includes('/api'),
+          serverReachable: 'Test with sync endpoint'
         };
       }
     }
   ];
   
   const runAllTests = async () => {
+    setRunning(true);
+    setResults({});
+    
     for (const test of tests) {
       try {
-        console.log(`Running: ${test.name}`);
+        console.log(`🧪 Running: ${test.name}`);
         const result = await test.test();
-        setResults(prev => ({ ...prev, [test.name]: { success: true, data: result }}));
+        console.log(`✅ ${test.name} passed:`, result);
+        setResults(prev => ({ 
+          ...prev, 
+          [test.name]: { 
+            success: true, 
+            data: result 
+          }
+        }));
       } catch (error) {
-        console.error(`Failed: ${test.name}`, error);
-        setResults(prev => ({ ...prev, [test.name]: { success: false, error: error.message }}));
+        console.error(`❌ ${test.name} failed:`, error);
+        setResults(prev => ({ 
+          ...prev, 
+          [test.name]: { 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }));
       }
     }
+    
+    setRunning(false);
+  };
+  
+  const getStatusIcon = (testName: string) => {
+    if (!results[testName]) return '⏸️';
+    return results[testName].success ? '✅' : '❌';
   };
   
   return (
     <IonCard>
       <IonCardHeader>
-        <IonCardTitle>Authentication Flow Debugger</IonCardTitle>
+        <IonCardTitle>🔐 Authentication Flow Debugger</IonCardTitle>
       </IonCardHeader>
       <IonCardContent>
-        <IonButton onClick={runAllTests}>Run All Tests</IonButton>
-        <pre>{JSON.stringify(results, null, 2)}</pre>
+        <IonButton 
+          expand="full" 
+          onClick={runAllTests}
+          disabled={running}
+        >
+          {running ? 'Running Tests...' : 'Run All Tests'}
+        </IonButton>
+        
+        <IonList>
+          {tests.map(test => (
+            <IonItem key={test.name}>
+              <IonLabel>
+                <h3>{getStatusIcon(test.name)} {test.name}</h3>
+                {results[test.name] && (
+                  <pre style={{ fontSize: '0.8em', whiteSpace: 'pre-wrap' }}>
+                    {JSON.stringify(results[test.name], null, 2)}
+                  </pre>
+                )}
+              </IonLabel>
+            </IonItem>
+          ))}
+        </IonList>
+        
+        {Object.keys(results).length === tests.length && (
+          <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
+            <h3>Summary</h3>
+            <p>✅ Passed: {Object.values(results).filter((r: any) => r.success).length}</p>
+            <p>❌ Failed: {Object.values(results).filter((r: any) => !r.success).length}</p>
+          </div>
+        )}
       </IonCardContent>
     </IonCard>
   );
 };
+
+export default AuthFlowDebugger;
 ```
 
-**Action Items**:
-- [ ] Create debug component
-- [ ] Add to a test route or settings page
-- [ ] Run tests and document results
-- [ ] Screenshot or copy test output for analysis
+### 3.2 Add Debug Route
 
-#### 3.2 Manual Testing Checklist
-Execute these steps in order and document results:
+Add to `src/App.tsx` routes:
 
-1. **Clear Application State**
-   - [ ] Clear localStorage/sessionStorage
-   - [ ] Sign out of Firebase
-   - [ ] Clear any cached tokens
+```typescript
+import AuthFlowDebugger from './components/Debug/AuthFlowDebugger';
 
-2. **Enable Basic Mode**
-   ```javascript
-   // In browser console:
-   const config = new SociallyFedConfigService();
-   config.enableBasicMode();
-   console.log(config.getSimplifiedFlags());
-   ```
-
-3. **Attempt Login Flow**
-   - [ ] Open browser developer tools (Network + Console tabs)
-   - [ ] Attempt login with test credentials
-   - [ ] Document where flow stops/fails
-   - [ ] Copy all console errors
-   - [ ] Check network requests for 401/403 errors
-
-4. **Verify API Calls**
-   - [ ] Check `/api/auth/exchange` is called
-   - [ ] Verify `X-Platform: mobile` header present
-   - [ ] Confirm `/api/accounts/sync` endpoint used (not `/accounts/sync`)
-   - [ ] Check Authorization header format
-
-### Phase 4: Server-Side Verification (30 minutes)
-
-#### 4.1 Verify Server CORS Configuration
-**Check server allows**:
-- Origin: `https://sociallyfed-mobile-512204327023.us-central1.run.app`
-- Headers: `Authorization`, `X-Platform`, `Content-Type`
-- Methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
-
-#### 4.2 Verify Token Exchange Endpoint
-**Test with curl**:
-```bash
-curl -X POST https://sociallyfed-server-512204327023.us-central1.run.app/api/auth/exchange \
-  -H "Content-Type: application/json" \
-  -H "X-Platform: mobile" \
-  -d '{"firebaseToken": "YOUR_FIREBASE_TOKEN"}'
+// Add this route inside IonRouterOutlet
+<Route path="/debug/auth" component={AuthFlowDebugger} exact />
 ```
+
+### ✅ Phase 3 Checklist
+- [ ] AuthFlowDebugger component created
+- [ ] Debug route added to App.tsx
+- [ ] Component imports all necessary services
+- [ ] Navigate to `/debug/auth` to test
 
 ---
 
-## Unified Architecture Validation Steps
+## Phase 4: Integration Testing (15 minutes)
 
-### 1. Authentication Flow Validation
-- [ ] Firebase Auth → Success
-- [ ] Skip Encryption Keys → Success
-- [ ] Firebase Token Exchange → JWT
-- [ ] JWT includes correct claims (tenant, role)
-- [ ] Server accepts JWT for protected endpoints
+### 4.1 Clear Application State
+1. Open browser developer tools
+2. Go to Application → Storage
+3. Clear all:
+   - [ ] localStorage
+   - [ ] sessionStorage
+   - [ ] IndexedDB
+   - [ ] Cookies
 
-### 2. Data Flow Validation
-- [ ] Mobile creates journal entry
-- [ ] Entry syncs to server with correct platform identifier
-- [ ] Server stores with proper tenant association
-- [ ] Mobile can retrieve synced data
+### 4.2 Test Authentication Flow
 
-### 3. Platform Consistency
-- [ ] All API calls include `X-Platform: mobile`
-- [ ] Server logs show 'mobile' platform
-- [ ] No 'web' platform identifiers from mobile app
+#### Step 1: Enable Basic Mode
+Open browser console and run:
+```javascript
+localStorage.clear();
+const configService = new SociallyFedConfigService();
+configService.enableBasicMode();
+console.log('Flags:', configService.getSimplifiedFlags());
+// Should show enableEncryptionFlow: false
+```
+
+#### Step 2: Attempt Login
+1. Open Network tab in dev tools
+2. Open Console tab
+3. Try to login with test credentials
+4. Document:
+   - [ ] Does "Getting encryption keys" screen appear? (Should NOT)
+   - [ ] Check console for authentication logs
+   - [ ] Check Network tab for:
+     - [ ] `/api/auth/exchange` call
+     - [ ] `/api/accounts/sync` call
+     - [ ] Proper headers (X-Platform: mobile)
+
+#### Step 3: Run Debug Tests
+1. Navigate to `/debug/auth`
+2. Click "Run All Tests"
+3. Screenshot or save results
+4. All tests should pass ✅
+
+### ✅ Phase 4 Checklist
+- [ ] Application state cleared
+- [ ] Basic mode enabled successfully
+- [ ] Login completes without encryption screen
+- [ ] Network requests show correct endpoints
+- [ ] Debug tests all pass
 
 ---
 
 ## Definition of Done
 
-### Authentication System
-✅ **Done when**:
-1. User can login without seeing "Getting your encryption keys" screen
-2. Firebase token successfully exchanges for JWT
-3. JWT is automatically included in all API requests
-4. 401 responses trigger automatic token refresh
-5. User remains authenticated across app restarts
+### ✅ Authentication System - DONE When:
 
-### Integration Testing
-✅ **Done when**:
-1. AuthFlowDebugger component shows all green tests
-2. Manual login flow completes in < 3 seconds
-3. Network tab shows correct API paths and headers
-4. No 401/403 errors in normal operation
-5. Server logs confirm mobile platform identification
+#### 1. **Configuration Complete**
+- [x] Firebase environment variables added to all .env files
+- [x] Server URL correctly configured
+- [x] Firebase initialization successful
 
-### Code Quality
-✅ **Done when**:
-1. All debug logging removed or behind feature flag
-2. Error handling implemented at every auth step
-3. User-friendly error messages for auth failures
-4. No hardcoded URLs or credentials
-5. TypeScript compilation with no errors
+#### 2. **Login Flow Working**
+- [x] User can login WITHOUT seeing "Getting your encryption keys" screen
+- [x] Login completes in < 3 seconds
+- [x] User successfully navigates to journal page
 
----
+#### 3. **Token Management**
+- [x] Firebase token successfully obtained
+- [x] Firebase token exchanges for JWT
+- [x] JWT automatically included in API requests
+- [x] Token refresh works on 401 responses
 
-## Critical Success Metrics
+#### 4. **Platform Identification**
+- [x] All requests include `X-Platform: mobile` header
+- [x] Server accepts mobile platform identifier
+- [x] No 'web' platform in requests from mobile
 
-1. **Authentication Success Rate**: > 95%
-2. **Token Exchange Latency**: < 500ms
-3. **Total Login Time**: < 3 seconds
-4. **Token Refresh Success**: 100%
-5. **Platform Identification Accuracy**: 100% 'mobile'
+#### 5. **Error Handling**
+- [x] Authentication errors show user-friendly messages
+- [x] Retry option available on failure
+- [x] No silent failures or stuck screens
 
----
+#### 6. **Debug Validation**
+- [x] AuthFlowDebugger shows 8/8 tests passing
+- [x] Manual testing confirms smooth login
+- [x] Network inspection shows correct API calls
 
-## Emergency Fallback Plan
-
-If authentication cannot be fixed today:
-1. Create temporary bypass with hardcoded test JWT
-2. Document all blocking issues with screenshots
-3. Check if server-side changes are needed
-4. Consider simplified auth flow without Firebase
-5. Escalate to senior review with all debug data
+#### 7. **Code Quality**
+- [x] No TypeScript compilation errors
+- [x] No console errors in production mode
+- [x] Debug logging can be disabled
 
 ---
 
-## Required Outputs
+## Success Metrics
 
-By end of session, provide:
-1. **Debug Report**: All test results from AuthFlowDebugger
-2. **Console Logs**: Complete authentication flow logs
-3. **Network Trace**: HAR file of login attempt
-4. **Code Changes**: Git diff of all modifications
-5. **Next Steps**: Clear action items if not fully resolved
+| Metric | Target | Actual |
+|--------|--------|---------|
+| Login Success Rate | > 95% | ___ |
+| Firebase Token Exchange Time | < 500ms | ___ |
+| Total Login Time | < 3 seconds | ___ |
+| Auth Debug Tests Passing | 8/8 | ___/8 |
+| Platform ID Accuracy | 100% mobile | ___ |
 
 ---
 
-*Use this brief to systematically debug and fix the authentication flow. Document everything. Good luck!*
+## Troubleshooting Guide
+
+### If Firebase Config Issues:
+1. Verify all 6 Firebase variables are in .env files
+2. Restart development server after adding variables
+3. Check firebaseConfig.ts initialization
+
+### If Still Seeing Encryption Screen:
+1. Verify `enableBasicMode()` is called in App.tsx
+2. Check console for feature flags status
+3. Ensure `enableEncryptionFlow: false`
+
+### If JWT Exchange Fails:
+1. Check server is running and accessible
+2. Verify CORS allows mobile origin
+3. Check `/api/auth/exchange` endpoint exists
+
+### If Sync Fails:
+1. Verify JWT token is valid
+2. Check API path is `/api/accounts/sync` (not `/accounts/sync`)
+3. Ensure platform is set to 'mobile'
+
+---
+
+## Final Verification
+
+Before marking complete, ensure:
+1. **Fresh Login Test**: Clear all data and login from scratch
+2. **Debug Test Suite**: All 8 tests pass in AuthFlowDebugger
+3. **Network Validation**: Correct endpoints and headers in dev tools
+4. **Error Scenarios**: Test with wrong password, network off, etc.
+5. **Documentation**: Update any relevant docs with new auth flow
+
+---
+
+## Next Steps After Completion
+
+Once authentication is working:
+1. Remove debug logging from production code
+2. Test on actual mobile device (not just browser)
+3. Performance test with multiple login attempts
+4. Security audit of token storage
+5. Proceed with Terra API integration
+
+---
+
+*This brief provides the complete path to fixing authentication. Follow each phase systematically. Document any issues encountered. Success is defined by all "Definition of Done" items being checked.*
