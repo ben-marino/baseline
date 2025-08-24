@@ -175,356 +175,859 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Sat 23 Aug 2025 14:32:00 AEST
+## Session Started: Sun 24 Aug 2025 16:27:29 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - Critical Authentication Fix
-## Date: August 23, 2025
-## Priority: P0 CRITICAL - Authentication Flow Broken
+# Daily Brief - SociallyFed Mobile PWA
+## Firebase Authentication Direct Integration
+**Date**: Sunday, August 24, 2025  
+**Sprint**: Firebase Auth Migration - Mobile PWA  
+**Developer**: Mobile Team  
+**Priority**: P0 CRITICAL - Fix Authentication CORS Issues
 
 ---
 
-## 🚨 CORE ISSUE IDENTIFIED
+## 🎯 Today's Implementation Priorities
 
-**The Problem**: Even though simplified flags are set correctly in localStorage, the Login component cannot read them because:
-1. **SociallyFedConfigService is not exposed to window** - The service exists but isn't accessible
-2. **Login.tsx checks flags incorrectly** - It's looking for the service in the wrong way
-3. **AuthFlowDebugger route not working** - The debug component was created but route isn't active
+### Primary Goal
+Replace the problematic server token exchange flow with direct Firebase Authentication while maintaining backward compatibility through feature flags. Eliminate CORS/COOP issues permanently.
 
-**Current State**: User is stuck at login screen even after successful Google authentication because the encryption bypass logic isn't triggered.
+### Critical Path Items (In Order)
+1. **Firebase Auth Service Refactor** (2 hours)
+   - Remove server token exchange dependency
+   - Implement direct Firebase authentication
+   - Add feature flag for auth mode selection
+
+2. **Login Component Simplification** (1-2 hours)
+   - Remove complex token exchange logic
+   - Implement Firebase-first authentication
+   - Add proper error handling and recovery
+
+3. **API Service Updates** (2 hours)
+   - Modify all API calls to use Firebase tokens
+   - Update request interceptors
+   - Handle both auth modes via feature flag
+
+4. **Offline Mode Enhancement** (1 hour)
+   - Ensure Firebase auth works offline
+   - Cache user credentials properly
+   - Handle auth state persistence
 
 ---
 
-## 🔧 IMMEDIATE FIX REQUIRED
+## 🔨 Specific Features to Build
 
-### Fix 1: Expose SociallyFedConfigService to Window (5 minutes)
-
+### 1. Updated Firebase Configuration
 ```typescript
-// File: src/services/SociallyFedConfigService.ts
-// Add at the end of the file:
+// src/services/firebaseConfig.ts
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  setPersistence, 
+  browserLocalPersistence,
+  connectAuthEmulator 
+} from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-// Make service available globally for debugging and Login.tsx access
-if (typeof window !== 'undefined') {
-    (window as any).SociallyFedConfigService = sociallyFedConfig;
-    console.log('SociallyFedConfigService exposed to window');
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSy...",
+  authDomain: "sociallyfed-55780.firebaseapp.com",
+  projectId: "sociallyfed-55780",
+  storageBucket: "sociallyfed-55780.appspot.com",
+  messagingSenderId: "512204327023",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Initialize Auth with persistence
+export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence);
+
+// Initialize Firestore
+export const db = getFirestore(app);
+
+// Development: Connect to emulators
+if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATORS) {
+  connectAuthEmulator(auth, 'http://localhost:9099');
+  connectFirestoreEmulator(db, 'localhost', 8080);
 }
 
-export default sociallyFedConfig;
+export default app;
 ```
 
-### Fix 2: Update Login.tsx to Read Flags Correctly (10 minutes)
-
+### 2. Refactored Authentication Service
 ```typescript
-// File: src/pages/Login.tsx
-// Replace lines 149-179 with this improved bypass logic:
+// src/services/AuthenticationService.ts
+import { 
+  signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider, 
+  onAuthStateChanged, 
+  User,
+  signOut,
+  getIdToken
+} from 'firebase/auth';
+import { auth } from './firebaseConfig';
+import { SociallyFedConfigService } from './SociallyFedConfigService';
 
-useEffect(() => {
-    const checkEncryptionBypass = async () => {
-        // Method 1: Check localStorage directly (fastest)
-        const flagsStr = localStorage.getItem('sf_simplified_flags');
-        if (flagsStr) {
-            try {
-                const flags = JSON.parse(flagsStr);
-                if (flags.enableEncryptionFlow === false) {
-                    console.log('Encryption bypassed via localStorage flags');
-                    setEncryptionFlowEnabled(false);
-                    
-                    // If user is already authenticated, skip to sync
-                    if (user) {
-                        await handleDirectAuth();
-                    }
-                    return;
-                }
-            } catch (e) {
-                console.error('Error parsing flags:', e);
-            }
-        }
-        
-        // Method 2: Try to use the service if available
-        if (window.SociallyFedConfigService) {
-            const encryptionEnabled = await window.SociallyFedConfigService.isSimplifiedFlagEnabled('enableEncryptionFlow');
-            setEncryptionFlowEnabled(encryptionEnabled);
-            
-            if (!encryptionEnabled && user) {
-                await handleDirectAuth();
-            }
-        } else {
-            // Fallback: Check for bypass flags
-            const bypassKeys = ['encryptionKeysRetrieved', 'encryption_keys_retrieved', 'onboarding_complete'];
-            const shouldBypass = bypassKeys.some(key => localStorage.getItem(key) === 'true');
-            
-            if (shouldBypass) {
-                console.log('Encryption bypassed via legacy flags');
-                setEncryptionFlowEnabled(false);
-                if (user) {
-                    await handleDirectAuth();
-                }
-            }
-        }
+export interface AuthConfig {
+  useFirebaseOnly: boolean;
+  attemptServerSync: boolean;
+  useRedirectFlow: boolean; // Avoid CORS issues
+}
+
+export class AuthenticationService {
+  private currentUser: User | null = null;
+  private authStateListeners: ((user: User | null) => void)[] = [];
+  private config: AuthConfig;
+  
+  constructor() {
+    this.config = this.loadAuthConfig();
+    this.initializeAuthListener();
+    this.checkRedirectResult();
+  }
+  
+  private loadAuthConfig(): AuthConfig {
+    const flags = SociallyFedConfigService.getInstance().getSimplifiedFlags();
+    return {
+      useFirebaseOnly: flags.useFirebaseOnly ?? true,
+      attemptServerSync: flags.attemptServerSync ?? false,
+      useRedirectFlow: flags.useRedirectFlow ?? true // Default to redirect to avoid CORS
     };
-    
-    checkEncryptionBypass();
-}, [user]);
-
-// Add this new function for direct authentication
-const handleDirectAuth = async () => {
-    console.log('Starting direct authentication flow...');
+  }
+  
+  private initializeAuthListener(): void {
+    onAuthStateChanged(auth, async (user) => {
+      console.log('🔐 Auth state changed:', user?.email || 'signed out');
+      this.currentUser = user;
+      
+      if (user) {
+        // Store user data locally
+        this.storeUserData(user);
+        
+        // Optionally sync with server if configured
+        if (this.config.attemptServerSync) {
+          await this.syncWithServer(user);
+        }
+      } else {
+        this.clearUserData();
+      }
+      
+      // Notify listeners
+      this.authStateListeners.forEach(listener => listener(user));
+    });
+  }
+  
+  private async checkRedirectResult(): Promise<void> {
+    try {
+      const result = await getRedirectResult(auth);
+      if (result?.user) {
+        console.log('✅ Redirect sign-in successful:', result.user.email);
+        // Navigation will be handled by auth state listener
+      }
+    } catch (error) {
+      console.error('Redirect sign-in error:', error);
+    }
+  }
+  
+  async signInWithGoogle(): Promise<User> {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      access_type: 'offline',
+      include_granted_scopes: 'true'
+    });
     
     try {
-        // Get Firebase token
-        const idToken = await user.getIdToken();
-        console.log('Got Firebase token');
-        
-        // Exchange for JWT
-        if (window.AuthenticationService) {
-            const jwtToken = await window.AuthenticationService.exchangeFirebaseToken(idToken);
-            console.log('Got JWT token');
-            
-            // Store tokens
-            localStorage.setItem('jwt_token', jwtToken);
-            localStorage.setItem('id_token', idToken);
-            
-            // Sync with server
-            const syncResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app'}/api/accounts/sync`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    platform: 'mobile',
-                    fcmToken: 'web-token'
-                })
-            });
-            
-            if (syncResponse.ok) {
-                console.log('Server sync successful');
-                // Navigate to journal
-                navigate('/journal');
-            } else {
-                console.error('Server sync failed:', syncResponse.status);
-                // Still navigate - offline mode
-                navigate('/journal');
-            }
-        } else {
-            // Fallback: Just navigate if authenticated
-            console.log('No AuthenticationService, navigating anyway');
-            navigate('/journal');
-        }
-    } catch (error) {
-        console.error('Direct auth error:', error);
-        // Still try to navigate
-        navigate('/journal');
+      if (this.config.useRedirectFlow) {
+        // Use redirect flow to avoid CORS issues
+        console.log('🔄 Initiating redirect sign-in...');
+        await signInWithRedirect(auth, provider);
+        // User will be redirected, auth state will be handled on return
+        return null as any; // Flow continues after redirect
+      } else {
+        // Use popup flow (may have CORS issues)
+        console.log('🔄 Initiating popup sign-in...');
+        const result = await signInWithPopup(auth, provider);
+        return result.user;
+      }
+    } catch (error: any) {
+      console.error('❌ Sign-in failed:', error);
+      
+      // If popup fails due to CORS, try redirect
+      if (error.code === 'auth/popup-blocked' || 
+          error.code === 'auth/cancelled-popup-request') {
+        console.log('🔄 Popup blocked, trying redirect...');
+        await signInWithRedirect(auth, provider);
+      }
+      
+      throw error;
     }
+  }
+  
+  private storeUserData(user: User): void {
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      lastSignIn: new Date().toISOString()
+    };
+    
+    localStorage.setItem('sf_user', JSON.stringify(userData));
+    localStorage.setItem('sf_auth_method', 'firebase');
+  }
+  
+  private clearUserData(): void {
+    localStorage.removeItem('sf_user');
+    localStorage.removeItem('sf_auth_method');
+    localStorage.removeItem('sf_server_token');
+  }
+  
+  private async syncWithServer(user: User): Promise<void> {
+    if (!this.config.attemptServerSync) return;
+    
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(
+        `${process.env.REACT_APP_SERVER_URL}/api/auth/firebase-login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firebaseToken: idToken })
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.serverToken) {
+          localStorage.setItem('sf_server_token', data.serverToken);
+        }
+        console.log('✅ Server sync successful');
+      } else {
+        console.warn('⚠️ Server sync failed, continuing with Firebase only');
+      }
+    } catch (error) {
+      console.warn('⚠️ Server sync error, continuing with Firebase only:', error);
+    }
+  }
+  
+  async getAuthHeaders(): Promise<HeadersInit> {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (this.currentUser) {
+      try {
+        const idToken = await this.currentUser.getIdToken();
+        headers['X-Firebase-Token'] = idToken;
+        
+        // Include server token if available (backward compatibility)
+        const serverToken = localStorage.getItem('sf_server_token');
+        if (serverToken) {
+          headers['Authorization'] = `Bearer ${serverToken}`;
+        }
+      } catch (error) {
+        console.error('Failed to get auth token:', error);
+      }
+    }
+    
+    return headers;
+  }
+  
+  async signOut(): Promise<void> {
+    await signOut(auth);
+    this.clearUserData();
+    window.location.href = '/login';
+  }
+  
+  getCurrentUser(): User | null {
+    return this.currentUser;
+  }
+  
+  isAuthenticated(): boolean {
+    return !!this.currentUser;
+  }
+  
+  onAuthStateChange(callback: (user: User | null) => void): () => void {
+    this.authStateListeners.push(callback);
+    // Return unsubscribe function
+    return () => {
+      const index = this.authStateListeners.indexOf(callback);
+      if (index > -1) {
+        this.authStateListeners.splice(index, 1);
+      }
+    };
+  }
+  
+  // For immediate auth check
+  async waitForAuthReady(): Promise<User | null> {
+    return new Promise((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe();
+        resolve(user);
+      });
+    });
+  }
+}
+
+// Singleton instance
+let authServiceInstance: AuthenticationService | null = null;
+
+export const getAuthService = (): AuthenticationService => {
+  if (!authServiceInstance) {
+    authServiceInstance = new AuthenticationService();
+  }
+  return authServiceInstance;
 };
+
+export default getAuthService();
 ```
 
-### Fix 3: Activate the Debug Route (5 minutes)
-
+### 3. Simplified Login Component
 ```typescript
-// File: src/App.tsx
-// Add this import at the top (around line 20):
-import AuthFlowDebugger from './components/Debug/AuthFlowDebugger';
+// src/pages/Login.tsx
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { IonPage, IonContent, IonButton, IonLoading, IonAlert } from '@ionic/react';
+import { getAuthService } from '../services/AuthenticationService';
+import { auth } from '../services/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+import './Login.css';
 
-// Add this route in the Routes section (around line 150):
-<Route path="/debug/auth" element={<AuthFlowDebugger />} />
+const Login: React.FC = () => {
+  const history = useHistory();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const authService = getAuthService();
+  
+  useEffect(() => {
+    // Check authentication state
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('✅ User authenticated, redirecting to journal...');
+        history.replace('/journal');
+      } else {
+        setLoading(false);
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [history]);
+  
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsSigningIn(true);
+      setError(null);
+      
+      await authService.signInWithGoogle();
+      // If using redirect flow, the page will redirect
+      // If using popup flow, auth state change will handle navigation
+      
+    } catch (error: any) {
+      console.error('Sign-in error:', error);
+      
+      // User-friendly error messages
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled. Please try again.');
+      } else if (error.code === 'auth/network-request-failed') {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError('Sign-in failed. Please try again or contact support.');
+      }
+      
+      setIsSigningIn(false);
+    }
+  };
+  
+  const handleOfflineMode = () => {
+    // Set offline mode flag and navigate
+    localStorage.setItem('sf_offline_mode', 'true');
+    history.push('/journal');
+  };
+  
+  if (loading) {
+    return (
+      <IonPage>
+        <IonContent>
+          <IonLoading isOpen={true} message="Checking authentication..." />
+        </IonContent>
+      </IonPage>
+    );
+  }
+  
+  return (
+    <IonPage>
+      <IonContent className="login-content">
+        <div className="login-container">
+          <div className="login-header">
+            <h1>Welcome to Baseline</h1>
+            <p>A better journaling and mood tracking app.</p>
+          </div>
+          
+          <div className="login-buttons">
+            <IonButton
+              expand="block"
+              onClick={handleGoogleSignIn}
+              disabled={isSigningIn}
+              className="google-signin-btn"
+            >
+              {isSigningIn ? 'Signing in...' : 'Sign in with Google'}
+            </IonButton>
+            
+            <IonButton
+              expand="block"
+              fill="outline"
+              onClick={handleOfflineMode}
+              className="offline-mode-btn"
+            >
+              Continue Offline
+            </IonButton>
+          </div>
+          
+          <div className="login-footer">
+            <p>Your data is private: we're a non-profit, and we have no interest in using your data for anything.</p>
+          </div>
+        </div>
+        
+        <IonAlert
+          isOpen={!!error}
+          onDidDismiss={() => setError(null)}
+          header="Sign-in Error"
+          message={error || ''}
+          buttons={['OK']}
+        />
+      </IonContent>
+    </IonPage>
+  );
+};
 
-// Also ensure the route is not filtered by professional services check
-// Around line 100-120, make sure debug routes are always included:
-const routes = [
-    // ... existing routes
-    { path: "/debug/auth", element: <AuthFlowDebugger /> }, // Always include debug
-    // ... rest of routes
+export default Login;
+```
+
+### 4. API Service with Firebase Token
+```typescript
+// src/services/SociallyFedAPIService.ts
+import { getAuthService } from './AuthenticationService';
+
+export class SociallyFedAPIService {
+  private baseUrl: string;
+  private authService = getAuthService();
+  
+  constructor() {
+    this.baseUrl = process.env.REACT_APP_SERVER_URL || 
+                   'https://socially-fed-server-512204327023.us-central1.run.app';
+  }
+  
+  private async makeRequest(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<Response> {
+    const headers = await this.authService.getAuthHeaders();
+    
+    const url = `${this.baseUrl}${endpoint}`;
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers
+      }
+    };
+    
+    try {
+      const response = await fetch(url, config);
+      
+      // Handle token expiry
+      if (response.status === 401) {
+        console.log('🔄 Token expired, refreshing...');
+        // Firebase tokens auto-refresh, retry once
+        const newHeaders = await this.authService.getAuthHeaders();
+        config.headers = { ...newHeaders, ...options.headers };
+        return await fetch(url, config);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('API request failed:', error);
+      
+      // Check if we're offline
+      if (!navigator.onLine) {
+        console.log('📵 Offline - request queued');
+        // Queue for later sync
+        this.queueOfflineRequest(endpoint, options);
+      }
+      
+      throw error;
+    }
+  }
+  
+  private queueOfflineRequest(endpoint: string, options: RequestInit): void {
+    const queue = JSON.parse(localStorage.getItem('sf_offline_queue') || '[]');
+    queue.push({
+      endpoint,
+      options,
+      timestamp: new Date().toISOString()
+    });
+    localStorage.setItem('sf_offline_queue', JSON.stringify(queue));
+  }
+  
+  // Public API methods
+  async getJournalEntries(): Promise<any> {
+    const response = await this.makeRequest('/api/journal/entries');
+    return response.json();
+  }
+  
+  async createJournalEntry(entry: any): Promise<any> {
+    const response = await this.makeRequest('/api/journal/entries', {
+      method: 'POST',
+      body: JSON.stringify(entry)
+    });
+    return response.json();
+  }
+  
+  async generateInsights(entryId: string): Promise<any> {
+    const response = await this.makeRequest(`/api/insights/generate/${entryId}`, {
+      method: 'POST'
+    });
+    return response.json();
+  }
+}
+
+export default new SociallyFedAPIService();
+```
+
+### 5. Configuration Service Updates
+```typescript
+// src/services/SociallyFedConfigService.ts
+export interface SimplifiedFlags {
+  // Authentication
+  useFirebaseOnly: boolean;
+  attemptServerSync: boolean;
+  useRedirectFlow: boolean;
+  enableOfflineMode: boolean;
+  
+  // Features
+  enableEncryption: boolean;
+  enableWebSocket: boolean;
+  enableProfessionalServices: boolean;
+  enableMultiTenant: boolean;
+  
+  // Development
+  enableDebugMode: boolean;
+  logAuthFlow: boolean;
+}
+
+export class SociallyFedConfigService {
+  private static instance: SociallyFedConfigService;
+  private flags: SimplifiedFlags;
+  
+  private constructor() {
+    this.flags = this.loadFlags();
+    this.exposeToWindow();
+  }
+  
+  private loadFlags(): SimplifiedFlags {
+    // Load from localStorage first
+    const stored = localStorage.getItem('sf_simplified_flags');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    
+    // Default configuration for Firebase-only mode
+    return {
+      useFirebaseOnly: true,
+      attemptServerSync: false,
+      useRedirectFlow: true, // Avoid CORS issues
+      enableOfflineMode: true,
+      enableEncryption: false, // Disabled to simplify auth
+      enableWebSocket: false,
+      enableProfessionalServices: false,
+      enableMultiTenant: false,
+      enableDebugMode: process.env.NODE_ENV === 'development',
+      logAuthFlow: true
+    };
+  }
+  
+  private exposeToWindow(): void {
+    if (typeof window !== 'undefined') {
+      (window as any).SociallyFedConfig = this;
+      (window as any).sfSetFlags = (flags: Partial<SimplifiedFlags>) => {
+        this.updateFlags(flags);
+      };
+    }
+  }
+  
+  public updateFlags(updates: Partial<SimplifiedFlags>): void {
+    this.flags = { ...this.flags, ...updates };
+    localStorage.setItem('sf_simplified_flags', JSON.stringify(this.flags));
+    console.log('🔧 Config updated:', this.flags);
+  }
+  
+  public getSimplifiedFlags(): SimplifiedFlags {
+    return this.flags;
+  }
+  
+  public static getInstance(): SociallyFedConfigService {
+    if (!SociallyFedConfigService.instance) {
+      SociallyFedConfigService.instance = new SociallyFedConfigService();
+    }
+    return SociallyFedConfigService.instance;
+  }
+}
+```
+
+---
+
+## 📋 Technical Requirements
+
+### Package Dependencies
+```json
+// package.json updates
+{
+  "dependencies": {
+    "firebase": "^10.12.0",
+    "@ionic/react": "^7.0.0",
+    "@ionic/react-router": "^7.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.0.0"
+  }
+}
+```
+
+### Environment Variables
+```bash
+# .env.local
+REACT_APP_FIREBASE_API_KEY=AIzaSy...
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
+REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=512204327023
+REACT_APP_FIREBASE_APP_ID=1:512204327023:web:...
+
+REACT_APP_SERVER_URL=https://socially-fed-server-512204327023.us-central1.run.app
+REACT_APP_USE_EMULATORS=false
+```
+
+### Build Configuration
+```javascript
+// capacitor.config.ts or ionic.config.json
+{
+  "appId": "com.sociallyfed.mobile",
+  "appName": "SociallyFed",
+  "server": {
+    "allowNavigation": [
+      "sociallyfed-55780.firebaseapp.com",
+      "accounts.google.com",
+      "*.googleapis.com"
+    ]
+  }
+}
+```
+
+---
+
+## 🔌 Integration Points to Consider
+
+### 1. Offline Mode
+- Ensure Firebase auth persists offline
+- Cache user data in IndexedDB for offline access
+- Queue API requests when offline
+- Sync when connection returns
+
+### 2. PWA Manifest
+- Update manifest with proper auth domain
+- Ensure service worker handles auth redirects
+- Configure proper start_url for authenticated users
+
+### 3. Service Worker Updates
+```javascript
+// src/serviceWorkerRegistration.ts
+// Add Firebase domains to cache whitelist
+const CACHE_WHITELIST = [
+  'sociallyfed-55780.firebaseapp.com',
+  'identitytoolkit.googleapis.com',
+  'securetoken.googleapis.com'
 ];
 ```
 
-### Fix 4: Expose All Services to Window for Debugging (10 minutes)
-
+### 4. Routing Guards
 ```typescript
-// File: src/App.tsx
-// Add this at the end of the App component (before the return statement):
+// src/components/PrivateRoute.tsx
+import { Route, Redirect } from 'react-router-dom';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../services/firebaseConfig';
 
-useEffect(() => {
-    // Expose services to window for debugging
-    const exposeServices = async () => {
-        try {
-            // Import and expose all services
-            const { default: authService } = await import('./services/AuthenticationService');
-            const { default: apiInterceptor } = await import('./services/ApiInterceptor');
-            const { default: configService } = await import('./services/SociallyFedConfigService');
-            
-            if (typeof window !== 'undefined') {
-                (window as any).AuthenticationService = authService;
-                (window as any).ApiInterceptor = apiInterceptor;
-                (window as any).SociallyFedConfigService = configService;
-                (window as any).firebaseAuth = auth;
-                
-                console.log('All services exposed to window for debugging');
-            }
-        } catch (error) {
-            console.error('Error exposing services:', error);
-        }
-    };
-    
-    exposeServices();
-}, []);
+const PrivateRoute: React.FC<any> = ({ component: Component, ...rest }) => {
+  const [user, loading] = useAuthState(auth);
+  
+  if (loading) return <IonLoading isOpen={true} />;
+  
+  return (
+    <Route
+      {...rest}
+      render={(props) =>
+        user ? <Component {...props} /> : <Redirect to="/login" />
+      }
+    />
+  );
+};
 ```
+
+### 5. State Management
+- Update any Redux/MobX stores to use Firebase user
+- Ensure user state syncs across tabs
+- Handle auth state in background tabs
 
 ---
 
-## 🧪 TESTING PROCEDURE
+## ✅ Definition of Done for Today's Work
 
-### Step 1: Apply the Fixes
+### Must Complete
+- [ ] Firebase configuration updated with correct credentials
+- [ ] AuthenticationService refactored to use Firebase directly
+- [ ] Login component simplified without token exchange
+- [ ] CORS/COOP issues completely eliminated
+- [ ] Basic offline mode support implemented
+- [ ] Feature flags configured for Firebase-only mode
+- [ ] Manual testing confirms sign-in works without errors
+
+### Should Complete
+- [ ] API service updated to use Firebase tokens
+- [ ] Offline queue mechanism implemented
+- [ ] Service worker configured for auth domains
+- [ ] Private routes use Firebase auth state
+- [ ] Error handling provides clear user feedback
+- [ ] Redux/state management updated if applicable
+
+### Nice to Have
+- [ ] Analytics tracking for auth success/failure
+- [ ] Performance monitoring for auth flow
+- [ ] A/B testing setup for popup vs redirect
+- [ ] Debug panel for auth troubleshooting
+- [ ] Documentation updated with new auth flow
+
+### Testing Checklist
 ```bash
-# Apply all the fixes above to the respective files
-# Then restart the development server
+# Install dependencies
+npm install firebase
+
+# Start development server
 npm start
+
+# Test authentication flow
+# 1. Open browser DevTools
+# 2. Clear all site data
+# 3. Navigate to http://localhost:8100
+# 4. Click "Sign in with Google"
+# 5. Verify no CORS errors in console
+# 6. Confirm successful redirect to /journal
+
+# Test offline mode
+# 1. Sign in successfully
+# 2. Go offline (DevTools Network tab)
+# 3. Refresh page
+# 4. Verify app loads with cached user
+
+# Test feature flags
+# In browser console:
+window.sfSetFlags({ useRedirectFlow: false });
+# Try sign-in with popup mode
+
+window.sfSetFlags({ attemptServerSync: true });
+# Verify server sync attempts (may fail if server not ready)
 ```
 
-### Step 2: Set Flags in Browser Console
-```javascript
-// Clear and set flags
-localStorage.clear();
-localStorage.setItem('sf_simplified_flags', JSON.stringify({
-    enableBasicAuth: true,
-    enableServerSync: true,
-    enableMultiTenant: false,
-    enableProfessionalServices: false,
-    enableEncryptionFlow: false,  // CRITICAL
-    enableWebSocket: false,
-    forceMobilePlatform: true,
-    useCorrectApiPaths: true
-}));
-location.reload();
-```
-
-### Step 3: Test Authentication Debug Page
-Navigate to: `http://localhost:8080/debug/auth`
-
-This should show the AuthFlowDebugger with 8 test buttons:
-1. Check Firebase Configuration
-2. Test Firebase Authentication
-3. Test JWT Token Exchange
-4. Test Server Sync
-5. Test Feature Flags
-6. Test Platform Detection
-7. Test Encryption Bypass
-8. Full Authentication Flow
-
-### Step 4: Test Normal Login Flow
-1. Go back to `http://localhost:8080`
-2. Click "Sign in with Google"
-3. Watch the console for:
-   - "Encryption bypassed via localStorage flags"
-   - "Starting direct authentication flow..."
-   - "Got Firebase token"
-   - "Got JWT token"
-   - "Server sync successful"
-4. Should redirect to `/journal`
-
----
-
-## 📊 VERIFICATION CHECKLIST
-
-After applying fixes, verify in browser console:
-
-```javascript
-// Check all services are available
-console.log('Config Service:', !!window.SociallyFedConfigService);
-console.log('Auth Service:', !!window.AuthenticationService);
-console.log('API Interceptor:', !!window.ApiInterceptor);
-console.log('Firebase Auth:', !!window.firebaseAuth);
-
-// Check flags are set
-const flags = JSON.parse(localStorage.getItem('sf_simplified_flags') || '{}');
-console.log('Encryption disabled?', flags.enableEncryptionFlow === false);
-
-// Check current user
-console.log('Current user:', window.firebaseAuth?.currentUser?.email);
-```
-
----
-
-## 🎯 SUCCESS CRITERIA
-
-✅ **Authentication Flow Works When**:
-1. User clicks "Sign in with Google"
-2. NO "Getting encryption keys" screen appears
-3. Console shows successful token exchange
-4. User is redirected to `/journal`
-5. API calls include proper JWT token
-
-✅ **Debug Page Works When**:
-1. `/debug/auth` route is accessible
-2. All 8 test buttons are visible
-3. Each test provides clear pass/fail feedback
-4. Results show in JSON format
-
----
-
-## 🚀 DEPLOYMENT STEPS (After Local Success)
-
+### Mobile Testing
 ```bash
-# 1. Commit the fixes
-git add -A
-git commit -m "Fix: Authentication flow - expose services to window and fix flag checking"
+# Build for mobile
+ionic build
+ionic capacitor copy ios
+ionic capacitor copy android
 
-# 2. Build for production
-export REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-export REACT_APP_FIREBASE_API_KEY=YOUR_ACTUAL_KEY
-npm run build
-
-# 3. Test production build locally
-npx serve -s build -p 3000
-
-# 4. Deploy to Cloud Run
-gcloud run deploy sociallyfed-mobile \
-  --source=. \
-  --region=us-central1 \
-  --platform=managed \
-  --allow-unauthenticated \
-  --set-env-vars="REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app"
+# Test on devices
+ionic capacitor run ios -l --external
+ionic capacitor run android -l --external
 ```
 
 ---
 
-## 🔍 ROOT CAUSE ANALYSIS
+## 🚀 Next Steps (Tomorrow)
 
-**Why This Happened**:
-1. **Service Encapsulation**: Services were properly encapsulated but not exposed for components that needed them
-2. **Environment Differences**: Development vs production environment handling of global objects
-3. **Legacy Code**: Login.tsx was using old patterns not updated for new service architecture
-4. **Missing Debug Tools**: AuthFlowDebugger was created but route wasn't activated
+1. **Production Deployment**
+   - Build optimized production bundle
+   - Deploy to Firebase Hosting
+   - Update Cloud Run service
+   - Verify production authentication
 
-**Prevention for Future**:
-1. Always expose critical services to window in development
-2. Create debug routes for all critical flows
-3. Test flag-based features with multiple methods
-4. Document service dependencies clearly
+2. **Enhanced Offline Support**
+   - Implement comprehensive offline queue
+   - Add background sync for PWA
+   - Create offline indicator UI
+   - Test offline-to-online transitions
 
----
-
-## 📝 NOTES
-
-- The fixes are minimal and surgical - only exposing what's needed
-- The debug route will be invaluable for future auth issues
-- Consider keeping service exposure in development builds only
-- The localStorage flag checking is the fastest method and should be primary
+3. **User Migration**
+   - Create migration notice for existing users
+   - Implement account linking for JWT users
+   - Add analytics to track migration
+   - Plan deprecation of old auth
 
 ---
 
-**Priority**: Complete these fixes immediately  
-**Time Estimate**: 30 minutes total  
-**Risk**: Low - only adding debugging capabilities  
-**Confidence**: HIGH - addresses root cause directly  
+## 📝 Notes for Implementation
+
+### Common Issues and Solutions
+
+1. **Redirect Loop**
+   - Ensure auth state check doesn't trigger on /login
+   - Clear redirect result after handling
+
+2. **Token Refresh**
+   - Firebase handles automatically
+   - Force refresh: `user.getIdToken(true)`
+
+3. **Offline Persistence**
+   - Enable with `setPersistence(browserLocalPersistence)`
+   - Falls back to session persistence if fails
+
+4. **CORS on Localhost**
+   - Add localhost to Firebase authorized domains
+   - Use proper ports (3000, 8080, 8100)
+
+### Performance Tips
+1. Lazy load Firebase SDKs
+2. Use Firebase Auth state instead of repeated checks
+3. Cache user object in memory
+4. Minimize token refresh calls
+
+### Security Notes
+1. Never store Firebase config keys in public repos
+2. Use environment variables for sensitive config
+3. Implement proper CSP headers
+4. Validate auth state on each route change
+
+### Resources
+- [Firebase Auth Web Guide](https://firebase.google.com/docs/auth/web/start)
+- [Ionic Firebase Integration](https://ionicframework.com/docs/native/firebase-authentication)
+- [PWA Offline Strategies](https://web.dev/offline-cookbook/)
 
 ---
 
-*Generated: August 23, 2025*  
-*Issue: Authentication flow broken due to service accessibility*  
-*Solution: Expose services and fix flag checking logic*
+**Session Duration Estimate**: 5-6 hours  
+**Complexity Level**: Medium  
+**Risk Level**: Low (with proper feature flags)  
+**Business Impact**: Critical - Permanently fixes authentication blocking issue
+
+---
+*Brief prepared for SociallyFed Mobile Team*  
+*Firebase Authentication Direct Integration*  
+*August 24, 2025*
 ### Current Sprint:
 # Current Sprint Status - Terra API Integration & Professional Services Enhancement
 
@@ -828,348 +1331,851 @@ gantt
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# Daily Brief - Critical Authentication Fix
-## Date: August 23, 2025
-## Priority: P0 CRITICAL - Authentication Flow Broken
+# Daily Brief - SociallyFed Mobile PWA
+## Firebase Authentication Direct Integration
+**Date**: Sunday, August 24, 2025  
+**Sprint**: Firebase Auth Migration - Mobile PWA  
+**Developer**: Mobile Team  
+**Priority**: P0 CRITICAL - Fix Authentication CORS Issues
 
 ---
 
-## 🚨 CORE ISSUE IDENTIFIED
+## 🎯 Today's Implementation Priorities
 
-**The Problem**: Even though simplified flags are set correctly in localStorage, the Login component cannot read them because:
-1. **SociallyFedConfigService is not exposed to window** - The service exists but isn't accessible
-2. **Login.tsx checks flags incorrectly** - It's looking for the service in the wrong way
-3. **AuthFlowDebugger route not working** - The debug component was created but route isn't active
+### Primary Goal
+Replace the problematic server token exchange flow with direct Firebase Authentication while maintaining backward compatibility through feature flags. Eliminate CORS/COOP issues permanently.
 
-**Current State**: User is stuck at login screen even after successful Google authentication because the encryption bypass logic isn't triggered.
+### Critical Path Items (In Order)
+1. **Firebase Auth Service Refactor** (2 hours)
+   - Remove server token exchange dependency
+   - Implement direct Firebase authentication
+   - Add feature flag for auth mode selection
+
+2. **Login Component Simplification** (1-2 hours)
+   - Remove complex token exchange logic
+   - Implement Firebase-first authentication
+   - Add proper error handling and recovery
+
+3. **API Service Updates** (2 hours)
+   - Modify all API calls to use Firebase tokens
+   - Update request interceptors
+   - Handle both auth modes via feature flag
+
+4. **Offline Mode Enhancement** (1 hour)
+   - Ensure Firebase auth works offline
+   - Cache user credentials properly
+   - Handle auth state persistence
 
 ---
 
-## 🔧 IMMEDIATE FIX REQUIRED
+## 🔨 Specific Features to Build
 
-### Fix 1: Expose SociallyFedConfigService to Window (5 minutes)
-
+### 1. Updated Firebase Configuration
 ```typescript
-// File: src/services/SociallyFedConfigService.ts
-// Add at the end of the file:
+// src/services/firebaseConfig.ts
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  setPersistence, 
+  browserLocalPersistence,
+  connectAuthEmulator 
+} from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-// Make service available globally for debugging and Login.tsx access
-if (typeof window !== 'undefined') {
-    (window as any).SociallyFedConfigService = sociallyFedConfig;
-    console.log('SociallyFedConfigService exposed to window');
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSy...",
+  authDomain: "sociallyfed-55780.firebaseapp.com",
+  projectId: "sociallyfed-55780",
+  storageBucket: "sociallyfed-55780.appspot.com",
+  messagingSenderId: "512204327023",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Initialize Auth with persistence
+export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence);
+
+// Initialize Firestore
+export const db = getFirestore(app);
+
+// Development: Connect to emulators
+if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATORS) {
+  connectAuthEmulator(auth, 'http://localhost:9099');
+  connectFirestoreEmulator(db, 'localhost', 8080);
 }
 
-export default sociallyFedConfig;
+export default app;
 ```
 
-### Fix 2: Update Login.tsx to Read Flags Correctly (10 minutes)
-
+### 2. Refactored Authentication Service
 ```typescript
-// File: src/pages/Login.tsx
-// Replace lines 149-179 with this improved bypass logic:
+// src/services/AuthenticationService.ts
+import { 
+  signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider, 
+  onAuthStateChanged, 
+  User,
+  signOut,
+  getIdToken
+} from 'firebase/auth';
+import { auth } from './firebaseConfig';
+import { SociallyFedConfigService } from './SociallyFedConfigService';
 
-useEffect(() => {
-    const checkEncryptionBypass = async () => {
-        // Method 1: Check localStorage directly (fastest)
-        const flagsStr = localStorage.getItem('sf_simplified_flags');
-        if (flagsStr) {
-            try {
-                const flags = JSON.parse(flagsStr);
-                if (flags.enableEncryptionFlow === false) {
-                    console.log('Encryption bypassed via localStorage flags');
-                    setEncryptionFlowEnabled(false);
-                    
-                    // If user is already authenticated, skip to sync
-                    if (user) {
-                        await handleDirectAuth();
-                    }
-                    return;
-                }
-            } catch (e) {
-                console.error('Error parsing flags:', e);
-            }
-        }
-        
-        // Method 2: Try to use the service if available
-        if (window.SociallyFedConfigService) {
-            const encryptionEnabled = await window.SociallyFedConfigService.isSimplifiedFlagEnabled('enableEncryptionFlow');
-            setEncryptionFlowEnabled(encryptionEnabled);
-            
-            if (!encryptionEnabled && user) {
-                await handleDirectAuth();
-            }
-        } else {
-            // Fallback: Check for bypass flags
-            const bypassKeys = ['encryptionKeysRetrieved', 'encryption_keys_retrieved', 'onboarding_complete'];
-            const shouldBypass = bypassKeys.some(key => localStorage.getItem(key) === 'true');
-            
-            if (shouldBypass) {
-                console.log('Encryption bypassed via legacy flags');
-                setEncryptionFlowEnabled(false);
-                if (user) {
-                    await handleDirectAuth();
-                }
-            }
-        }
+export interface AuthConfig {
+  useFirebaseOnly: boolean;
+  attemptServerSync: boolean;
+  useRedirectFlow: boolean; // Avoid CORS issues
+}
+
+export class AuthenticationService {
+  private currentUser: User | null = null;
+  private authStateListeners: ((user: User | null) => void)[] = [];
+  private config: AuthConfig;
+  
+  constructor() {
+    this.config = this.loadAuthConfig();
+    this.initializeAuthListener();
+    this.checkRedirectResult();
+  }
+  
+  private loadAuthConfig(): AuthConfig {
+    const flags = SociallyFedConfigService.getInstance().getSimplifiedFlags();
+    return {
+      useFirebaseOnly: flags.useFirebaseOnly ?? true,
+      attemptServerSync: flags.attemptServerSync ?? false,
+      useRedirectFlow: flags.useRedirectFlow ?? true // Default to redirect to avoid CORS
     };
-    
-    checkEncryptionBypass();
-}, [user]);
-
-// Add this new function for direct authentication
-const handleDirectAuth = async () => {
-    console.log('Starting direct authentication flow...');
+  }
+  
+  private initializeAuthListener(): void {
+    onAuthStateChanged(auth, async (user) => {
+      console.log('🔐 Auth state changed:', user?.email || 'signed out');
+      this.currentUser = user;
+      
+      if (user) {
+        // Store user data locally
+        this.storeUserData(user);
+        
+        // Optionally sync with server if configured
+        if (this.config.attemptServerSync) {
+          await this.syncWithServer(user);
+        }
+      } else {
+        this.clearUserData();
+      }
+      
+      // Notify listeners
+      this.authStateListeners.forEach(listener => listener(user));
+    });
+  }
+  
+  private async checkRedirectResult(): Promise<void> {
+    try {
+      const result = await getRedirectResult(auth);
+      if (result?.user) {
+        console.log('✅ Redirect sign-in successful:', result.user.email);
+        // Navigation will be handled by auth state listener
+      }
+    } catch (error) {
+      console.error('Redirect sign-in error:', error);
+    }
+  }
+  
+  async signInWithGoogle(): Promise<User> {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      access_type: 'offline',
+      include_granted_scopes: 'true'
+    });
     
     try {
-        // Get Firebase token
-        const idToken = await user.getIdToken();
-        console.log('Got Firebase token');
-        
-        // Exchange for JWT
-        if (window.AuthenticationService) {
-            const jwtToken = await window.AuthenticationService.exchangeFirebaseToken(idToken);
-            console.log('Got JWT token');
-            
-            // Store tokens
-            localStorage.setItem('jwt_token', jwtToken);
-            localStorage.setItem('id_token', idToken);
-            
-            // Sync with server
-            const syncResponse = await fetch(`${process.env.REACT_APP_API_URL || 'https://sociallyfed-server-512204327023.us-central1.run.app'}/api/accounts/sync`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${jwtToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    platform: 'mobile',
-                    fcmToken: 'web-token'
-                })
-            });
-            
-            if (syncResponse.ok) {
-                console.log('Server sync successful');
-                // Navigate to journal
-                navigate('/journal');
-            } else {
-                console.error('Server sync failed:', syncResponse.status);
-                // Still navigate - offline mode
-                navigate('/journal');
-            }
-        } else {
-            // Fallback: Just navigate if authenticated
-            console.log('No AuthenticationService, navigating anyway');
-            navigate('/journal');
-        }
-    } catch (error) {
-        console.error('Direct auth error:', error);
-        // Still try to navigate
-        navigate('/journal');
+      if (this.config.useRedirectFlow) {
+        // Use redirect flow to avoid CORS issues
+        console.log('🔄 Initiating redirect sign-in...');
+        await signInWithRedirect(auth, provider);
+        // User will be redirected, auth state will be handled on return
+        return null as any; // Flow continues after redirect
+      } else {
+        // Use popup flow (may have CORS issues)
+        console.log('🔄 Initiating popup sign-in...');
+        const result = await signInWithPopup(auth, provider);
+        return result.user;
+      }
+    } catch (error: any) {
+      console.error('❌ Sign-in failed:', error);
+      
+      // If popup fails due to CORS, try redirect
+      if (error.code === 'auth/popup-blocked' || 
+          error.code === 'auth/cancelled-popup-request') {
+        console.log('🔄 Popup blocked, trying redirect...');
+        await signInWithRedirect(auth, provider);
+      }
+      
+      throw error;
     }
+  }
+  
+  private storeUserData(user: User): void {
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      lastSignIn: new Date().toISOString()
+    };
+    
+    localStorage.setItem('sf_user', JSON.stringify(userData));
+    localStorage.setItem('sf_auth_method', 'firebase');
+  }
+  
+  private clearUserData(): void {
+    localStorage.removeItem('sf_user');
+    localStorage.removeItem('sf_auth_method');
+    localStorage.removeItem('sf_server_token');
+  }
+  
+  private async syncWithServer(user: User): Promise<void> {
+    if (!this.config.attemptServerSync) return;
+    
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(
+        `${process.env.REACT_APP_SERVER_URL}/api/auth/firebase-login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firebaseToken: idToken })
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.serverToken) {
+          localStorage.setItem('sf_server_token', data.serverToken);
+        }
+        console.log('✅ Server sync successful');
+      } else {
+        console.warn('⚠️ Server sync failed, continuing with Firebase only');
+      }
+    } catch (error) {
+      console.warn('⚠️ Server sync error, continuing with Firebase only:', error);
+    }
+  }
+  
+  async getAuthHeaders(): Promise<HeadersInit> {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (this.currentUser) {
+      try {
+        const idToken = await this.currentUser.getIdToken();
+        headers['X-Firebase-Token'] = idToken;
+        
+        // Include server token if available (backward compatibility)
+        const serverToken = localStorage.getItem('sf_server_token');
+        if (serverToken) {
+          headers['Authorization'] = `Bearer ${serverToken}`;
+        }
+      } catch (error) {
+        console.error('Failed to get auth token:', error);
+      }
+    }
+    
+    return headers;
+  }
+  
+  async signOut(): Promise<void> {
+    await signOut(auth);
+    this.clearUserData();
+    window.location.href = '/login';
+  }
+  
+  getCurrentUser(): User | null {
+    return this.currentUser;
+  }
+  
+  isAuthenticated(): boolean {
+    return !!this.currentUser;
+  }
+  
+  onAuthStateChange(callback: (user: User | null) => void): () => void {
+    this.authStateListeners.push(callback);
+    // Return unsubscribe function
+    return () => {
+      const index = this.authStateListeners.indexOf(callback);
+      if (index > -1) {
+        this.authStateListeners.splice(index, 1);
+      }
+    };
+  }
+  
+  // For immediate auth check
+  async waitForAuthReady(): Promise<User | null> {
+    return new Promise((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe();
+        resolve(user);
+      });
+    });
+  }
+}
+
+// Singleton instance
+let authServiceInstance: AuthenticationService | null = null;
+
+export const getAuthService = (): AuthenticationService => {
+  if (!authServiceInstance) {
+    authServiceInstance = new AuthenticationService();
+  }
+  return authServiceInstance;
 };
+
+export default getAuthService();
 ```
 
-### Fix 3: Activate the Debug Route (5 minutes)
-
+### 3. Simplified Login Component
 ```typescript
-// File: src/App.tsx
-// Add this import at the top (around line 20):
-import AuthFlowDebugger from './components/Debug/AuthFlowDebugger';
+// src/pages/Login.tsx
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { IonPage, IonContent, IonButton, IonLoading, IonAlert } from '@ionic/react';
+import { getAuthService } from '../services/AuthenticationService';
+import { auth } from '../services/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+import './Login.css';
 
-// Add this route in the Routes section (around line 150):
-<Route path="/debug/auth" element={<AuthFlowDebugger />} />
+const Login: React.FC = () => {
+  const history = useHistory();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const authService = getAuthService();
+  
+  useEffect(() => {
+    // Check authentication state
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('✅ User authenticated, redirecting to journal...');
+        history.replace('/journal');
+      } else {
+        setLoading(false);
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [history]);
+  
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsSigningIn(true);
+      setError(null);
+      
+      await authService.signInWithGoogle();
+      // If using redirect flow, the page will redirect
+      // If using popup flow, auth state change will handle navigation
+      
+    } catch (error: any) {
+      console.error('Sign-in error:', error);
+      
+      // User-friendly error messages
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled. Please try again.');
+      } else if (error.code === 'auth/network-request-failed') {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError('Sign-in failed. Please try again or contact support.');
+      }
+      
+      setIsSigningIn(false);
+    }
+  };
+  
+  const handleOfflineMode = () => {
+    // Set offline mode flag and navigate
+    localStorage.setItem('sf_offline_mode', 'true');
+    history.push('/journal');
+  };
+  
+  if (loading) {
+    return (
+      <IonPage>
+        <IonContent>
+          <IonLoading isOpen={true} message="Checking authentication..." />
+        </IonContent>
+      </IonPage>
+    );
+  }
+  
+  return (
+    <IonPage>
+      <IonContent className="login-content">
+        <div className="login-container">
+          <div className="login-header">
+            <h1>Welcome to Baseline</h1>
+            <p>A better journaling and mood tracking app.</p>
+          </div>
+          
+          <div className="login-buttons">
+            <IonButton
+              expand="block"
+              onClick={handleGoogleSignIn}
+              disabled={isSigningIn}
+              className="google-signin-btn"
+            >
+              {isSigningIn ? 'Signing in...' : 'Sign in with Google'}
+            </IonButton>
+            
+            <IonButton
+              expand="block"
+              fill="outline"
+              onClick={handleOfflineMode}
+              className="offline-mode-btn"
+            >
+              Continue Offline
+            </IonButton>
+          </div>
+          
+          <div className="login-footer">
+            <p>Your data is private: we're a non-profit, and we have no interest in using your data for anything.</p>
+          </div>
+        </div>
+        
+        <IonAlert
+          isOpen={!!error}
+          onDidDismiss={() => setError(null)}
+          header="Sign-in Error"
+          message={error || ''}
+          buttons={['OK']}
+        />
+      </IonContent>
+    </IonPage>
+  );
+};
 
-// Also ensure the route is not filtered by professional services check
-// Around line 100-120, make sure debug routes are always included:
-const routes = [
-    // ... existing routes
-    { path: "/debug/auth", element: <AuthFlowDebugger /> }, // Always include debug
-    // ... rest of routes
+export default Login;
+```
+
+### 4. API Service with Firebase Token
+```typescript
+// src/services/SociallyFedAPIService.ts
+import { getAuthService } from './AuthenticationService';
+
+export class SociallyFedAPIService {
+  private baseUrl: string;
+  private authService = getAuthService();
+  
+  constructor() {
+    this.baseUrl = process.env.REACT_APP_SERVER_URL || 
+                   'https://socially-fed-server-512204327023.us-central1.run.app';
+  }
+  
+  private async makeRequest(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<Response> {
+    const headers = await this.authService.getAuthHeaders();
+    
+    const url = `${this.baseUrl}${endpoint}`;
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers
+      }
+    };
+    
+    try {
+      const response = await fetch(url, config);
+      
+      // Handle token expiry
+      if (response.status === 401) {
+        console.log('🔄 Token expired, refreshing...');
+        // Firebase tokens auto-refresh, retry once
+        const newHeaders = await this.authService.getAuthHeaders();
+        config.headers = { ...newHeaders, ...options.headers };
+        return await fetch(url, config);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('API request failed:', error);
+      
+      // Check if we're offline
+      if (!navigator.onLine) {
+        console.log('📵 Offline - request queued');
+        // Queue for later sync
+        this.queueOfflineRequest(endpoint, options);
+      }
+      
+      throw error;
+    }
+  }
+  
+  private queueOfflineRequest(endpoint: string, options: RequestInit): void {
+    const queue = JSON.parse(localStorage.getItem('sf_offline_queue') || '[]');
+    queue.push({
+      endpoint,
+      options,
+      timestamp: new Date().toISOString()
+    });
+    localStorage.setItem('sf_offline_queue', JSON.stringify(queue));
+  }
+  
+  // Public API methods
+  async getJournalEntries(): Promise<any> {
+    const response = await this.makeRequest('/api/journal/entries');
+    return response.json();
+  }
+  
+  async createJournalEntry(entry: any): Promise<any> {
+    const response = await this.makeRequest('/api/journal/entries', {
+      method: 'POST',
+      body: JSON.stringify(entry)
+    });
+    return response.json();
+  }
+  
+  async generateInsights(entryId: string): Promise<any> {
+    const response = await this.makeRequest(`/api/insights/generate/${entryId}`, {
+      method: 'POST'
+    });
+    return response.json();
+  }
+}
+
+export default new SociallyFedAPIService();
+```
+
+### 5. Configuration Service Updates
+```typescript
+// src/services/SociallyFedConfigService.ts
+export interface SimplifiedFlags {
+  // Authentication
+  useFirebaseOnly: boolean;
+  attemptServerSync: boolean;
+  useRedirectFlow: boolean;
+  enableOfflineMode: boolean;
+  
+  // Features
+  enableEncryption: boolean;
+  enableWebSocket: boolean;
+  enableProfessionalServices: boolean;
+  enableMultiTenant: boolean;
+  
+  // Development
+  enableDebugMode: boolean;
+  logAuthFlow: boolean;
+}
+
+export class SociallyFedConfigService {
+  private static instance: SociallyFedConfigService;
+  private flags: SimplifiedFlags;
+  
+  private constructor() {
+    this.flags = this.loadFlags();
+    this.exposeToWindow();
+  }
+  
+  private loadFlags(): SimplifiedFlags {
+    // Load from localStorage first
+    const stored = localStorage.getItem('sf_simplified_flags');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    
+    // Default configuration for Firebase-only mode
+    return {
+      useFirebaseOnly: true,
+      attemptServerSync: false,
+      useRedirectFlow: true, // Avoid CORS issues
+      enableOfflineMode: true,
+      enableEncryption: false, // Disabled to simplify auth
+      enableWebSocket: false,
+      enableProfessionalServices: false,
+      enableMultiTenant: false,
+      enableDebugMode: process.env.NODE_ENV === 'development',
+      logAuthFlow: true
+    };
+  }
+  
+  private exposeToWindow(): void {
+    if (typeof window !== 'undefined') {
+      (window as any).SociallyFedConfig = this;
+      (window as any).sfSetFlags = (flags: Partial<SimplifiedFlags>) => {
+        this.updateFlags(flags);
+      };
+    }
+  }
+  
+  public updateFlags(updates: Partial<SimplifiedFlags>): void {
+    this.flags = { ...this.flags, ...updates };
+    localStorage.setItem('sf_simplified_flags', JSON.stringify(this.flags));
+    console.log('🔧 Config updated:', this.flags);
+  }
+  
+  public getSimplifiedFlags(): SimplifiedFlags {
+    return this.flags;
+  }
+  
+  public static getInstance(): SociallyFedConfigService {
+    if (!SociallyFedConfigService.instance) {
+      SociallyFedConfigService.instance = new SociallyFedConfigService();
+    }
+    return SociallyFedConfigService.instance;
+  }
+}
+```
+
+---
+
+## 📋 Technical Requirements
+
+### Package Dependencies
+```json
+// package.json updates
+{
+  "dependencies": {
+    "firebase": "^10.12.0",
+    "@ionic/react": "^7.0.0",
+    "@ionic/react-router": "^7.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.0.0"
+  }
+}
+```
+
+### Environment Variables
+```bash
+# .env.local
+REACT_APP_FIREBASE_API_KEY=AIzaSy...
+REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
+REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=512204327023
+REACT_APP_FIREBASE_APP_ID=1:512204327023:web:...
+
+REACT_APP_SERVER_URL=https://socially-fed-server-512204327023.us-central1.run.app
+REACT_APP_USE_EMULATORS=false
+```
+
+### Build Configuration
+```javascript
+// capacitor.config.ts or ionic.config.json
+{
+  "appId": "com.sociallyfed.mobile",
+  "appName": "SociallyFed",
+  "server": {
+    "allowNavigation": [
+      "sociallyfed-55780.firebaseapp.com",
+      "accounts.google.com",
+      "*.googleapis.com"
+    ]
+  }
+}
+```
+
+---
+
+## 🔌 Integration Points to Consider
+
+### 1. Offline Mode
+- Ensure Firebase auth persists offline
+- Cache user data in IndexedDB for offline access
+- Queue API requests when offline
+- Sync when connection returns
+
+### 2. PWA Manifest
+- Update manifest with proper auth domain
+- Ensure service worker handles auth redirects
+- Configure proper start_url for authenticated users
+
+### 3. Service Worker Updates
+```javascript
+// src/serviceWorkerRegistration.ts
+// Add Firebase domains to cache whitelist
+const CACHE_WHITELIST = [
+  'sociallyfed-55780.firebaseapp.com',
+  'identitytoolkit.googleapis.com',
+  'securetoken.googleapis.com'
 ];
 ```
 
-### Fix 4: Expose All Services to Window for Debugging (10 minutes)
-
+### 4. Routing Guards
 ```typescript
-// File: src/App.tsx
-// Add this at the end of the App component (before the return statement):
+// src/components/PrivateRoute.tsx
+import { Route, Redirect } from 'react-router-dom';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../services/firebaseConfig';
 
-useEffect(() => {
-    // Expose services to window for debugging
-    const exposeServices = async () => {
-        try {
-            // Import and expose all services
-            const { default: authService } = await import('./services/AuthenticationService');
-            const { default: apiInterceptor } = await import('./services/ApiInterceptor');
-            const { default: configService } = await import('./services/SociallyFedConfigService');
-            
-            if (typeof window !== 'undefined') {
-                (window as any).AuthenticationService = authService;
-                (window as any).ApiInterceptor = apiInterceptor;
-                (window as any).SociallyFedConfigService = configService;
-                (window as any).firebaseAuth = auth;
-                
-                console.log('All services exposed to window for debugging');
-            }
-        } catch (error) {
-            console.error('Error exposing services:', error);
-        }
-    };
-    
-    exposeServices();
-}, []);
+const PrivateRoute: React.FC<any> = ({ component: Component, ...rest }) => {
+  const [user, loading] = useAuthState(auth);
+  
+  if (loading) return <IonLoading isOpen={true} />;
+  
+  return (
+    <Route
+      {...rest}
+      render={(props) =>
+        user ? <Component {...props} /> : <Redirect to="/login" />
+      }
+    />
+  );
+};
 ```
+
+### 5. State Management
+- Update any Redux/MobX stores to use Firebase user
+- Ensure user state syncs across tabs
+- Handle auth state in background tabs
 
 ---
 
-## 🧪 TESTING PROCEDURE
+## ✅ Definition of Done for Today's Work
 
-### Step 1: Apply the Fixes
+### Must Complete
+- [ ] Firebase configuration updated with correct credentials
+- [ ] AuthenticationService refactored to use Firebase directly
+- [ ] Login component simplified without token exchange
+- [ ] CORS/COOP issues completely eliminated
+- [ ] Basic offline mode support implemented
+- [ ] Feature flags configured for Firebase-only mode
+- [ ] Manual testing confirms sign-in works without errors
+
+### Should Complete
+- [ ] API service updated to use Firebase tokens
+- [ ] Offline queue mechanism implemented
+- [ ] Service worker configured for auth domains
+- [ ] Private routes use Firebase auth state
+- [ ] Error handling provides clear user feedback
+- [ ] Redux/state management updated if applicable
+
+### Nice to Have
+- [ ] Analytics tracking for auth success/failure
+- [ ] Performance monitoring for auth flow
+- [ ] A/B testing setup for popup vs redirect
+- [ ] Debug panel for auth troubleshooting
+- [ ] Documentation updated with new auth flow
+
+### Testing Checklist
 ```bash
-# Apply all the fixes above to the respective files
-# Then restart the development server
+# Install dependencies
+npm install firebase
+
+# Start development server
 npm start
+
+# Test authentication flow
+# 1. Open browser DevTools
+# 2. Clear all site data
+# 3. Navigate to http://localhost:8100
+# 4. Click "Sign in with Google"
+# 5. Verify no CORS errors in console
+# 6. Confirm successful redirect to /journal
+
+# Test offline mode
+# 1. Sign in successfully
+# 2. Go offline (DevTools Network tab)
+# 3. Refresh page
+# 4. Verify app loads with cached user
+
+# Test feature flags
+# In browser console:
+window.sfSetFlags({ useRedirectFlow: false });
+# Try sign-in with popup mode
+
+window.sfSetFlags({ attemptServerSync: true });
+# Verify server sync attempts (may fail if server not ready)
 ```
 
-### Step 2: Set Flags in Browser Console
-```javascript
-// Clear and set flags
-localStorage.clear();
-localStorage.setItem('sf_simplified_flags', JSON.stringify({
-    enableBasicAuth: true,
-    enableServerSync: true,
-    enableMultiTenant: false,
-    enableProfessionalServices: false,
-    enableEncryptionFlow: false,  // CRITICAL
-    enableWebSocket: false,
-    forceMobilePlatform: true,
-    useCorrectApiPaths: true
-}));
-location.reload();
-```
-
-### Step 3: Test Authentication Debug Page
-Navigate to: `http://localhost:8080/debug/auth`
-
-This should show the AuthFlowDebugger with 8 test buttons:
-1. Check Firebase Configuration
-2. Test Firebase Authentication
-3. Test JWT Token Exchange
-4. Test Server Sync
-5. Test Feature Flags
-6. Test Platform Detection
-7. Test Encryption Bypass
-8. Full Authentication Flow
-
-### Step 4: Test Normal Login Flow
-1. Go back to `http://localhost:8080`
-2. Click "Sign in with Google"
-3. Watch the console for:
-   - "Encryption bypassed via localStorage flags"
-   - "Starting direct authentication flow..."
-   - "Got Firebase token"
-   - "Got JWT token"
-   - "Server sync successful"
-4. Should redirect to `/journal`
-
----
-
-## 📊 VERIFICATION CHECKLIST
-
-After applying fixes, verify in browser console:
-
-```javascript
-// Check all services are available
-console.log('Config Service:', !!window.SociallyFedConfigService);
-console.log('Auth Service:', !!window.AuthenticationService);
-console.log('API Interceptor:', !!window.ApiInterceptor);
-console.log('Firebase Auth:', !!window.firebaseAuth);
-
-// Check flags are set
-const flags = JSON.parse(localStorage.getItem('sf_simplified_flags') || '{}');
-console.log('Encryption disabled?', flags.enableEncryptionFlow === false);
-
-// Check current user
-console.log('Current user:', window.firebaseAuth?.currentUser?.email);
-```
-
----
-
-## 🎯 SUCCESS CRITERIA
-
-✅ **Authentication Flow Works When**:
-1. User clicks "Sign in with Google"
-2. NO "Getting encryption keys" screen appears
-3. Console shows successful token exchange
-4. User is redirected to `/journal`
-5. API calls include proper JWT token
-
-✅ **Debug Page Works When**:
-1. `/debug/auth` route is accessible
-2. All 8 test buttons are visible
-3. Each test provides clear pass/fail feedback
-4. Results show in JSON format
-
----
-
-## 🚀 DEPLOYMENT STEPS (After Local Success)
-
+### Mobile Testing
 ```bash
-# 1. Commit the fixes
-git add -A
-git commit -m "Fix: Authentication flow - expose services to window and fix flag checking"
+# Build for mobile
+ionic build
+ionic capacitor copy ios
+ionic capacitor copy android
 
-# 2. Build for production
-export REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app
-export REACT_APP_FIREBASE_API_KEY=YOUR_ACTUAL_KEY
-npm run build
-
-# 3. Test production build locally
-npx serve -s build -p 3000
-
-# 4. Deploy to Cloud Run
-gcloud run deploy sociallyfed-mobile \
-  --source=. \
-  --region=us-central1 \
-  --platform=managed \
-  --allow-unauthenticated \
-  --set-env-vars="REACT_APP_API_URL=https://sociallyfed-server-512204327023.us-central1.run.app"
+# Test on devices
+ionic capacitor run ios -l --external
+ionic capacitor run android -l --external
 ```
 
 ---
 
-## 🔍 ROOT CAUSE ANALYSIS
+## 🚀 Next Steps (Tomorrow)
 
-**Why This Happened**:
-1. **Service Encapsulation**: Services were properly encapsulated but not exposed for components that needed them
-2. **Environment Differences**: Development vs production environment handling of global objects
-3. **Legacy Code**: Login.tsx was using old patterns not updated for new service architecture
-4. **Missing Debug Tools**: AuthFlowDebugger was created but route wasn't activated
+1. **Production Deployment**
+   - Build optimized production bundle
+   - Deploy to Firebase Hosting
+   - Update Cloud Run service
+   - Verify production authentication
 
-**Prevention for Future**:
-1. Always expose critical services to window in development
-2. Create debug routes for all critical flows
-3. Test flag-based features with multiple methods
-4. Document service dependencies clearly
+2. **Enhanced Offline Support**
+   - Implement comprehensive offline queue
+   - Add background sync for PWA
+   - Create offline indicator UI
+   - Test offline-to-online transitions
 
----
-
-## 📝 NOTES
-
-- The fixes are minimal and surgical - only exposing what's needed
-- The debug route will be invaluable for future auth issues
-- Consider keeping service exposure in development builds only
-- The localStorage flag checking is the fastest method and should be primary
+3. **User Migration**
+   - Create migration notice for existing users
+   - Implement account linking for JWT users
+   - Add analytics to track migration
+   - Plan deprecation of old auth
 
 ---
 
-**Priority**: Complete these fixes immediately  
-**Time Estimate**: 30 minutes total  
-**Risk**: Low - only adding debugging capabilities  
-**Confidence**: HIGH - addresses root cause directly  
+## 📝 Notes for Implementation
+
+### Common Issues and Solutions
+
+1. **Redirect Loop**
+   - Ensure auth state check doesn't trigger on /login
+   - Clear redirect result after handling
+
+2. **Token Refresh**
+   - Firebase handles automatically
+   - Force refresh: `user.getIdToken(true)`
+
+3. **Offline Persistence**
+   - Enable with `setPersistence(browserLocalPersistence)`
+   - Falls back to session persistence if fails
+
+4. **CORS on Localhost**
+   - Add localhost to Firebase authorized domains
+   - Use proper ports (3000, 8080, 8100)
+
+### Performance Tips
+1. Lazy load Firebase SDKs
+2. Use Firebase Auth state instead of repeated checks
+3. Cache user object in memory
+4. Minimize token refresh calls
+
+### Security Notes
+1. Never store Firebase config keys in public repos
+2. Use environment variables for sensitive config
+3. Implement proper CSP headers
+4. Validate auth state on each route change
+
+### Resources
+- [Firebase Auth Web Guide](https://firebase.google.com/docs/auth/web/start)
+- [Ionic Firebase Integration](https://ionicframework.com/docs/native/firebase-authentication)
+- [PWA Offline Strategies](https://web.dev/offline-cookbook/)
 
 ---
 
-*Generated: August 23, 2025*  
-*Issue: Authentication flow broken due to service accessibility*  
-*Solution: Expose services and fix flag checking logic*
+**Session Duration Estimate**: 5-6 hours  
+**Complexity Level**: Medium  
+**Risk Level**: Low (with proper feature flags)  
+**Business Impact**: Critical - Permanently fixes authentication blocking issue
+
+---
+*Brief prepared for SociallyFed Mobile Team*  
+*Firebase Authentication Direct Integration*  
+*August 24, 2025*
