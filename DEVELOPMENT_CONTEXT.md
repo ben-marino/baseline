@@ -175,859 +175,776 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Sun 24 Aug 2025 16:27:29 AEST
+## Session Started: Thu 28 Aug 2025 04:32:03 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# Daily Brief - SociallyFed Mobile PWA
-## Firebase Authentication Direct Integration
-**Date**: Sunday, August 24, 2025  
-**Sprint**: Firebase Auth Migration - Mobile PWA  
-**Developer**: Mobile Team  
-**Priority**: P0 CRITICAL - Fix Authentication CORS Issues
+# SociallyFed Mobile PWA - Daily Implementation Brief
+## Date: August 28, 2025
+## Developer: Junior Developer  
+## Assigned by: Senior Developer
+## Sprint Goal: Fix Authentication Flow & Configuration Service
 
 ---
 
 ## 🎯 Today's Implementation Priorities
 
-### Primary Goal
-Replace the problematic server token exchange flow with direct Firebase Authentication while maintaining backward compatibility through feature flags. Eliminate CORS/COOP issues permanently.
+**Mission Critical:** Fix the authentication flow so users can successfully log in via Google on the mobile PWA.
 
-### Critical Path Items (In Order)
-1. **Firebase Auth Service Refactor** (2 hours)
-   - Remove server token exchange dependency
-   - Implement direct Firebase authentication
-   - Add feature flag for auth mode selection
+### Priority Order (Complete in this sequence):
+1. **[P0 - URGENT]** Fix `isSimplifiedFlagEnabled` error blocking the app
+2. **[P0 - URGENT]** Resolve Cross-Origin Policy issues for OAuth
+3. **[P1 - HIGH]** Implement proper mobile platform detection
+4. **[P1 - HIGH]** Update authentication flow to use redirect for mobile
+5. **[P2 - MEDIUM]** Add debug utilities for testing
 
-2. **Login Component Simplification** (1-2 hours)
-   - Remove complex token exchange logic
-   - Implement Firebase-first authentication
-   - Add proper error handling and recovery
-
-3. **API Service Updates** (2 hours)
-   - Modify all API calls to use Firebase tokens
-   - Update request interceptors
-   - Handle both auth modes via feature flag
-
-4. **Offline Mode Enhancement** (1 hour)
-   - Ensure Firebase auth works offline
-   - Cache user credentials properly
-   - Handle auth state persistence
+**Time Budget:** 8 hours
+- 1 hour fixing config service
+- 2 hours on COOP/OAuth issues  
+- 2 hours on platform detection
+- 2 hours on auth flow update
+- 1 hour on testing & debugging
 
 ---
 
-## 🔨 Specific Features to Build
+## 🔨 Specific Features to Build Today
 
-### 1. Updated Firebase Configuration
-```typescript
-// src/services/firebaseConfig.ts
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  setPersistence, 
-  browserLocalPersistence,
-  connectAuthEmulator 
-} from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+### Feature 1: Fix Configuration Service (DO THIS FIRST!)
+**File to Create:** `src/services/SociallyFedConfigService.js`
 
-const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSy...",
-  authDomain: "sociallyfed-55780.firebaseapp.com",
-  projectId: "sociallyfed-55780",
-  storageBucket: "sociallyfed-55780.appspot.com",
-  messagingSenderId: "512204327023",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
-};
+```javascript
+// Copy this EXACTLY - this fixes the immediate error
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize Auth with persistence
-export const auth = getAuth(app);
-setPersistence(auth, browserLocalPersistence);
-
-// Initialize Firestore
-export const db = getFirestore(app);
-
-// Development: Connect to emulators
-if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATORS) {
-  connectAuthEmulator(auth, 'http://localhost:9099');
-  connectFirestoreEmulator(db, 'localhost', 8080);
+class SociallyFedConfigService {
+  constructor() {
+    console.log('[CONFIG] Initializing SociallyFedConfigService');
+    this.flags = {
+      simplifiedMode: false,
+      basicMode: false,
+      forceMobilePlatform: true
+    };
+    
+    // Load saved config from localStorage
+    try {
+      const saved = localStorage.getItem('sociallyfed_config');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        this.flags = { ...this.flags, ...parsed.flags };
+        console.log('[CONFIG] Loaded saved config:', this.flags);
+      }
+    } catch (e) {
+      console.log('[CONFIG] No saved config, using defaults');
+    }
+  }
+  
+  // THIS IS THE MISSING METHOD - Copy exactly!
+  isSimplifiedFlagEnabled() {
+    console.log('[CONFIG] isSimplifiedFlagEnabled called, returning:', this.flags.simplifiedMode);
+    return this.flags.simplifiedMode || false;
+  }
+  
+  // Add these helper methods too
+  isBasicModeEnabled() {
+    return this.flags.basicMode || false;
+  }
+  
+  isMobilePlatform() {
+    return this.flags.forceMobilePlatform || false;
+  }
+  
+  setFlag(flagName, value) {
+    this.flags[flagName] = value;
+    this.saveConfig();
+    console.log(`[CONFIG] Flag ${flagName} set to ${value}`);
+  }
+  
+  saveConfig() {
+    try {
+      localStorage.setItem('sociallyfed_config', JSON.stringify({ flags: this.flags }));
+    } catch (e) {
+      console.error('[CONFIG] Failed to save config:', e);
+    }
+  }
+  
+  // Platform detection helper
+  detectPlatform() {
+    const ua = navigator.userAgent.toLowerCase();
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
+    
+    if (isPWA) return 'pwa';
+    if (isMobile) return 'mobile';
+    return 'web';
+  }
 }
 
-export default app;
+// Create the singleton instance
+const configService = new SociallyFedConfigService();
+
+// IMPORTANT: Expose to window so the app can find it
+window.SociallyFedConfigService = configService;
+
+// Also export for module usage
+export default configService;
+
+console.log('[CONFIG] SociallyFedConfigService attached to window');
 ```
 
-### 2. Refactored Authentication Service
-```typescript
-// src/services/AuthenticationService.ts
-import { 
-  signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider, 
-  onAuthStateChanged, 
-  User,
-  signOut,
-  getIdToken
-} from 'firebase/auth';
-import { auth } from './firebaseConfig';
-import { SociallyFedConfigService } from './SociallyFedConfigService';
+**Then import it in your main App.js or index.js:**
+```javascript
+// At the top of App.js or index.js
+import './services/SociallyFedConfigService';
+// This ensures it loads and attaches to window
+```
 
-export interface AuthConfig {
-  useFirebaseOnly: boolean;
-  attemptServerSync: boolean;
-  useRedirectFlow: boolean; // Avoid CORS issues
-}
+### Feature 2: Fix Cross-Origin Policy Issues
+**File:** `public/index.html`
 
-export class AuthenticationService {
-  private currentUser: User | null = null;
-  private authStateListeners: ((user: User | null) => void)[] = [];
-  private config: AuthConfig;
+Add these lines in the `<head>` section (around line 5-10):
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <!-- ADD THESE NEW LINES FOR OAUTH FIX -->
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="credentialless">
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
+    <!-- END OF NEW LINES -->
+    
+    <meta name="theme-color" content="#000000" />
+    <!-- rest of your head content -->
+```
+
+### Feature 3: Platform Detection Service
+**File to Create:** `src/utils/platformDetection.js`
+
+```javascript
+// This properly detects if we're on mobile/PWA/web
+
+const PlatformDetection = {
+  // Check if running as installed PWA
+  isPWA() {
+    // Multiple ways to detect PWA
+    const checks = [
+      window.matchMedia('(display-mode: standalone)').matches,
+      window.navigator.standalone === true,
+      document.referrer.includes('android-app://'),
+      window.matchMedia('(display-mode: fullscreen)').matches,
+      window.matchMedia('(display-mode: minimal-ui)').matches
+    ];
+    
+    const result = checks.some(check => check === true);
+    console.log('[PLATFORM] PWA detection:', result, checks);
+    return result;
+  },
   
+  // Check if on mobile device
+  isMobile() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    
+    // Check for mobile user agents
+    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i;
+    const isMobileUA = mobileRegex.test(userAgent);
+    
+    // Also check screen size
+    const isMobileScreen = window.screen.width <= 768;
+    
+    // Check for touch support
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    const result = isMobileUA || (isMobileScreen && hasTouch);
+    console.log('[PLATFORM] Mobile detection:', result, {
+      userAgent: isMobileUA,
+      screen: isMobileScreen,
+      touch: hasTouch
+    });
+    
+    return result;
+  },
+  
+  // Get the platform type
+  getPlatform() {
+    if (this.isPWA()) return 'pwa';
+    if (this.isMobile()) return 'mobile';
+    return 'web';
+  },
+  
+  // Get all platform info for debugging
+  getInfo() {
+    const info = {
+      platform: this.getPlatform(),
+      isPWA: this.isPWA(),
+      isMobile: this.isMobile(),
+      userAgent: navigator.userAgent,
+      screenSize: `${window.screen.width}x${window.screen.height}`,
+      hasTouch: 'ontouchstart' in window,
+      displayMode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'
+    };
+    
+    console.log('[PLATFORM] Full platform info:', info);
+    return info;
+  }
+};
+
+// Auto-detect on load
+window.addEventListener('load', () => {
+  console.log('[PLATFORM] Initial detection:', PlatformDetection.getInfo());
+});
+
+export default PlatformDetection;
+```
+
+### Feature 4: Updated Authentication Service
+**File to Update/Create:** `src/services/authService.js`
+
+```javascript
+// Complete auth service with mobile redirect support
+
+import { 
+  getAuth, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut
+} from 'firebase/auth';
+import { app } from './firebase'; // Your Firebase app
+import PlatformDetection from '../utils/platformDetection';
+
+class AuthService {
   constructor() {
-    this.config = this.loadAuthConfig();
-    this.initializeAuthListener();
+    this.auth = getAuth(app);
+    this.serverUrl = 'https://sociallyfed-server-a5kcra27d6o-uc.a.run.app';
+    
+    // Check for redirect result on page load
     this.checkRedirectResult();
   }
   
-  private loadAuthConfig(): AuthConfig {
-    const flags = SociallyFedConfigService.getInstance().getSimplifiedFlags();
-    return {
-      useFirebaseOnly: flags.useFirebaseOnly ?? true,
-      attemptServerSync: flags.attemptServerSync ?? false,
-      useRedirectFlow: flags.useRedirectFlow ?? true // Default to redirect to avoid CORS
-    };
-  }
-  
-  private initializeAuthListener(): void {
-    onAuthStateChanged(auth, async (user) => {
-      console.log('🔐 Auth state changed:', user?.email || 'signed out');
-      this.currentUser = user;
-      
-      if (user) {
-        // Store user data locally
-        this.storeUserData(user);
-        
-        // Optionally sync with server if configured
-        if (this.config.attemptServerSync) {
-          await this.syncWithServer(user);
-        }
-      } else {
-        this.clearUserData();
-      }
-      
-      // Notify listeners
-      this.authStateListeners.forEach(listener => listener(user));
-    });
-  }
-  
-  private async checkRedirectResult(): Promise<void> {
+  // Check if we're returning from a redirect sign-in
+  async checkRedirectResult() {
     try {
-      const result = await getRedirectResult(auth);
-      if (result?.user) {
-        console.log('✅ Redirect sign-in successful:', result.user.email);
-        // Navigation will be handled by auth state listener
-      }
-    } catch (error) {
-      console.error('Redirect sign-in error:', error);
-    }
-  }
-  
-  async signInWithGoogle(): Promise<User> {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({
-      prompt: 'select_account',
-      access_type: 'offline',
-      include_granted_scopes: 'true'
-    });
-    
-    try {
-      if (this.config.useRedirectFlow) {
-        // Use redirect flow to avoid CORS issues
-        console.log('🔄 Initiating redirect sign-in...');
-        await signInWithRedirect(auth, provider);
-        // User will be redirected, auth state will be handled on return
-        return null as any; // Flow continues after redirect
-      } else {
-        // Use popup flow (may have CORS issues)
-        console.log('🔄 Initiating popup sign-in...');
-        const result = await signInWithPopup(auth, provider);
+      console.log('[AUTH] Checking for redirect result...');
+      const result = await getRedirectResult(this.auth);
+      
+      if (result && result.user) {
+        console.log('[AUTH] ✅ Redirect sign-in successful:', result.user.email);
+        await this.handleSuccessfulAuth(result.user);
         return result.user;
       }
-    } catch (error: any) {
-      console.error('❌ Sign-in failed:', error);
+    } catch (error) {
+      console.error('[AUTH] Redirect result error:', error);
+    }
+    return null;
+  }
+  
+  // Main sign-in method
+  async signInWithGoogle() {
+    console.log('[AUTH] Starting Google sign-in...');
+    
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account' // Always show account chooser
+    });
+    
+    // Determine which method to use
+    const platform = PlatformDetection.getPlatform();
+    console.log('[AUTH] Platform detected:', platform);
+    
+    try {
+      let result;
       
-      // If popup fails due to CORS, try redirect
-      if (error.code === 'auth/popup-blocked' || 
-          error.code === 'auth/cancelled-popup-request') {
-        console.log('🔄 Popup blocked, trying redirect...');
-        await signInWithRedirect(auth, provider);
+      if (platform === 'pwa' || platform === 'mobile') {
+        // Use redirect for mobile/PWA (popups often blocked)
+        console.log('[AUTH] Using redirect flow for mobile/PWA');
+        
+        // Store a flag so we know we initiated sign-in
+        localStorage.setItem('auth_redirect_pending', 'true');
+        
+        // This will redirect away from the app
+        await signInWithRedirect(this.auth, provider);
+        // Code won't reach here - browser redirects
+        
+      } else {
+        // Use popup for desktop
+        console.log('[AUTH] Using popup flow for desktop');
+        result = await signInWithPopup(this.auth, provider);
+        
+        if (result && result.user) {
+          console.log('[AUTH] ✅ Popup sign-in successful:', result.user.email);
+          await this.handleSuccessfulAuth(result.user);
+          return result.user;
+        }
       }
       
-      throw error;
+    } catch (error) {
+      console.error('[AUTH] Sign-in error:', error);
+      
+      // Handle specific errors
+      if (error.code === 'auth/popup-blocked') {
+        console.log('[AUTH] Popup blocked, falling back to redirect');
+        localStorage.setItem('auth_redirect_pending', 'true');
+        await signInWithRedirect(this.auth, provider);
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        console.log('[AUTH] User cancelled the popup');
+      } else {
+        throw error;
+      }
     }
   }
   
-  private storeUserData(user: User): void {
-    const userData = {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      lastSignIn: new Date().toISOString()
-    };
-    
-    localStorage.setItem('sf_user', JSON.stringify(userData));
-    localStorage.setItem('sf_auth_method', 'firebase');
-  }
-  
-  private clearUserData(): void {
-    localStorage.removeItem('sf_user');
-    localStorage.removeItem('sf_auth_method');
-    localStorage.removeItem('sf_server_token');
-  }
-  
-  private async syncWithServer(user: User): Promise<void> {
-    if (!this.config.attemptServerSync) return;
+  // Handle successful authentication
+  async handleSuccessfulAuth(user) {
+    console.log('[AUTH] Processing successful authentication...');
     
     try {
+      // Get Firebase ID token
       const idToken = await user.getIdToken();
-      const response = await fetch(
-        `${process.env.REACT_APP_SERVER_URL}/api/auth/firebase-login`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ firebaseToken: idToken })
-        }
-      );
+      console.log('[AUTH] Got Firebase ID token, length:', idToken.length);
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.serverToken) {
-          localStorage.setItem('sf_server_token', data.serverToken);
-        }
-        console.log('✅ Server sync successful');
-      } else {
-        console.warn('⚠️ Server sync failed, continuing with Firebase only');
-      }
-    } catch (error) {
-      console.warn('⚠️ Server sync error, continuing with Firebase only:', error);
-    }
-  }
-  
-  async getAuthHeaders(): Promise<HeadersInit> {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (this.currentUser) {
-      try {
-        const idToken = await this.currentUser.getIdToken();
-        headers['X-Firebase-Token'] = idToken;
-        
-        // Include server token if available (backward compatibility)
-        const serverToken = localStorage.getItem('sf_server_token');
-        if (serverToken) {
-          headers['Authorization'] = `Bearer ${serverToken}`;
-        }
-      } catch (error) {
-        console.error('Failed to get auth token:', error);
-      }
-    }
-    
-    return headers;
-  }
-  
-  async signOut(): Promise<void> {
-    await signOut(auth);
-    this.clearUserData();
-    window.location.href = '/login';
-  }
-  
-  getCurrentUser(): User | null {
-    return this.currentUser;
-  }
-  
-  isAuthenticated(): boolean {
-    return !!this.currentUser;
-  }
-  
-  onAuthStateChange(callback: (user: User | null) => void): () => void {
-    this.authStateListeners.push(callback);
-    // Return unsubscribe function
-    return () => {
-      const index = this.authStateListeners.indexOf(callback);
-      if (index > -1) {
-        this.authStateListeners.splice(index, 1);
-      }
-    };
-  }
-  
-  // For immediate auth check
-  async waitForAuthReady(): Promise<User | null> {
-    return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        unsubscribe();
-        resolve(user);
+      // Exchange with your server
+      const response = await fetch(`${this.serverUrl}/api/auth/exchange`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Platform': PlatformDetection.getPlatform()
+        },
+        body: JSON.stringify({
+          token: idToken,
+          platform: PlatformDetection.getPlatform(),
+          email: user.email,
+          uid: user.uid
+        })
       });
-    });
-  }
-}
-
-// Singleton instance
-let authServiceInstance: AuthenticationService | null = null;
-
-export const getAuthService = (): AuthenticationService => {
-  if (!authServiceInstance) {
-    authServiceInstance = new AuthenticationService();
-  }
-  return authServiceInstance;
-};
-
-export default getAuthService();
-```
-
-### 3. Simplified Login Component
-```typescript
-// src/pages/Login.tsx
-import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { IonPage, IonContent, IonButton, IonLoading, IonAlert } from '@ionic/react';
-import { getAuthService } from '../services/AuthenticationService';
-import { auth } from '../services/firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
-import './Login.css';
-
-const Login: React.FC = () => {
-  const history = useHistory();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const authService = getAuthService();
-  
-  useEffect(() => {
-    // Check authentication state
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log('✅ User authenticated, redirecting to journal...');
-        history.replace('/journal');
-      } else {
-        setLoading(false);
-      }
-    });
-    
-    return () => unsubscribe();
-  }, [history]);
-  
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsSigningIn(true);
-      setError(null);
       
-      await authService.signInWithGoogle();
-      // If using redirect flow, the page will redirect
-      // If using popup flow, auth state change will handle navigation
+      const data = await response.json();
       
-    } catch (error: any) {
-      console.error('Sign-in error:', error);
-      
-      // User-friendly error messages
-      if (error.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in cancelled. Please try again.');
-      } else if (error.code === 'auth/network-request-failed') {
-        setError('Network error. Please check your connection and try again.');
-      } else {
-        setError('Sign-in failed. Please try again or contact support.');
-      }
-      
-      setIsSigningIn(false);
-    }
-  };
-  
-  const handleOfflineMode = () => {
-    // Set offline mode flag and navigate
-    localStorage.setItem('sf_offline_mode', 'true');
-    history.push('/journal');
-  };
-  
-  if (loading) {
-    return (
-      <IonPage>
-        <IonContent>
-          <IonLoading isOpen={true} message="Checking authentication..." />
-        </IonContent>
-      </IonPage>
-    );
-  }
-  
-  return (
-    <IonPage>
-      <IonContent className="login-content">
-        <div className="login-container">
-          <div className="login-header">
-            <h1>Welcome to Baseline</h1>
-            <p>A better journaling and mood tracking app.</p>
-          </div>
-          
-          <div className="login-buttons">
-            <IonButton
-              expand="block"
-              onClick={handleGoogleSignIn}
-              disabled={isSigningIn}
-              className="google-signin-btn"
-            >
-              {isSigningIn ? 'Signing in...' : 'Sign in with Google'}
-            </IonButton>
-            
-            <IonButton
-              expand="block"
-              fill="outline"
-              onClick={handleOfflineMode}
-              className="offline-mode-btn"
-            >
-              Continue Offline
-            </IonButton>
-          </div>
-          
-          <div className="login-footer">
-            <p>Your data is private: we're a non-profit, and we have no interest in using your data for anything.</p>
-          </div>
-        </div>
+      if (response.ok && data.success) {
+        console.log('[AUTH] ✅ Token exchange successful');
         
-        <IonAlert
-          isOpen={!!error}
-          onDidDismiss={() => setError(null)}
-          header="Sign-in Error"
-          message={error || ''}
-          buttons={['OK']}
-        />
-      </IonContent>
-    </IonPage>
-  );
-};
-
-export default Login;
-```
-
-### 4. API Service with Firebase Token
-```typescript
-// src/services/SociallyFedAPIService.ts
-import { getAuthService } from './AuthenticationService';
-
-export class SociallyFedAPIService {
-  private baseUrl: string;
-  private authService = getAuthService();
-  
-  constructor() {
-    this.baseUrl = process.env.REACT_APP_SERVER_URL || 
-                   'https://socially-fed-server-512204327023.us-central1.run.app';
-  }
-  
-  private async makeRequest(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<Response> {
-    const headers = await this.authService.getAuthHeaders();
-    
-    const url = `${this.baseUrl}${endpoint}`;
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...headers,
-        ...options.headers
-      }
-    };
-    
-    try {
-      const response = await fetch(url, config);
-      
-      // Handle token expiry
-      if (response.status === 401) {
-        console.log('🔄 Token expired, refreshing...');
-        // Firebase tokens auto-refresh, retry once
-        const newHeaders = await this.authService.getAuthHeaders();
-        config.headers = { ...newHeaders, ...options.headers };
-        return await fetch(url, config);
+        // Store session info
+        localStorage.setItem('session_token', data.sessionToken);
+        localStorage.setItem('user_id', data.userId);
+        localStorage.setItem('user_email', user.email);
+        localStorage.removeItem('auth_redirect_pending');
+        
+        // Trigger any auth state change handlers
+        window.dispatchEvent(new CustomEvent('authStateChanged', { 
+          detail: { user: user, session: data } 
+        }));
+        
+        return data;
+      } else {
+        console.error('[AUTH] ❌ Token exchange failed:', data);
+        throw new Error(data.error || 'Token exchange failed');
       }
       
-      return response;
     } catch (error) {
-      console.error('API request failed:', error);
-      
-      // Check if we're offline
-      if (!navigator.onLine) {
-        console.log('📵 Offline - request queued');
-        // Queue for later sync
-        this.queueOfflineRequest(endpoint, options);
-      }
-      
+      console.error('[AUTH] Error in handleSuccessfulAuth:', error);
       throw error;
     }
   }
   
-  private queueOfflineRequest(endpoint: string, options: RequestInit): void {
-    const queue = JSON.parse(localStorage.getItem('sf_offline_queue') || '[]');
-    queue.push({
-      endpoint,
-      options,
-      timestamp: new Date().toISOString()
-    });
-    localStorage.setItem('sf_offline_queue', JSON.stringify(queue));
+  // Get current user
+  getCurrentUser() {
+    return this.auth.currentUser;
   }
   
-  // Public API methods
-  async getJournalEntries(): Promise<any> {
-    const response = await this.makeRequest('/api/journal/entries');
-    return response.json();
+  // Sign out
+  async signOut() {
+    try {
+      await firebaseSignOut(this.auth);
+      localStorage.removeItem('session_token');
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('user_email');
+      console.log('[AUTH] Signed out successfully');
+      
+      window.dispatchEvent(new CustomEvent('authStateChanged', { 
+        detail: { user: null } 
+      }));
+    } catch (error) {
+      console.error('[AUTH] Sign out error:', error);
+    }
   }
   
-  async createJournalEntry(entry: any): Promise<any> {
-    const response = await this.makeRequest('/api/journal/entries', {
-      method: 'POST',
-      body: JSON.stringify(entry)
-    });
-    return response.json();
-  }
-  
-  async generateInsights(entryId: string): Promise<any> {
-    const response = await this.makeRequest(`/api/insights/generate/${entryId}`, {
-      method: 'POST'
-    });
-    return response.json();
+  // Check if user is authenticated
+  isAuthenticated() {
+    return !!this.auth.currentUser || !!localStorage.getItem('session_token');
   }
 }
 
-export default new SociallyFedAPIService();
+// Create singleton
+const authService = new AuthService();
+
+// Expose for debugging
+window.authService = authService;
+
+export default authService;
 ```
 
-### 5. Configuration Service Updates
-```typescript
-// src/services/SociallyFedConfigService.ts
-export interface SimplifiedFlags {
-  // Authentication
-  useFirebaseOnly: boolean;
-  attemptServerSync: boolean;
-  useRedirectFlow: boolean;
-  enableOfflineMode: boolean;
-  
-  // Features
-  enableEncryption: boolean;
-  enableWebSocket: boolean;
-  enableProfessionalServices: boolean;
-  enableMultiTenant: boolean;
-  
-  // Development
-  enableDebugMode: boolean;
-  logAuthFlow: boolean;
-}
+### Feature 5: Debug Utilities
+**File to Create:** `src/utils/debug.js`
 
-export class SociallyFedConfigService {
-  private static instance: SociallyFedConfigService;
-  private flags: SimplifiedFlags;
+```javascript
+// Debug utilities - import this in index.js to have it available
+
+const Debug = {
+  // Check all services
+  checkServices() {
+    console.log('=== Service Status ===');
+    console.log('ConfigService:', typeof window.SociallyFedConfigService);
+    console.log('AuthService:', typeof window.authService);
+    console.log('Platform:', typeof window.PlatformDetection);
+    
+    if (window.SociallyFedConfigService) {
+      console.log('Config.isSimplifiedFlagEnabled:', 
+        typeof window.SociallyFedConfigService.isSimplifiedFlagEnabled);
+    }
+  },
   
-  private constructor() {
-    this.flags = this.loadFlags();
-    this.exposeToWindow();
-  }
-  
-  private loadFlags(): SimplifiedFlags {
-    // Load from localStorage first
-    const stored = localStorage.getItem('sf_simplified_flags');
-    if (stored) {
-      return JSON.parse(stored);
+  // Test configuration
+  testConfig() {
+    if (!window.SociallyFedConfigService) {
+      console.error('❌ ConfigService not found!');
+      return;
     }
     
-    // Default configuration for Firebase-only mode
-    return {
-      useFirebaseOnly: true,
-      attemptServerSync: false,
-      useRedirectFlow: true, // Avoid CORS issues
-      enableOfflineMode: true,
-      enableEncryption: false, // Disabled to simplify auth
-      enableWebSocket: false,
-      enableProfessionalServices: false,
-      enableMultiTenant: false,
-      enableDebugMode: process.env.NODE_ENV === 'development',
-      logAuthFlow: true
-    };
-  }
+    console.log('=== Config Test ===');
+    console.log('Simplified:', window.SociallyFedConfigService.isSimplifiedFlagEnabled());
+    console.log('BasicMode:', window.SociallyFedConfigService.isBasicModeEnabled());
+    console.log('Platform:', window.SociallyFedConfigService.detectPlatform());
+  },
   
-  private exposeToWindow(): void {
-    if (typeof window !== 'undefined') {
-      (window as any).SociallyFedConfig = this;
-      (window as any).sfSetFlags = (flags: Partial<SimplifiedFlags>) => {
-        this.updateFlags(flags);
-      };
+  // Test authentication
+  async testAuth() {
+    console.log('=== Auth Test ===');
+    
+    if (!window.authService) {
+      console.error('❌ AuthService not found!');
+      return;
     }
-  }
-  
-  public updateFlags(updates: Partial<SimplifiedFlags>): void {
-    this.flags = { ...this.flags, ...updates };
-    localStorage.setItem('sf_simplified_flags', JSON.stringify(this.flags));
-    console.log('🔧 Config updated:', this.flags);
-  }
-  
-  public getSimplifiedFlags(): SimplifiedFlags {
-    return this.flags;
-  }
-  
-  public static getInstance(): SociallyFedConfigService {
-    if (!SociallyFedConfigService.instance) {
-      SociallyFedConfigService.instance = new SociallyFedConfigService();
+    
+    const user = window.authService.getCurrentUser();
+    if (user) {
+      console.log('✅ User signed in:', user.email);
+      const token = await user.getIdToken();
+      console.log('Token preview:', token.substring(0, 50) + '...');
+    } else {
+      console.log('❌ No user signed in');
     }
-    return SociallyFedConfigService.instance;
+  },
+  
+  // Platform info
+  platformInfo() {
+    console.log('=== Platform Info ===');
+    if (window.PlatformDetection) {
+      return window.PlatformDetection.getInfo();
+    } else {
+      console.log('User Agent:', navigator.userAgent);
+      console.log('Screen:', window.screen.width + 'x' + window.screen.height);
+      console.log('PWA:', window.matchMedia('(display-mode: standalone)').matches);
+    }
+  },
+  
+  // Clear all data
+  clearAll() {
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('✅ All storage cleared');
+  },
+  
+  // Run all tests
+  runAll() {
+    this.checkServices();
+    this.testConfig();
+    this.testAuth();
+    this.platformInfo();
   }
-}
+};
+
+// Attach to window
+window.Debug = Debug;
+
+// Auto-run check on load
+setTimeout(() => {
+  console.log('Debug utilities loaded. Use window.Debug.* commands');
+  Debug.checkServices();
+}, 1000);
+
+export default Debug;
 ```
 
 ---
 
 ## 📋 Technical Requirements
 
-### Package Dependencies
+### Required Package Versions:
 ```json
-// package.json updates
 {
   "dependencies": {
-    "firebase": "^10.12.0",
-    "@ionic/react": "^7.0.0",
-    "@ionic/react-router": "^7.0.0",
+    "firebase": "^10.7.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.0.0"
+    "react-dom": "^18.2.0"
   }
 }
 ```
 
-### Environment Variables
+### Install if missing:
 ```bash
-# .env.local
-REACT_APP_FIREBASE_API_KEY=AIzaSy...
-REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
-REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.appspot.com
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=512204327023
-REACT_APP_FIREBASE_APP_ID=1:512204327023:web:...
-
-REACT_APP_SERVER_URL=https://socially-fed-server-512204327023.us-central1.run.app
-REACT_APP_USE_EMULATORS=false
+npm install firebase@latest
 ```
 
-### Build Configuration
+### Firebase Configuration:
+**File:** `src/services/firebase.js`
 ```javascript
-// capacitor.config.ts or ionic.config.json
-{
-  "appId": "com.sociallyfed.mobile",
-  "appName": "SociallyFed",
-  "server": {
-    "allowNavigation": [
-      "sociallyfed-55780.firebaseapp.com",
-      "accounts.google.com",
-      "*.googleapis.com"
-    ]
-  }
-}
+// Make sure this file exists with your config
+import { initializeApp } from 'firebase/app';
+import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDYR9IdLUmLVBnq4RwcM6fX8JpE5EI8Bls",
+  authDomain: "sociallyfed-55780.firebaseapp.com",
+  projectId: "sociallyfed-55780",
+  storageBucket: "sociallyfed-55780.appspot.com",
+  messagingSenderId: "512204327023",
+  appId: "1:512204327023:web:4682c5db3d42b5e1011468"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+// Use local storage instead of session storage
+setPersistence(auth, browserLocalPersistence);
+
+export { app, auth };
+```
+
+### Import Order in Main App:
+**File:** `src/App.js` or `src/index.js`
+```javascript
+// Import in this exact order at the top of your main file
+import './services/SociallyFedConfigService'; // Must be first!
+import './services/firebase';
+import './utils/debug';
+import authService from './services/authService';
+import PlatformDetection from './utils/platformDetection';
+
+// Your other imports...
 ```
 
 ---
 
 ## 🔌 Integration Points to Consider
 
-### 1. Offline Mode
-- Ensure Firebase auth persists offline
-- Cache user data in IndexedDB for offline access
-- Queue API requests when offline
-- Sync when connection returns
-
-### 2. PWA Manifest
-- Update manifest with proper auth domain
-- Ensure service worker handles auth redirects
-- Configure proper start_url for authenticated users
-
-### 3. Service Worker Updates
+### 1. Login Component Integration
+Update your login button to use the new auth service:
 ```javascript
-// src/serviceWorkerRegistration.ts
-// Add Firebase domains to cache whitelist
-const CACHE_WHITELIST = [
-  'sociallyfed-55780.firebaseapp.com',
-  'identitytoolkit.googleapis.com',
-  'securetoken.googleapis.com'
-];
-```
+// In your Login component
+import authService from '../services/authService';
 
-### 4. Routing Guards
-```typescript
-// src/components/PrivateRoute.tsx
-import { Route, Redirect } from 'react-router-dom';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '../services/firebaseConfig';
-
-const PrivateRoute: React.FC<any> = ({ component: Component, ...rest }) => {
-  const [user, loading] = useAuthState(auth);
-  
-  if (loading) return <IonLoading isOpen={true} />;
-  
-  return (
-    <Route
-      {...rest}
-      render={(props) =>
-        user ? <Component {...props} /> : <Redirect to="/login" />
-      }
-    />
-  );
+const handleLogin = async () => {
+  try {
+    setLoading(true);
+    await authService.signInWithGoogle();
+    // Redirect handled automatically
+  } catch (error) {
+    console.error('Login failed:', error);
+    setError(error.message);
+  } finally {
+    setLoading(false);
+  }
 };
 ```
 
-### 5. State Management
-- Update any Redux/MobX stores to use Firebase user
-- Ensure user state syncs across tabs
-- Handle auth state in background tabs
+### 2. App State Management
+Listen for auth changes:
+```javascript
+// In your main App component
+useEffect(() => {
+  const handleAuthChange = (event) => {
+    if (event.detail.user) {
+      // User logged in
+      setUser(event.detail.user);
+      navigate('/dashboard'); // or wherever
+    } else {
+      // User logged out
+      setUser(null);
+      navigate('/login');
+    }
+  };
+  
+  window.addEventListener('authStateChanged', handleAuthChange);
+  
+  return () => {
+    window.removeEventListener('authStateChanged', handleAuthChange);
+  };
+}, []);
+```
+
+### 3. Protected Routes
+Check authentication before rendering:
+```javascript
+const ProtectedRoute = ({ children }) => {
+  if (!authService.isAuthenticated()) {
+    return <Navigate to="/login" />;
+  }
+  return children;
+};
+```
 
 ---
 
 ## ✅ Definition of Done for Today's Work
 
-### Must Complete
-- [ ] Firebase configuration updated with correct credentials
-- [ ] AuthenticationService refactored to use Firebase directly
-- [ ] Login component simplified without token exchange
-- [ ] CORS/COOP issues completely eliminated
-- [ ] Basic offline mode support implemented
-- [ ] Feature flags configured for Firebase-only mode
-- [ ] Manual testing confirms sign-in works without errors
+### Test Checklist - ALL must pass:
 
-### Should Complete
-- [ ] API service updated to use Firebase tokens
-- [ ] Offline queue mechanism implemented
-- [ ] Service worker configured for auth domains
-- [ ] Private routes use Firebase auth state
-- [ ] Error handling provides clear user feedback
-- [ ] Redux/state management updated if applicable
+#### 1. **Config Service Working**
+Open browser console and run:
+```javascript
+// This should NOT throw an error:
+window.SociallyFedConfigService.isSimplifiedFlagEnabled()
+// Should return: false (or true, but no error)
+```
 
-### Nice to Have
-- [ ] Analytics tracking for auth success/failure
-- [ ] Performance monitoring for auth flow
-- [ ] A/B testing setup for popup vs redirect
-- [ ] Debug panel for auth troubleshooting
-- [ ] Documentation updated with new auth flow
+#### 2. **No COOP Warnings**
+- Open Chrome DevTools Console
+- Navigate to login page
+- Click "Sign in with Google"
+- Should see NO warnings about third-party cookies or COOP
 
-### Testing Checklist
+#### 3. **Platform Detection Correct**
+On mobile device or PWA:
+```javascript
+window.Debug.platformInfo()
+// Should show platform: 'mobile' or 'pwa', not 'web'
+```
+
+#### 4. **Authentication Flow Works**
+Test both desktop and mobile:
+- Desktop: Should open Google popup
+- Mobile: Should redirect to Google, then back
+- After sign-in: localStorage should have `session_token`
+
+#### 5. **Debug Utilities Available**
+```javascript
+// All these should work:
+window.Debug.runAll()
+window.Debug.testAuth()
+window.Debug.testConfig()
+```
+
+#### 6. **Server Integration**
+After successful Google sign-in:
+- Network tab should show POST to `/api/auth/exchange`
+- Response should be 200 OK
+- localStorage should contain `session_token` and `user_id`
+
+### Visual Confirmation:
+- [ ] Login page loads without errors
+- [ ] Google sign-in button is clickable
+- [ ] Sign-in completes successfully
+- [ ] User is redirected to app after sign-in
+- [ ] No red errors in console
+
+---
+
+## 🚨 If You Get Stuck
+
+### Quick Fixes for Common Issues:
+
+**Issue 1: "isSimplifiedFlagEnabled is not a function"**
+- Make sure `SociallyFedConfigService.js` is imported in your main App.js
+- Check console for "[CONFIG] SociallyFedConfigService attached to window"
+
+**Issue 2: "Firebase is not defined"**
 ```bash
-# Install dependencies
 npm install firebase
-
-# Start development server
-npm start
-
-# Test authentication flow
-# 1. Open browser DevTools
-# 2. Clear all site data
-# 3. Navigate to http://localhost:8100
-# 4. Click "Sign in with Google"
-# 5. Verify no CORS errors in console
-# 6. Confirm successful redirect to /journal
-
-# Test offline mode
-# 1. Sign in successfully
-# 2. Go offline (DevTools Network tab)
-# 3. Refresh page
-# 4. Verify app loads with cached user
-
-# Test feature flags
-# In browser console:
-window.sfSetFlags({ useRedirectFlow: false });
-# Try sign-in with popup mode
-
-window.sfSetFlags({ attemptServerSync: true });
-# Verify server sync attempts (may fail if server not ready)
 ```
 
-### Mobile Testing
+**Issue 3: Popup blocked on mobile**
+- This is expected! The code should automatically fall back to redirect
+- Check that redirect flow is working
+
+**Issue 4: 401 from server**
+- The server team is fixing this today
+- For now, authentication might fail at the exchange step
+- Focus on fixing the client-side errors first
+
+**Issue 5: "Cannot read property 'auth' of undefined"**
+- Make sure firebase.js exports the auth object
+- Check import statements match exactly
+
+### Testing Sequence:
+1. First, fix the config service error
+2. Open browser console, run: `window.Debug.checkServices()`
+3. All services should be defined
+4. Then test login flow
+
+### Emergency Bypass (Development Only):
+```javascript
+// Add to console if you need to bypass auth temporarily:
+localStorage.setItem('session_token', 'dev_token_123');
+localStorage.setItem('user_id', 'dev_user');
+window.location.reload();
+```
+
+---
+
+## 📝 End of Day Checklist
+
+Before you finish:
+1. [ ] All error messages in console are resolved
+2. [ ] Config service error is fixed
+3. [ ] Platform detection shows correct platform
+4. [ ] OAuth flow works (popup or redirect)
+5. [ ] Code committed to git with clear commit messages
+6. [ ] Brief status update in team Slack
+
+### Commit your work:
 ```bash
-# Build for mobile
-ionic build
-ionic capacitor copy ios
-ionic capacitor copy android
+git add .
+git commit -m "fix: resolve config service and OAuth flow issues
 
-# Test on devices
-ionic capacitor run ios -l --external
-ionic capacitor run android -l --external
+- Added missing isSimplifiedFlagEnabled method
+- Implemented platform detection for mobile/PWA
+- Updated auth flow to use redirect on mobile
+- Added COOP headers for OAuth compatibility"
+
+git push origin your-branch-name
+```
+
+### Build and Deploy (only if everything works):
+```bash
+# Build the app
+npm run build
+
+# Test the build locally
+npx serve -s build -l 3000
+
+# Deploy to Cloud Run
+gcloud run deploy sociallyfed-mobile \
+  --source . \
+  --region=us-central1 \
+  --platform=managed \
+  --allow-unauthenticated
 ```
 
 ---
 
-## 🚀 Next Steps (Tomorrow)
+## 🎯 Success Metrics
 
-1. **Production Deployment**
-   - Build optimized production bundle
-   - Deploy to Firebase Hosting
-   - Update Cloud Run service
-   - Verify production authentication
+You know you're done when:
+1. **Zero console errors** on the login page
+2. **Platform shows as 'mobile'** on mobile devices
+3. **Google sign-in completes** without errors
+4. **Debug utilities work** in console
+5. **Can sign in and out** repeatedly without issues
 
-2. **Enhanced Offline Support**
-   - Implement comprehensive offline queue
-   - Add background sync for PWA
-   - Create offline indicator UI
-   - Test offline-to-online transitions
-
-3. **User Migration**
-   - Create migration notice for existing users
-   - Implement account linking for JWT users
-   - Add analytics to track migration
-   - Plan deprecation of old auth
-
----
-
-## 📝 Notes for Implementation
-
-### Common Issues and Solutions
-
-1. **Redirect Loop**
-   - Ensure auth state check doesn't trigger on /login
-   - Clear redirect result after handling
-
-2. **Token Refresh**
-   - Firebase handles automatically
-   - Force refresh: `user.getIdToken(true)`
-
-3. **Offline Persistence**
-   - Enable with `setPersistence(browserLocalPersistence)`
-   - Falls back to session persistence if fails
-
-4. **CORS on Localhost**
-   - Add localhost to Firebase authorized domains
-   - Use proper ports (3000, 8080, 8100)
-
-### Performance Tips
-1. Lazy load Firebase SDKs
-2. Use Firebase Auth state instead of repeated checks
-3. Cache user object in memory
-4. Minimize token refresh calls
-
-### Security Notes
-1. Never store Firebase config keys in public repos
-2. Use environment variables for sensitive config
-3. Implement proper CSP headers
-4. Validate auth state on each route change
-
-### Resources
-- [Firebase Auth Web Guide](https://firebase.google.com/docs/auth/web/start)
-- [Ionic Firebase Integration](https://ionicframework.com/docs/native/firebase-authentication)
-- [PWA Offline Strategies](https://web.dev/offline-cookbook/)
-
----
-
-**Session Duration Estimate**: 5-6 hours  
-**Complexity Level**: Medium  
-**Risk Level**: Low (with proper feature flags)  
-**Business Impact**: Critical - Permanently fixes authentication blocking issue
-
----
-*Brief prepared for SociallyFed Mobile Team*  
-*Firebase Authentication Direct Integration*  
-*August 24, 2025*
+Remember: Focus on fixing the immediate blocker (config service) first, then work through the other issues in order. Ask for help if you're stuck for more than 30 minutes on any issue!
 ### Current Sprint:
 # Current Sprint Status - Terra API Integration & Professional Services Enhancement
 
@@ -1331,851 +1248,768 @@ gantt
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# Daily Brief - SociallyFed Mobile PWA
-## Firebase Authentication Direct Integration
-**Date**: Sunday, August 24, 2025  
-**Sprint**: Firebase Auth Migration - Mobile PWA  
-**Developer**: Mobile Team  
-**Priority**: P0 CRITICAL - Fix Authentication CORS Issues
+# SociallyFed Mobile PWA - Daily Implementation Brief
+## Date: August 28, 2025
+## Developer: Junior Developer  
+## Assigned by: Senior Developer
+## Sprint Goal: Fix Authentication Flow & Configuration Service
 
 ---
 
 ## 🎯 Today's Implementation Priorities
 
-### Primary Goal
-Replace the problematic server token exchange flow with direct Firebase Authentication while maintaining backward compatibility through feature flags. Eliminate CORS/COOP issues permanently.
+**Mission Critical:** Fix the authentication flow so users can successfully log in via Google on the mobile PWA.
 
-### Critical Path Items (In Order)
-1. **Firebase Auth Service Refactor** (2 hours)
-   - Remove server token exchange dependency
-   - Implement direct Firebase authentication
-   - Add feature flag for auth mode selection
+### Priority Order (Complete in this sequence):
+1. **[P0 - URGENT]** Fix `isSimplifiedFlagEnabled` error blocking the app
+2. **[P0 - URGENT]** Resolve Cross-Origin Policy issues for OAuth
+3. **[P1 - HIGH]** Implement proper mobile platform detection
+4. **[P1 - HIGH]** Update authentication flow to use redirect for mobile
+5. **[P2 - MEDIUM]** Add debug utilities for testing
 
-2. **Login Component Simplification** (1-2 hours)
-   - Remove complex token exchange logic
-   - Implement Firebase-first authentication
-   - Add proper error handling and recovery
-
-3. **API Service Updates** (2 hours)
-   - Modify all API calls to use Firebase tokens
-   - Update request interceptors
-   - Handle both auth modes via feature flag
-
-4. **Offline Mode Enhancement** (1 hour)
-   - Ensure Firebase auth works offline
-   - Cache user credentials properly
-   - Handle auth state persistence
+**Time Budget:** 8 hours
+- 1 hour fixing config service
+- 2 hours on COOP/OAuth issues  
+- 2 hours on platform detection
+- 2 hours on auth flow update
+- 1 hour on testing & debugging
 
 ---
 
-## 🔨 Specific Features to Build
+## 🔨 Specific Features to Build Today
 
-### 1. Updated Firebase Configuration
-```typescript
-// src/services/firebaseConfig.ts
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  setPersistence, 
-  browserLocalPersistence,
-  connectAuthEmulator 
-} from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+### Feature 1: Fix Configuration Service (DO THIS FIRST!)
+**File to Create:** `src/services/SociallyFedConfigService.js`
 
-const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSy...",
-  authDomain: "sociallyfed-55780.firebaseapp.com",
-  projectId: "sociallyfed-55780",
-  storageBucket: "sociallyfed-55780.appspot.com",
-  messagingSenderId: "512204327023",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
-};
+```javascript
+// Copy this EXACTLY - this fixes the immediate error
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize Auth with persistence
-export const auth = getAuth(app);
-setPersistence(auth, browserLocalPersistence);
-
-// Initialize Firestore
-export const db = getFirestore(app);
-
-// Development: Connect to emulators
-if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_USE_EMULATORS) {
-  connectAuthEmulator(auth, 'http://localhost:9099');
-  connectFirestoreEmulator(db, 'localhost', 8080);
+class SociallyFedConfigService {
+  constructor() {
+    console.log('[CONFIG] Initializing SociallyFedConfigService');
+    this.flags = {
+      simplifiedMode: false,
+      basicMode: false,
+      forceMobilePlatform: true
+    };
+    
+    // Load saved config from localStorage
+    try {
+      const saved = localStorage.getItem('sociallyfed_config');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        this.flags = { ...this.flags, ...parsed.flags };
+        console.log('[CONFIG] Loaded saved config:', this.flags);
+      }
+    } catch (e) {
+      console.log('[CONFIG] No saved config, using defaults');
+    }
+  }
+  
+  // THIS IS THE MISSING METHOD - Copy exactly!
+  isSimplifiedFlagEnabled() {
+    console.log('[CONFIG] isSimplifiedFlagEnabled called, returning:', this.flags.simplifiedMode);
+    return this.flags.simplifiedMode || false;
+  }
+  
+  // Add these helper methods too
+  isBasicModeEnabled() {
+    return this.flags.basicMode || false;
+  }
+  
+  isMobilePlatform() {
+    return this.flags.forceMobilePlatform || false;
+  }
+  
+  setFlag(flagName, value) {
+    this.flags[flagName] = value;
+    this.saveConfig();
+    console.log(`[CONFIG] Flag ${flagName} set to ${value}`);
+  }
+  
+  saveConfig() {
+    try {
+      localStorage.setItem('sociallyfed_config', JSON.stringify({ flags: this.flags }));
+    } catch (e) {
+      console.error('[CONFIG] Failed to save config:', e);
+    }
+  }
+  
+  // Platform detection helper
+  detectPlatform() {
+    const ua = navigator.userAgent.toLowerCase();
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
+    
+    if (isPWA) return 'pwa';
+    if (isMobile) return 'mobile';
+    return 'web';
+  }
 }
 
-export default app;
+// Create the singleton instance
+const configService = new SociallyFedConfigService();
+
+// IMPORTANT: Expose to window so the app can find it
+window.SociallyFedConfigService = configService;
+
+// Also export for module usage
+export default configService;
+
+console.log('[CONFIG] SociallyFedConfigService attached to window');
 ```
 
-### 2. Refactored Authentication Service
-```typescript
-// src/services/AuthenticationService.ts
-import { 
-  signInWithPopup, 
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider, 
-  onAuthStateChanged, 
-  User,
-  signOut,
-  getIdToken
-} from 'firebase/auth';
-import { auth } from './firebaseConfig';
-import { SociallyFedConfigService } from './SociallyFedConfigService';
+**Then import it in your main App.js or index.js:**
+```javascript
+// At the top of App.js or index.js
+import './services/SociallyFedConfigService';
+// This ensures it loads and attaches to window
+```
 
-export interface AuthConfig {
-  useFirebaseOnly: boolean;
-  attemptServerSync: boolean;
-  useRedirectFlow: boolean; // Avoid CORS issues
-}
+### Feature 2: Fix Cross-Origin Policy Issues
+**File:** `public/index.html`
 
-export class AuthenticationService {
-  private currentUser: User | null = null;
-  private authStateListeners: ((user: User | null) => void)[] = [];
-  private config: AuthConfig;
+Add these lines in the `<head>` section (around line 5-10):
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <!-- ADD THESE NEW LINES FOR OAUTH FIX -->
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="credentialless">
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
+    <!-- END OF NEW LINES -->
+    
+    <meta name="theme-color" content="#000000" />
+    <!-- rest of your head content -->
+```
+
+### Feature 3: Platform Detection Service
+**File to Create:** `src/utils/platformDetection.js`
+
+```javascript
+// This properly detects if we're on mobile/PWA/web
+
+const PlatformDetection = {
+  // Check if running as installed PWA
+  isPWA() {
+    // Multiple ways to detect PWA
+    const checks = [
+      window.matchMedia('(display-mode: standalone)').matches,
+      window.navigator.standalone === true,
+      document.referrer.includes('android-app://'),
+      window.matchMedia('(display-mode: fullscreen)').matches,
+      window.matchMedia('(display-mode: minimal-ui)').matches
+    ];
+    
+    const result = checks.some(check => check === true);
+    console.log('[PLATFORM] PWA detection:', result, checks);
+    return result;
+  },
   
+  // Check if on mobile device
+  isMobile() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    
+    // Check for mobile user agents
+    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i;
+    const isMobileUA = mobileRegex.test(userAgent);
+    
+    // Also check screen size
+    const isMobileScreen = window.screen.width <= 768;
+    
+    // Check for touch support
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    const result = isMobileUA || (isMobileScreen && hasTouch);
+    console.log('[PLATFORM] Mobile detection:', result, {
+      userAgent: isMobileUA,
+      screen: isMobileScreen,
+      touch: hasTouch
+    });
+    
+    return result;
+  },
+  
+  // Get the platform type
+  getPlatform() {
+    if (this.isPWA()) return 'pwa';
+    if (this.isMobile()) return 'mobile';
+    return 'web';
+  },
+  
+  // Get all platform info for debugging
+  getInfo() {
+    const info = {
+      platform: this.getPlatform(),
+      isPWA: this.isPWA(),
+      isMobile: this.isMobile(),
+      userAgent: navigator.userAgent,
+      screenSize: `${window.screen.width}x${window.screen.height}`,
+      hasTouch: 'ontouchstart' in window,
+      displayMode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'
+    };
+    
+    console.log('[PLATFORM] Full platform info:', info);
+    return info;
+  }
+};
+
+// Auto-detect on load
+window.addEventListener('load', () => {
+  console.log('[PLATFORM] Initial detection:', PlatformDetection.getInfo());
+});
+
+export default PlatformDetection;
+```
+
+### Feature 4: Updated Authentication Service
+**File to Update/Create:** `src/services/authService.js`
+
+```javascript
+// Complete auth service with mobile redirect support
+
+import { 
+  getAuth, 
+  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut
+} from 'firebase/auth';
+import { app } from './firebase'; // Your Firebase app
+import PlatformDetection from '../utils/platformDetection';
+
+class AuthService {
   constructor() {
-    this.config = this.loadAuthConfig();
-    this.initializeAuthListener();
+    this.auth = getAuth(app);
+    this.serverUrl = 'https://sociallyfed-server-a5kcra27d6o-uc.a.run.app';
+    
+    // Check for redirect result on page load
     this.checkRedirectResult();
   }
   
-  private loadAuthConfig(): AuthConfig {
-    const flags = SociallyFedConfigService.getInstance().getSimplifiedFlags();
-    return {
-      useFirebaseOnly: flags.useFirebaseOnly ?? true,
-      attemptServerSync: flags.attemptServerSync ?? false,
-      useRedirectFlow: flags.useRedirectFlow ?? true // Default to redirect to avoid CORS
-    };
-  }
-  
-  private initializeAuthListener(): void {
-    onAuthStateChanged(auth, async (user) => {
-      console.log('🔐 Auth state changed:', user?.email || 'signed out');
-      this.currentUser = user;
-      
-      if (user) {
-        // Store user data locally
-        this.storeUserData(user);
-        
-        // Optionally sync with server if configured
-        if (this.config.attemptServerSync) {
-          await this.syncWithServer(user);
-        }
-      } else {
-        this.clearUserData();
-      }
-      
-      // Notify listeners
-      this.authStateListeners.forEach(listener => listener(user));
-    });
-  }
-  
-  private async checkRedirectResult(): Promise<void> {
+  // Check if we're returning from a redirect sign-in
+  async checkRedirectResult() {
     try {
-      const result = await getRedirectResult(auth);
-      if (result?.user) {
-        console.log('✅ Redirect sign-in successful:', result.user.email);
-        // Navigation will be handled by auth state listener
-      }
-    } catch (error) {
-      console.error('Redirect sign-in error:', error);
-    }
-  }
-  
-  async signInWithGoogle(): Promise<User> {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({
-      prompt: 'select_account',
-      access_type: 'offline',
-      include_granted_scopes: 'true'
-    });
-    
-    try {
-      if (this.config.useRedirectFlow) {
-        // Use redirect flow to avoid CORS issues
-        console.log('🔄 Initiating redirect sign-in...');
-        await signInWithRedirect(auth, provider);
-        // User will be redirected, auth state will be handled on return
-        return null as any; // Flow continues after redirect
-      } else {
-        // Use popup flow (may have CORS issues)
-        console.log('🔄 Initiating popup sign-in...');
-        const result = await signInWithPopup(auth, provider);
+      console.log('[AUTH] Checking for redirect result...');
+      const result = await getRedirectResult(this.auth);
+      
+      if (result && result.user) {
+        console.log('[AUTH] ✅ Redirect sign-in successful:', result.user.email);
+        await this.handleSuccessfulAuth(result.user);
         return result.user;
       }
-    } catch (error: any) {
-      console.error('❌ Sign-in failed:', error);
+    } catch (error) {
+      console.error('[AUTH] Redirect result error:', error);
+    }
+    return null;
+  }
+  
+  // Main sign-in method
+  async signInWithGoogle() {
+    console.log('[AUTH] Starting Google sign-in...');
+    
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account' // Always show account chooser
+    });
+    
+    // Determine which method to use
+    const platform = PlatformDetection.getPlatform();
+    console.log('[AUTH] Platform detected:', platform);
+    
+    try {
+      let result;
       
-      // If popup fails due to CORS, try redirect
-      if (error.code === 'auth/popup-blocked' || 
-          error.code === 'auth/cancelled-popup-request') {
-        console.log('🔄 Popup blocked, trying redirect...');
-        await signInWithRedirect(auth, provider);
+      if (platform === 'pwa' || platform === 'mobile') {
+        // Use redirect for mobile/PWA (popups often blocked)
+        console.log('[AUTH] Using redirect flow for mobile/PWA');
+        
+        // Store a flag so we know we initiated sign-in
+        localStorage.setItem('auth_redirect_pending', 'true');
+        
+        // This will redirect away from the app
+        await signInWithRedirect(this.auth, provider);
+        // Code won't reach here - browser redirects
+        
+      } else {
+        // Use popup for desktop
+        console.log('[AUTH] Using popup flow for desktop');
+        result = await signInWithPopup(this.auth, provider);
+        
+        if (result && result.user) {
+          console.log('[AUTH] ✅ Popup sign-in successful:', result.user.email);
+          await this.handleSuccessfulAuth(result.user);
+          return result.user;
+        }
       }
       
-      throw error;
+    } catch (error) {
+      console.error('[AUTH] Sign-in error:', error);
+      
+      // Handle specific errors
+      if (error.code === 'auth/popup-blocked') {
+        console.log('[AUTH] Popup blocked, falling back to redirect');
+        localStorage.setItem('auth_redirect_pending', 'true');
+        await signInWithRedirect(this.auth, provider);
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        console.log('[AUTH] User cancelled the popup');
+      } else {
+        throw error;
+      }
     }
   }
   
-  private storeUserData(user: User): void {
-    const userData = {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      lastSignIn: new Date().toISOString()
-    };
-    
-    localStorage.setItem('sf_user', JSON.stringify(userData));
-    localStorage.setItem('sf_auth_method', 'firebase');
-  }
-  
-  private clearUserData(): void {
-    localStorage.removeItem('sf_user');
-    localStorage.removeItem('sf_auth_method');
-    localStorage.removeItem('sf_server_token');
-  }
-  
-  private async syncWithServer(user: User): Promise<void> {
-    if (!this.config.attemptServerSync) return;
+  // Handle successful authentication
+  async handleSuccessfulAuth(user) {
+    console.log('[AUTH] Processing successful authentication...');
     
     try {
+      // Get Firebase ID token
       const idToken = await user.getIdToken();
-      const response = await fetch(
-        `${process.env.REACT_APP_SERVER_URL}/api/auth/firebase-login`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ firebaseToken: idToken })
-        }
-      );
+      console.log('[AUTH] Got Firebase ID token, length:', idToken.length);
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.serverToken) {
-          localStorage.setItem('sf_server_token', data.serverToken);
-        }
-        console.log('✅ Server sync successful');
-      } else {
-        console.warn('⚠️ Server sync failed, continuing with Firebase only');
-      }
-    } catch (error) {
-      console.warn('⚠️ Server sync error, continuing with Firebase only:', error);
-    }
-  }
-  
-  async getAuthHeaders(): Promise<HeadersInit> {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (this.currentUser) {
-      try {
-        const idToken = await this.currentUser.getIdToken();
-        headers['X-Firebase-Token'] = idToken;
-        
-        // Include server token if available (backward compatibility)
-        const serverToken = localStorage.getItem('sf_server_token');
-        if (serverToken) {
-          headers['Authorization'] = `Bearer ${serverToken}`;
-        }
-      } catch (error) {
-        console.error('Failed to get auth token:', error);
-      }
-    }
-    
-    return headers;
-  }
-  
-  async signOut(): Promise<void> {
-    await signOut(auth);
-    this.clearUserData();
-    window.location.href = '/login';
-  }
-  
-  getCurrentUser(): User | null {
-    return this.currentUser;
-  }
-  
-  isAuthenticated(): boolean {
-    return !!this.currentUser;
-  }
-  
-  onAuthStateChange(callback: (user: User | null) => void): () => void {
-    this.authStateListeners.push(callback);
-    // Return unsubscribe function
-    return () => {
-      const index = this.authStateListeners.indexOf(callback);
-      if (index > -1) {
-        this.authStateListeners.splice(index, 1);
-      }
-    };
-  }
-  
-  // For immediate auth check
-  async waitForAuthReady(): Promise<User | null> {
-    return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        unsubscribe();
-        resolve(user);
+      // Exchange with your server
+      const response = await fetch(`${this.serverUrl}/api/auth/exchange`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Platform': PlatformDetection.getPlatform()
+        },
+        body: JSON.stringify({
+          token: idToken,
+          platform: PlatformDetection.getPlatform(),
+          email: user.email,
+          uid: user.uid
+        })
       });
-    });
-  }
-}
-
-// Singleton instance
-let authServiceInstance: AuthenticationService | null = null;
-
-export const getAuthService = (): AuthenticationService => {
-  if (!authServiceInstance) {
-    authServiceInstance = new AuthenticationService();
-  }
-  return authServiceInstance;
-};
-
-export default getAuthService();
-```
-
-### 3. Simplified Login Component
-```typescript
-// src/pages/Login.tsx
-import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { IonPage, IonContent, IonButton, IonLoading, IonAlert } from '@ionic/react';
-import { getAuthService } from '../services/AuthenticationService';
-import { auth } from '../services/firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
-import './Login.css';
-
-const Login: React.FC = () => {
-  const history = useHistory();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const authService = getAuthService();
-  
-  useEffect(() => {
-    // Check authentication state
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log('✅ User authenticated, redirecting to journal...');
-        history.replace('/journal');
-      } else {
-        setLoading(false);
-      }
-    });
-    
-    return () => unsubscribe();
-  }, [history]);
-  
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsSigningIn(true);
-      setError(null);
       
-      await authService.signInWithGoogle();
-      // If using redirect flow, the page will redirect
-      // If using popup flow, auth state change will handle navigation
+      const data = await response.json();
       
-    } catch (error: any) {
-      console.error('Sign-in error:', error);
-      
-      // User-friendly error messages
-      if (error.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in cancelled. Please try again.');
-      } else if (error.code === 'auth/network-request-failed') {
-        setError('Network error. Please check your connection and try again.');
-      } else {
-        setError('Sign-in failed. Please try again or contact support.');
-      }
-      
-      setIsSigningIn(false);
-    }
-  };
-  
-  const handleOfflineMode = () => {
-    // Set offline mode flag and navigate
-    localStorage.setItem('sf_offline_mode', 'true');
-    history.push('/journal');
-  };
-  
-  if (loading) {
-    return (
-      <IonPage>
-        <IonContent>
-          <IonLoading isOpen={true} message="Checking authentication..." />
-        </IonContent>
-      </IonPage>
-    );
-  }
-  
-  return (
-    <IonPage>
-      <IonContent className="login-content">
-        <div className="login-container">
-          <div className="login-header">
-            <h1>Welcome to Baseline</h1>
-            <p>A better journaling and mood tracking app.</p>
-          </div>
-          
-          <div className="login-buttons">
-            <IonButton
-              expand="block"
-              onClick={handleGoogleSignIn}
-              disabled={isSigningIn}
-              className="google-signin-btn"
-            >
-              {isSigningIn ? 'Signing in...' : 'Sign in with Google'}
-            </IonButton>
-            
-            <IonButton
-              expand="block"
-              fill="outline"
-              onClick={handleOfflineMode}
-              className="offline-mode-btn"
-            >
-              Continue Offline
-            </IonButton>
-          </div>
-          
-          <div className="login-footer">
-            <p>Your data is private: we're a non-profit, and we have no interest in using your data for anything.</p>
-          </div>
-        </div>
+      if (response.ok && data.success) {
+        console.log('[AUTH] ✅ Token exchange successful');
         
-        <IonAlert
-          isOpen={!!error}
-          onDidDismiss={() => setError(null)}
-          header="Sign-in Error"
-          message={error || ''}
-          buttons={['OK']}
-        />
-      </IonContent>
-    </IonPage>
-  );
-};
-
-export default Login;
-```
-
-### 4. API Service with Firebase Token
-```typescript
-// src/services/SociallyFedAPIService.ts
-import { getAuthService } from './AuthenticationService';
-
-export class SociallyFedAPIService {
-  private baseUrl: string;
-  private authService = getAuthService();
-  
-  constructor() {
-    this.baseUrl = process.env.REACT_APP_SERVER_URL || 
-                   'https://socially-fed-server-512204327023.us-central1.run.app';
-  }
-  
-  private async makeRequest(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<Response> {
-    const headers = await this.authService.getAuthHeaders();
-    
-    const url = `${this.baseUrl}${endpoint}`;
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...headers,
-        ...options.headers
-      }
-    };
-    
-    try {
-      const response = await fetch(url, config);
-      
-      // Handle token expiry
-      if (response.status === 401) {
-        console.log('🔄 Token expired, refreshing...');
-        // Firebase tokens auto-refresh, retry once
-        const newHeaders = await this.authService.getAuthHeaders();
-        config.headers = { ...newHeaders, ...options.headers };
-        return await fetch(url, config);
+        // Store session info
+        localStorage.setItem('session_token', data.sessionToken);
+        localStorage.setItem('user_id', data.userId);
+        localStorage.setItem('user_email', user.email);
+        localStorage.removeItem('auth_redirect_pending');
+        
+        // Trigger any auth state change handlers
+        window.dispatchEvent(new CustomEvent('authStateChanged', { 
+          detail: { user: user, session: data } 
+        }));
+        
+        return data;
+      } else {
+        console.error('[AUTH] ❌ Token exchange failed:', data);
+        throw new Error(data.error || 'Token exchange failed');
       }
       
-      return response;
     } catch (error) {
-      console.error('API request failed:', error);
-      
-      // Check if we're offline
-      if (!navigator.onLine) {
-        console.log('📵 Offline - request queued');
-        // Queue for later sync
-        this.queueOfflineRequest(endpoint, options);
-      }
-      
+      console.error('[AUTH] Error in handleSuccessfulAuth:', error);
       throw error;
     }
   }
   
-  private queueOfflineRequest(endpoint: string, options: RequestInit): void {
-    const queue = JSON.parse(localStorage.getItem('sf_offline_queue') || '[]');
-    queue.push({
-      endpoint,
-      options,
-      timestamp: new Date().toISOString()
-    });
-    localStorage.setItem('sf_offline_queue', JSON.stringify(queue));
+  // Get current user
+  getCurrentUser() {
+    return this.auth.currentUser;
   }
   
-  // Public API methods
-  async getJournalEntries(): Promise<any> {
-    const response = await this.makeRequest('/api/journal/entries');
-    return response.json();
+  // Sign out
+  async signOut() {
+    try {
+      await firebaseSignOut(this.auth);
+      localStorage.removeItem('session_token');
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('user_email');
+      console.log('[AUTH] Signed out successfully');
+      
+      window.dispatchEvent(new CustomEvent('authStateChanged', { 
+        detail: { user: null } 
+      }));
+    } catch (error) {
+      console.error('[AUTH] Sign out error:', error);
+    }
   }
   
-  async createJournalEntry(entry: any): Promise<any> {
-    const response = await this.makeRequest('/api/journal/entries', {
-      method: 'POST',
-      body: JSON.stringify(entry)
-    });
-    return response.json();
-  }
-  
-  async generateInsights(entryId: string): Promise<any> {
-    const response = await this.makeRequest(`/api/insights/generate/${entryId}`, {
-      method: 'POST'
-    });
-    return response.json();
+  // Check if user is authenticated
+  isAuthenticated() {
+    return !!this.auth.currentUser || !!localStorage.getItem('session_token');
   }
 }
 
-export default new SociallyFedAPIService();
+// Create singleton
+const authService = new AuthService();
+
+// Expose for debugging
+window.authService = authService;
+
+export default authService;
 ```
 
-### 5. Configuration Service Updates
-```typescript
-// src/services/SociallyFedConfigService.ts
-export interface SimplifiedFlags {
-  // Authentication
-  useFirebaseOnly: boolean;
-  attemptServerSync: boolean;
-  useRedirectFlow: boolean;
-  enableOfflineMode: boolean;
-  
-  // Features
-  enableEncryption: boolean;
-  enableWebSocket: boolean;
-  enableProfessionalServices: boolean;
-  enableMultiTenant: boolean;
-  
-  // Development
-  enableDebugMode: boolean;
-  logAuthFlow: boolean;
-}
+### Feature 5: Debug Utilities
+**File to Create:** `src/utils/debug.js`
 
-export class SociallyFedConfigService {
-  private static instance: SociallyFedConfigService;
-  private flags: SimplifiedFlags;
+```javascript
+// Debug utilities - import this in index.js to have it available
+
+const Debug = {
+  // Check all services
+  checkServices() {
+    console.log('=== Service Status ===');
+    console.log('ConfigService:', typeof window.SociallyFedConfigService);
+    console.log('AuthService:', typeof window.authService);
+    console.log('Platform:', typeof window.PlatformDetection);
+    
+    if (window.SociallyFedConfigService) {
+      console.log('Config.isSimplifiedFlagEnabled:', 
+        typeof window.SociallyFedConfigService.isSimplifiedFlagEnabled);
+    }
+  },
   
-  private constructor() {
-    this.flags = this.loadFlags();
-    this.exposeToWindow();
-  }
-  
-  private loadFlags(): SimplifiedFlags {
-    // Load from localStorage first
-    const stored = localStorage.getItem('sf_simplified_flags');
-    if (stored) {
-      return JSON.parse(stored);
+  // Test configuration
+  testConfig() {
+    if (!window.SociallyFedConfigService) {
+      console.error('❌ ConfigService not found!');
+      return;
     }
     
-    // Default configuration for Firebase-only mode
-    return {
-      useFirebaseOnly: true,
-      attemptServerSync: false,
-      useRedirectFlow: true, // Avoid CORS issues
-      enableOfflineMode: true,
-      enableEncryption: false, // Disabled to simplify auth
-      enableWebSocket: false,
-      enableProfessionalServices: false,
-      enableMultiTenant: false,
-      enableDebugMode: process.env.NODE_ENV === 'development',
-      logAuthFlow: true
-    };
-  }
+    console.log('=== Config Test ===');
+    console.log('Simplified:', window.SociallyFedConfigService.isSimplifiedFlagEnabled());
+    console.log('BasicMode:', window.SociallyFedConfigService.isBasicModeEnabled());
+    console.log('Platform:', window.SociallyFedConfigService.detectPlatform());
+  },
   
-  private exposeToWindow(): void {
-    if (typeof window !== 'undefined') {
-      (window as any).SociallyFedConfig = this;
-      (window as any).sfSetFlags = (flags: Partial<SimplifiedFlags>) => {
-        this.updateFlags(flags);
-      };
+  // Test authentication
+  async testAuth() {
+    console.log('=== Auth Test ===');
+    
+    if (!window.authService) {
+      console.error('❌ AuthService not found!');
+      return;
     }
-  }
-  
-  public updateFlags(updates: Partial<SimplifiedFlags>): void {
-    this.flags = { ...this.flags, ...updates };
-    localStorage.setItem('sf_simplified_flags', JSON.stringify(this.flags));
-    console.log('🔧 Config updated:', this.flags);
-  }
-  
-  public getSimplifiedFlags(): SimplifiedFlags {
-    return this.flags;
-  }
-  
-  public static getInstance(): SociallyFedConfigService {
-    if (!SociallyFedConfigService.instance) {
-      SociallyFedConfigService.instance = new SociallyFedConfigService();
+    
+    const user = window.authService.getCurrentUser();
+    if (user) {
+      console.log('✅ User signed in:', user.email);
+      const token = await user.getIdToken();
+      console.log('Token preview:', token.substring(0, 50) + '...');
+    } else {
+      console.log('❌ No user signed in');
     }
-    return SociallyFedConfigService.instance;
+  },
+  
+  // Platform info
+  platformInfo() {
+    console.log('=== Platform Info ===');
+    if (window.PlatformDetection) {
+      return window.PlatformDetection.getInfo();
+    } else {
+      console.log('User Agent:', navigator.userAgent);
+      console.log('Screen:', window.screen.width + 'x' + window.screen.height);
+      console.log('PWA:', window.matchMedia('(display-mode: standalone)').matches);
+    }
+  },
+  
+  // Clear all data
+  clearAll() {
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('✅ All storage cleared');
+  },
+  
+  // Run all tests
+  runAll() {
+    this.checkServices();
+    this.testConfig();
+    this.testAuth();
+    this.platformInfo();
   }
-}
+};
+
+// Attach to window
+window.Debug = Debug;
+
+// Auto-run check on load
+setTimeout(() => {
+  console.log('Debug utilities loaded. Use window.Debug.* commands');
+  Debug.checkServices();
+}, 1000);
+
+export default Debug;
 ```
 
 ---
 
 ## 📋 Technical Requirements
 
-### Package Dependencies
+### Required Package Versions:
 ```json
-// package.json updates
 {
   "dependencies": {
-    "firebase": "^10.12.0",
-    "@ionic/react": "^7.0.0",
-    "@ionic/react-router": "^7.0.0",
+    "firebase": "^10.7.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.0.0"
+    "react-dom": "^18.2.0"
   }
 }
 ```
 
-### Environment Variables
+### Install if missing:
 ```bash
-# .env.local
-REACT_APP_FIREBASE_API_KEY=AIzaSy...
-REACT_APP_FIREBASE_AUTH_DOMAIN=sociallyfed-55780.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=sociallyfed-55780
-REACT_APP_FIREBASE_STORAGE_BUCKET=sociallyfed-55780.appspot.com
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=512204327023
-REACT_APP_FIREBASE_APP_ID=1:512204327023:web:...
-
-REACT_APP_SERVER_URL=https://socially-fed-server-512204327023.us-central1.run.app
-REACT_APP_USE_EMULATORS=false
+npm install firebase@latest
 ```
 
-### Build Configuration
+### Firebase Configuration:
+**File:** `src/services/firebase.js`
 ```javascript
-// capacitor.config.ts or ionic.config.json
-{
-  "appId": "com.sociallyfed.mobile",
-  "appName": "SociallyFed",
-  "server": {
-    "allowNavigation": [
-      "sociallyfed-55780.firebaseapp.com",
-      "accounts.google.com",
-      "*.googleapis.com"
-    ]
-  }
-}
+// Make sure this file exists with your config
+import { initializeApp } from 'firebase/app';
+import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDYR9IdLUmLVBnq4RwcM6fX8JpE5EI8Bls",
+  authDomain: "sociallyfed-55780.firebaseapp.com",
+  projectId: "sociallyfed-55780",
+  storageBucket: "sociallyfed-55780.appspot.com",
+  messagingSenderId: "512204327023",
+  appId: "1:512204327023:web:4682c5db3d42b5e1011468"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+// Use local storage instead of session storage
+setPersistence(auth, browserLocalPersistence);
+
+export { app, auth };
+```
+
+### Import Order in Main App:
+**File:** `src/App.js` or `src/index.js`
+```javascript
+// Import in this exact order at the top of your main file
+import './services/SociallyFedConfigService'; // Must be first!
+import './services/firebase';
+import './utils/debug';
+import authService from './services/authService';
+import PlatformDetection from './utils/platformDetection';
+
+// Your other imports...
 ```
 
 ---
 
 ## 🔌 Integration Points to Consider
 
-### 1. Offline Mode
-- Ensure Firebase auth persists offline
-- Cache user data in IndexedDB for offline access
-- Queue API requests when offline
-- Sync when connection returns
-
-### 2. PWA Manifest
-- Update manifest with proper auth domain
-- Ensure service worker handles auth redirects
-- Configure proper start_url for authenticated users
-
-### 3. Service Worker Updates
+### 1. Login Component Integration
+Update your login button to use the new auth service:
 ```javascript
-// src/serviceWorkerRegistration.ts
-// Add Firebase domains to cache whitelist
-const CACHE_WHITELIST = [
-  'sociallyfed-55780.firebaseapp.com',
-  'identitytoolkit.googleapis.com',
-  'securetoken.googleapis.com'
-];
-```
+// In your Login component
+import authService from '../services/authService';
 
-### 4. Routing Guards
-```typescript
-// src/components/PrivateRoute.tsx
-import { Route, Redirect } from 'react-router-dom';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '../services/firebaseConfig';
-
-const PrivateRoute: React.FC<any> = ({ component: Component, ...rest }) => {
-  const [user, loading] = useAuthState(auth);
-  
-  if (loading) return <IonLoading isOpen={true} />;
-  
-  return (
-    <Route
-      {...rest}
-      render={(props) =>
-        user ? <Component {...props} /> : <Redirect to="/login" />
-      }
-    />
-  );
+const handleLogin = async () => {
+  try {
+    setLoading(true);
+    await authService.signInWithGoogle();
+    // Redirect handled automatically
+  } catch (error) {
+    console.error('Login failed:', error);
+    setError(error.message);
+  } finally {
+    setLoading(false);
+  }
 };
 ```
 
-### 5. State Management
-- Update any Redux/MobX stores to use Firebase user
-- Ensure user state syncs across tabs
-- Handle auth state in background tabs
+### 2. App State Management
+Listen for auth changes:
+```javascript
+// In your main App component
+useEffect(() => {
+  const handleAuthChange = (event) => {
+    if (event.detail.user) {
+      // User logged in
+      setUser(event.detail.user);
+      navigate('/dashboard'); // or wherever
+    } else {
+      // User logged out
+      setUser(null);
+      navigate('/login');
+    }
+  };
+  
+  window.addEventListener('authStateChanged', handleAuthChange);
+  
+  return () => {
+    window.removeEventListener('authStateChanged', handleAuthChange);
+  };
+}, []);
+```
+
+### 3. Protected Routes
+Check authentication before rendering:
+```javascript
+const ProtectedRoute = ({ children }) => {
+  if (!authService.isAuthenticated()) {
+    return <Navigate to="/login" />;
+  }
+  return children;
+};
+```
 
 ---
 
 ## ✅ Definition of Done for Today's Work
 
-### Must Complete
-- [ ] Firebase configuration updated with correct credentials
-- [ ] AuthenticationService refactored to use Firebase directly
-- [ ] Login component simplified without token exchange
-- [ ] CORS/COOP issues completely eliminated
-- [ ] Basic offline mode support implemented
-- [ ] Feature flags configured for Firebase-only mode
-- [ ] Manual testing confirms sign-in works without errors
+### Test Checklist - ALL must pass:
 
-### Should Complete
-- [ ] API service updated to use Firebase tokens
-- [ ] Offline queue mechanism implemented
-- [ ] Service worker configured for auth domains
-- [ ] Private routes use Firebase auth state
-- [ ] Error handling provides clear user feedback
-- [ ] Redux/state management updated if applicable
+#### 1. **Config Service Working**
+Open browser console and run:
+```javascript
+// This should NOT throw an error:
+window.SociallyFedConfigService.isSimplifiedFlagEnabled()
+// Should return: false (or true, but no error)
+```
 
-### Nice to Have
-- [ ] Analytics tracking for auth success/failure
-- [ ] Performance monitoring for auth flow
-- [ ] A/B testing setup for popup vs redirect
-- [ ] Debug panel for auth troubleshooting
-- [ ] Documentation updated with new auth flow
+#### 2. **No COOP Warnings**
+- Open Chrome DevTools Console
+- Navigate to login page
+- Click "Sign in with Google"
+- Should see NO warnings about third-party cookies or COOP
 
-### Testing Checklist
+#### 3. **Platform Detection Correct**
+On mobile device or PWA:
+```javascript
+window.Debug.platformInfo()
+// Should show platform: 'mobile' or 'pwa', not 'web'
+```
+
+#### 4. **Authentication Flow Works**
+Test both desktop and mobile:
+- Desktop: Should open Google popup
+- Mobile: Should redirect to Google, then back
+- After sign-in: localStorage should have `session_token`
+
+#### 5. **Debug Utilities Available**
+```javascript
+// All these should work:
+window.Debug.runAll()
+window.Debug.testAuth()
+window.Debug.testConfig()
+```
+
+#### 6. **Server Integration**
+After successful Google sign-in:
+- Network tab should show POST to `/api/auth/exchange`
+- Response should be 200 OK
+- localStorage should contain `session_token` and `user_id`
+
+### Visual Confirmation:
+- [ ] Login page loads without errors
+- [ ] Google sign-in button is clickable
+- [ ] Sign-in completes successfully
+- [ ] User is redirected to app after sign-in
+- [ ] No red errors in console
+
+---
+
+## 🚨 If You Get Stuck
+
+### Quick Fixes for Common Issues:
+
+**Issue 1: "isSimplifiedFlagEnabled is not a function"**
+- Make sure `SociallyFedConfigService.js` is imported in your main App.js
+- Check console for "[CONFIG] SociallyFedConfigService attached to window"
+
+**Issue 2: "Firebase is not defined"**
 ```bash
-# Install dependencies
 npm install firebase
-
-# Start development server
-npm start
-
-# Test authentication flow
-# 1. Open browser DevTools
-# 2. Clear all site data
-# 3. Navigate to http://localhost:8100
-# 4. Click "Sign in with Google"
-# 5. Verify no CORS errors in console
-# 6. Confirm successful redirect to /journal
-
-# Test offline mode
-# 1. Sign in successfully
-# 2. Go offline (DevTools Network tab)
-# 3. Refresh page
-# 4. Verify app loads with cached user
-
-# Test feature flags
-# In browser console:
-window.sfSetFlags({ useRedirectFlow: false });
-# Try sign-in with popup mode
-
-window.sfSetFlags({ attemptServerSync: true });
-# Verify server sync attempts (may fail if server not ready)
 ```
 
-### Mobile Testing
+**Issue 3: Popup blocked on mobile**
+- This is expected! The code should automatically fall back to redirect
+- Check that redirect flow is working
+
+**Issue 4: 401 from server**
+- The server team is fixing this today
+- For now, authentication might fail at the exchange step
+- Focus on fixing the client-side errors first
+
+**Issue 5: "Cannot read property 'auth' of undefined"**
+- Make sure firebase.js exports the auth object
+- Check import statements match exactly
+
+### Testing Sequence:
+1. First, fix the config service error
+2. Open browser console, run: `window.Debug.checkServices()`
+3. All services should be defined
+4. Then test login flow
+
+### Emergency Bypass (Development Only):
+```javascript
+// Add to console if you need to bypass auth temporarily:
+localStorage.setItem('session_token', 'dev_token_123');
+localStorage.setItem('user_id', 'dev_user');
+window.location.reload();
+```
+
+---
+
+## 📝 End of Day Checklist
+
+Before you finish:
+1. [ ] All error messages in console are resolved
+2. [ ] Config service error is fixed
+3. [ ] Platform detection shows correct platform
+4. [ ] OAuth flow works (popup or redirect)
+5. [ ] Code committed to git with clear commit messages
+6. [ ] Brief status update in team Slack
+
+### Commit your work:
 ```bash
-# Build for mobile
-ionic build
-ionic capacitor copy ios
-ionic capacitor copy android
+git add .
+git commit -m "fix: resolve config service and OAuth flow issues
 
-# Test on devices
-ionic capacitor run ios -l --external
-ionic capacitor run android -l --external
+- Added missing isSimplifiedFlagEnabled method
+- Implemented platform detection for mobile/PWA
+- Updated auth flow to use redirect on mobile
+- Added COOP headers for OAuth compatibility"
+
+git push origin your-branch-name
+```
+
+### Build and Deploy (only if everything works):
+```bash
+# Build the app
+npm run build
+
+# Test the build locally
+npx serve -s build -l 3000
+
+# Deploy to Cloud Run
+gcloud run deploy sociallyfed-mobile \
+  --source . \
+  --region=us-central1 \
+  --platform=managed \
+  --allow-unauthenticated
 ```
 
 ---
 
-## 🚀 Next Steps (Tomorrow)
+## 🎯 Success Metrics
 
-1. **Production Deployment**
-   - Build optimized production bundle
-   - Deploy to Firebase Hosting
-   - Update Cloud Run service
-   - Verify production authentication
+You know you're done when:
+1. **Zero console errors** on the login page
+2. **Platform shows as 'mobile'** on mobile devices
+3. **Google sign-in completes** without errors
+4. **Debug utilities work** in console
+5. **Can sign in and out** repeatedly without issues
 
-2. **Enhanced Offline Support**
-   - Implement comprehensive offline queue
-   - Add background sync for PWA
-   - Create offline indicator UI
-   - Test offline-to-online transitions
-
-3. **User Migration**
-   - Create migration notice for existing users
-   - Implement account linking for JWT users
-   - Add analytics to track migration
-   - Plan deprecation of old auth
-
----
-
-## 📝 Notes for Implementation
-
-### Common Issues and Solutions
-
-1. **Redirect Loop**
-   - Ensure auth state check doesn't trigger on /login
-   - Clear redirect result after handling
-
-2. **Token Refresh**
-   - Firebase handles automatically
-   - Force refresh: `user.getIdToken(true)`
-
-3. **Offline Persistence**
-   - Enable with `setPersistence(browserLocalPersistence)`
-   - Falls back to session persistence if fails
-
-4. **CORS on Localhost**
-   - Add localhost to Firebase authorized domains
-   - Use proper ports (3000, 8080, 8100)
-
-### Performance Tips
-1. Lazy load Firebase SDKs
-2. Use Firebase Auth state instead of repeated checks
-3. Cache user object in memory
-4. Minimize token refresh calls
-
-### Security Notes
-1. Never store Firebase config keys in public repos
-2. Use environment variables for sensitive config
-3. Implement proper CSP headers
-4. Validate auth state on each route change
-
-### Resources
-- [Firebase Auth Web Guide](https://firebase.google.com/docs/auth/web/start)
-- [Ionic Firebase Integration](https://ionicframework.com/docs/native/firebase-authentication)
-- [PWA Offline Strategies](https://web.dev/offline-cookbook/)
-
----
-
-**Session Duration Estimate**: 5-6 hours  
-**Complexity Level**: Medium  
-**Risk Level**: Low (with proper feature flags)  
-**Business Impact**: Critical - Permanently fixes authentication blocking issue
-
----
-*Brief prepared for SociallyFed Mobile Team*  
-*Firebase Authentication Direct Integration*  
-*August 24, 2025*
+Remember: Focus on fixing the immediate blocker (config service) first, then work through the other issues in order. Ask for help if you're stuck for more than 30 minutes on any issue!
