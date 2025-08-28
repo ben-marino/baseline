@@ -175,776 +175,591 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Thu 28 Aug 2025 04:32:03 AEST
+## Session Started: Thu 28 Aug 2025 15:12:42 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
 ### Today's Brief:
-# SociallyFed Mobile PWA - Daily Implementation Brief
+# SociallyFed Mobile - Import Path Fix Daily Brief
 ## Date: August 28, 2025
-## Developer: Junior Developer  
+## Developer: Junior Developer
 ## Assigned by: Senior Developer
-## Sprint Goal: Fix Authentication Flow & Configuration Service
+## Sprint Goal: Fix All Import Path Issues Blocking Build
 
 ---
 
 ## 🎯 Today's Implementation Priorities
 
-**Mission Critical:** Fix the authentication flow so users can successfully log in via Google on the mobile PWA.
+**Mission Critical:** Find and fix all incorrect import paths that are preventing the app from building.
 
 ### Priority Order (Complete in this sequence):
-1. **[P0 - URGENT]** Fix `isSimplifiedFlagEnabled` error blocking the app
-2. **[P0 - URGENT]** Resolve Cross-Origin Policy issues for OAuth
-3. **[P1 - HIGH]** Implement proper mobile platform detection
-4. **[P1 - HIGH]** Update authentication flow to use redirect for mobile
-5. **[P2 - MEDIUM]** Add debug utilities for testing
+1. **[P0 - URGENT]** Find all files with incorrect `../services/` imports
+2. **[P0 - URGENT]** Update imports to correct relative paths
+3. **[P1 - HIGH]** Verify TypeScript/JavaScript compatibility
+4. **[P1 - HIGH]** Test build succeeds after fixes
+5. **[P2 - MEDIUM]** Document import pattern for future reference
 
-**Time Budget:** 8 hours
-- 1 hour fixing config service
-- 2 hours on COOP/OAuth issues  
-- 2 hours on platform detection
-- 2 hours on auth flow update
-- 1 hour on testing & debugging
-
----
-
-## 🔨 Specific Features to Build Today
-
-### Feature 1: Fix Configuration Service (DO THIS FIRST!)
-**File to Create:** `src/services/SociallyFedConfigService.js`
-
-```javascript
-// Copy this EXACTLY - this fixes the immediate error
-
-class SociallyFedConfigService {
-  constructor() {
-    console.log('[CONFIG] Initializing SociallyFedConfigService');
-    this.flags = {
-      simplifiedMode: false,
-      basicMode: false,
-      forceMobilePlatform: true
-    };
-    
-    // Load saved config from localStorage
-    try {
-      const saved = localStorage.getItem('sociallyfed_config');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        this.flags = { ...this.flags, ...parsed.flags };
-        console.log('[CONFIG] Loaded saved config:', this.flags);
-      }
-    } catch (e) {
-      console.log('[CONFIG] No saved config, using defaults');
-    }
-  }
-  
-  // THIS IS THE MISSING METHOD - Copy exactly!
-  isSimplifiedFlagEnabled() {
-    console.log('[CONFIG] isSimplifiedFlagEnabled called, returning:', this.flags.simplifiedMode);
-    return this.flags.simplifiedMode || false;
-  }
-  
-  // Add these helper methods too
-  isBasicModeEnabled() {
-    return this.flags.basicMode || false;
-  }
-  
-  isMobilePlatform() {
-    return this.flags.forceMobilePlatform || false;
-  }
-  
-  setFlag(flagName, value) {
-    this.flags[flagName] = value;
-    this.saveConfig();
-    console.log(`[CONFIG] Flag ${flagName} set to ${value}`);
-  }
-  
-  saveConfig() {
-    try {
-      localStorage.setItem('sociallyfed_config', JSON.stringify({ flags: this.flags }));
-    } catch (e) {
-      console.error('[CONFIG] Failed to save config:', e);
-    }
-  }
-  
-  // Platform detection helper
-  detectPlatform() {
-    const ua = navigator.userAgent.toLowerCase();
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
-    
-    if (isPWA) return 'pwa';
-    if (isMobile) return 'mobile';
-    return 'web';
-  }
-}
-
-// Create the singleton instance
-const configService = new SociallyFedConfigService();
-
-// IMPORTANT: Expose to window so the app can find it
-window.SociallyFedConfigService = configService;
-
-// Also export for module usage
-export default configService;
-
-console.log('[CONFIG] SociallyFedConfigService attached to window');
-```
-
-**Then import it in your main App.js or index.js:**
-```javascript
-// At the top of App.js or index.js
-import './services/SociallyFedConfigService';
-// This ensures it loads and attaches to window
-```
-
-### Feature 2: Fix Cross-Origin Policy Issues
-**File:** `public/index.html`
-
-Add these lines in the `<head>` section (around line 5-10):
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
-    <!-- ADD THESE NEW LINES FOR OAUTH FIX -->
-    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
-    <meta http-equiv="Cross-Origin-Embedder-Policy" content="credentialless">
-    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
-    <!-- END OF NEW LINES -->
-    
-    <meta name="theme-color" content="#000000" />
-    <!-- rest of your head content -->
-```
-
-### Feature 3: Platform Detection Service
-**File to Create:** `src/utils/platformDetection.js`
-
-```javascript
-// This properly detects if we're on mobile/PWA/web
-
-const PlatformDetection = {
-  // Check if running as installed PWA
-  isPWA() {
-    // Multiple ways to detect PWA
-    const checks = [
-      window.matchMedia('(display-mode: standalone)').matches,
-      window.navigator.standalone === true,
-      document.referrer.includes('android-app://'),
-      window.matchMedia('(display-mode: fullscreen)').matches,
-      window.matchMedia('(display-mode: minimal-ui)').matches
-    ];
-    
-    const result = checks.some(check => check === true);
-    console.log('[PLATFORM] PWA detection:', result, checks);
-    return result;
-  },
-  
-  // Check if on mobile device
-  isMobile() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    
-    // Check for mobile user agents
-    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i;
-    const isMobileUA = mobileRegex.test(userAgent);
-    
-    // Also check screen size
-    const isMobileScreen = window.screen.width <= 768;
-    
-    // Check for touch support
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    
-    const result = isMobileUA || (isMobileScreen && hasTouch);
-    console.log('[PLATFORM] Mobile detection:', result, {
-      userAgent: isMobileUA,
-      screen: isMobileScreen,
-      touch: hasTouch
-    });
-    
-    return result;
-  },
-  
-  // Get the platform type
-  getPlatform() {
-    if (this.isPWA()) return 'pwa';
-    if (this.isMobile()) return 'mobile';
-    return 'web';
-  },
-  
-  // Get all platform info for debugging
-  getInfo() {
-    const info = {
-      platform: this.getPlatform(),
-      isPWA: this.isPWA(),
-      isMobile: this.isMobile(),
-      userAgent: navigator.userAgent,
-      screenSize: `${window.screen.width}x${window.screen.height}`,
-      hasTouch: 'ontouchstart' in window,
-      displayMode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'
-    };
-    
-    console.log('[PLATFORM] Full platform info:', info);
-    return info;
-  }
-};
-
-// Auto-detect on load
-window.addEventListener('load', () => {
-  console.log('[PLATFORM] Initial detection:', PlatformDetection.getInfo());
-});
-
-export default PlatformDetection;
-```
-
-### Feature 4: Updated Authentication Service
-**File to Update/Create:** `src/services/authService.js`
-
-```javascript
-// Complete auth service with mobile redirect support
-
-import { 
-  getAuth, 
-  signInWithPopup, 
-  signInWithRedirect, 
-  getRedirectResult,
-  GoogleAuthProvider,
-  signOut as firebaseSignOut
-} from 'firebase/auth';
-import { app } from './firebase'; // Your Firebase app
-import PlatformDetection from '../utils/platformDetection';
-
-class AuthService {
-  constructor() {
-    this.auth = getAuth(app);
-    this.serverUrl = 'https://sociallyfed-server-a5kcra27d6o-uc.a.run.app';
-    
-    // Check for redirect result on page load
-    this.checkRedirectResult();
-  }
-  
-  // Check if we're returning from a redirect sign-in
-  async checkRedirectResult() {
-    try {
-      console.log('[AUTH] Checking for redirect result...');
-      const result = await getRedirectResult(this.auth);
-      
-      if (result && result.user) {
-        console.log('[AUTH] ✅ Redirect sign-in successful:', result.user.email);
-        await this.handleSuccessfulAuth(result.user);
-        return result.user;
-      }
-    } catch (error) {
-      console.error('[AUTH] Redirect result error:', error);
-    }
-    return null;
-  }
-  
-  // Main sign-in method
-  async signInWithGoogle() {
-    console.log('[AUTH] Starting Google sign-in...');
-    
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({
-      prompt: 'select_account' // Always show account chooser
-    });
-    
-    // Determine which method to use
-    const platform = PlatformDetection.getPlatform();
-    console.log('[AUTH] Platform detected:', platform);
-    
-    try {
-      let result;
-      
-      if (platform === 'pwa' || platform === 'mobile') {
-        // Use redirect for mobile/PWA (popups often blocked)
-        console.log('[AUTH] Using redirect flow for mobile/PWA');
-        
-        // Store a flag so we know we initiated sign-in
-        localStorage.setItem('auth_redirect_pending', 'true');
-        
-        // This will redirect away from the app
-        await signInWithRedirect(this.auth, provider);
-        // Code won't reach here - browser redirects
-        
-      } else {
-        // Use popup for desktop
-        console.log('[AUTH] Using popup flow for desktop');
-        result = await signInWithPopup(this.auth, provider);
-        
-        if (result && result.user) {
-          console.log('[AUTH] ✅ Popup sign-in successful:', result.user.email);
-          await this.handleSuccessfulAuth(result.user);
-          return result.user;
-        }
-      }
-      
-    } catch (error) {
-      console.error('[AUTH] Sign-in error:', error);
-      
-      // Handle specific errors
-      if (error.code === 'auth/popup-blocked') {
-        console.log('[AUTH] Popup blocked, falling back to redirect');
-        localStorage.setItem('auth_redirect_pending', 'true');
-        await signInWithRedirect(this.auth, provider);
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        console.log('[AUTH] User cancelled the popup');
-      } else {
-        throw error;
-      }
-    }
-  }
-  
-  // Handle successful authentication
-  async handleSuccessfulAuth(user) {
-    console.log('[AUTH] Processing successful authentication...');
-    
-    try {
-      // Get Firebase ID token
-      const idToken = await user.getIdToken();
-      console.log('[AUTH] Got Firebase ID token, length:', idToken.length);
-      
-      // Exchange with your server
-      const response = await fetch(`${this.serverUrl}/api/auth/exchange`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Platform': PlatformDetection.getPlatform()
-        },
-        body: JSON.stringify({
-          token: idToken,
-          platform: PlatformDetection.getPlatform(),
-          email: user.email,
-          uid: user.uid
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        console.log('[AUTH] ✅ Token exchange successful');
-        
-        // Store session info
-        localStorage.setItem('session_token', data.sessionToken);
-        localStorage.setItem('user_id', data.userId);
-        localStorage.setItem('user_email', user.email);
-        localStorage.removeItem('auth_redirect_pending');
-        
-        // Trigger any auth state change handlers
-        window.dispatchEvent(new CustomEvent('authStateChanged', { 
-          detail: { user: user, session: data } 
-        }));
-        
-        return data;
-      } else {
-        console.error('[AUTH] ❌ Token exchange failed:', data);
-        throw new Error(data.error || 'Token exchange failed');
-      }
-      
-    } catch (error) {
-      console.error('[AUTH] Error in handleSuccessfulAuth:', error);
-      throw error;
-    }
-  }
-  
-  // Get current user
-  getCurrentUser() {
-    return this.auth.currentUser;
-  }
-  
-  // Sign out
-  async signOut() {
-    try {
-      await firebaseSignOut(this.auth);
-      localStorage.removeItem('session_token');
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('user_email');
-      console.log('[AUTH] Signed out successfully');
-      
-      window.dispatchEvent(new CustomEvent('authStateChanged', { 
-        detail: { user: null } 
-      }));
-    } catch (error) {
-      console.error('[AUTH] Sign out error:', error);
-    }
-  }
-  
-  // Check if user is authenticated
-  isAuthenticated() {
-    return !!this.auth.currentUser || !!localStorage.getItem('session_token');
-  }
-}
-
-// Create singleton
-const authService = new AuthService();
-
-// Expose for debugging
-window.authService = authService;
-
-export default authService;
-```
-
-### Feature 5: Debug Utilities
-**File to Create:** `src/utils/debug.js`
-
-```javascript
-// Debug utilities - import this in index.js to have it available
-
-const Debug = {
-  // Check all services
-  checkServices() {
-    console.log('=== Service Status ===');
-    console.log('ConfigService:', typeof window.SociallyFedConfigService);
-    console.log('AuthService:', typeof window.authService);
-    console.log('Platform:', typeof window.PlatformDetection);
-    
-    if (window.SociallyFedConfigService) {
-      console.log('Config.isSimplifiedFlagEnabled:', 
-        typeof window.SociallyFedConfigService.isSimplifiedFlagEnabled);
-    }
-  },
-  
-  // Test configuration
-  testConfig() {
-    if (!window.SociallyFedConfigService) {
-      console.error('❌ ConfigService not found!');
-      return;
-    }
-    
-    console.log('=== Config Test ===');
-    console.log('Simplified:', window.SociallyFedConfigService.isSimplifiedFlagEnabled());
-    console.log('BasicMode:', window.SociallyFedConfigService.isBasicModeEnabled());
-    console.log('Platform:', window.SociallyFedConfigService.detectPlatform());
-  },
-  
-  // Test authentication
-  async testAuth() {
-    console.log('=== Auth Test ===');
-    
-    if (!window.authService) {
-      console.error('❌ AuthService not found!');
-      return;
-    }
-    
-    const user = window.authService.getCurrentUser();
-    if (user) {
-      console.log('✅ User signed in:', user.email);
-      const token = await user.getIdToken();
-      console.log('Token preview:', token.substring(0, 50) + '...');
-    } else {
-      console.log('❌ No user signed in');
-    }
-  },
-  
-  // Platform info
-  platformInfo() {
-    console.log('=== Platform Info ===');
-    if (window.PlatformDetection) {
-      return window.PlatformDetection.getInfo();
-    } else {
-      console.log('User Agent:', navigator.userAgent);
-      console.log('Screen:', window.screen.width + 'x' + window.screen.height);
-      console.log('PWA:', window.matchMedia('(display-mode: standalone)').matches);
-    }
-  },
-  
-  // Clear all data
-  clearAll() {
-    localStorage.clear();
-    sessionStorage.clear();
-    console.log('✅ All storage cleared');
-  },
-  
-  // Run all tests
-  runAll() {
-    this.checkServices();
-    this.testConfig();
-    this.testAuth();
-    this.platformInfo();
-  }
-};
-
-// Attach to window
-window.Debug = Debug;
-
-// Auto-run check on load
-setTimeout(() => {
-  console.log('Debug utilities loaded. Use window.Debug.* commands');
-  Debug.checkServices();
-}, 1000);
-
-export default Debug;
-```
+**Time Budget:** 2 hours
+- 30 minutes finding all incorrect imports
+- 45 minutes fixing import paths
+- 30 minutes testing and verification
+- 15 minutes documentation
 
 ---
 
-## 📋 Technical Requirements
+## 🔍 Section 1: Find All Import Issues
 
-### Required Package Versions:
-```json
-{
-  "dependencies": {
-    "firebase": "^10.7.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  }
-}
-```
-
-### Install if missing:
+### Step 1.1: Navigate to Project Directory
 ```bash
-npm install firebase@latest
+cd /home/ben/Development/sociallyfed-mobile/baseline
 ```
 
-### Firebase Configuration:
-**File:** `src/services/firebase.js`
-```javascript
-// Make sure this file exists with your config
-import { initializeApp } from 'firebase/app';
-import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
+### Step 1.2: Create Import Audit Report
+Run these commands IN ORDER to find all import issues:
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDYR9IdLUmLVBnq4RwcM6fX8JpE5EI8Bls",
-  authDomain: "sociallyfed-55780.firebaseapp.com",
-  projectId: "sociallyfed-55780",
-  storageBucket: "sociallyfed-55780.appspot.com",
-  messagingSenderId: "512204327023",
-  appId: "1:512204327023:web:4682c5db3d42b5e1011468"
-};
+```bash
+# Create a temporary file to track our findings
+echo "=== IMPORT PATH AUDIT REPORT ===" > import_audit.txt
+echo "Generated: $(date)" >> import_audit.txt
+echo "" >> import_audit.txt
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+# Find ALL imports of SociallyFedConfigService
+echo "=== SociallyFedConfigService Imports ===" >> import_audit.txt
+grep -rn "SociallyFedConfigService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
 
-// Use local storage instead of session storage
-setPersistence(auth, browserLocalPersistence);
+# Find ALL imports using ../services pattern (PROBLEMATIC)
+echo "=== Problematic ../services Imports ===" >> import_audit.txt
+grep -rn "\.\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
 
-export { app, auth };
+# Find ALL imports using ./services pattern (POTENTIALLY CORRECT)
+echo "=== Current ./services Imports ===" >> import_audit.txt
+grep -rn "\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
+
+# Find ALL imports of authService
+echo "=== authService Imports ===" >> import_audit.txt
+grep -rn "authService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
+
+# Find ALL imports of firebase
+echo "=== Firebase Service Imports ===" >> import_audit.txt
+grep -rn "\/firebase" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" | grep -v "firebase/auth" | grep -v "@firebase" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
+
+# Find ALL imports using ../utils pattern
+echo "=== Utils Imports ===" >> import_audit.txt
+grep -rn "\.\.\/utils\|\.\/utils" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+
+# Display the report
+cat import_audit.txt
 ```
 
-### Import Order in Main App:
-**File:** `src/App.js` or `src/index.js`
-```javascript
-// Import in this exact order at the top of your main file
-import './services/SociallyFedConfigService'; // Must be first!
+### Step 1.3: Identify Problem Files
+After running the above, you'll see a list like:
+```
+src/index.tsx:5:import '../services/SociallyFedConfigService';  ← WRONG
+src/App.tsx:10:import authService from '../services/authService'; ← WRONG
+src/components/Login.tsx:3:import '../utils/debug'; ← MAYBE WRONG
+```
+
+**Write down each file that needs fixing!**
+
+---
+
+## 🔧 Section 2: Fix Import Paths
+
+### Understanding Correct Import Paths
+
+**RULE**: The import path depends on WHERE the importing file is located:
+
+```
+File Location                   → Import Path for services/SociallyFedConfigService.js
+─────────────────────────────────────────────────────────────────────────────────────
+src/index.tsx                   → './services/SociallyFedConfigService'
+src/App.tsx                     → './services/SociallyFedConfigService'  
+src/pages/Login.tsx             → '../services/SociallyFedConfigService'
+src/components/Button.tsx       → '../services/SociallyFedConfigService'
+src/components/auth/Login.tsx   → '../../services/SociallyFedConfigService'
+```
+
+### Step 2.1: Fix Each File Manually
+
+For EACH file found in Step 1.3, open it and fix the imports:
+
+```bash
+# Example for src/index.tsx
+nano src/index.tsx
+# or use your preferred editor
+code src/index.tsx
+```
+
+#### Fix Pattern for `src/index.tsx`:
+```typescript
+// ❌ WRONG - Don't use these:
+import '../services/SociallyFedConfigService';
+import SociallyFedConfigService from '../services/SociallyFedConfigService';
+
+// ✅ CORRECT - Use these:
+import './services/SociallyFedConfigService';
+import './services/authService';
 import './services/firebase';
 import './utils/debug';
+import './utils/platformDetection';
+```
+
+#### Fix Pattern for `src/App.tsx`:
+```typescript
+// ❌ WRONG:
+import '../services/authService';
+
+// ✅ CORRECT:
 import authService from './services/authService';
-import PlatformDetection from './utils/platformDetection';
-
-// Your other imports...
+import { PlatformDetection } from './utils/platformDetection';
 ```
 
----
+#### Fix Pattern for files in `src/components/`:
+```typescript
+// For a file like src/components/Login.tsx
 
-## 🔌 Integration Points to Consider
+// ❌ WRONG:
+import '../../services/authService';
+import './services/authService';
 
-### 1. Login Component Integration
-Update your login button to use the new auth service:
-```javascript
-// In your Login component
+// ✅ CORRECT:
 import authService from '../services/authService';
+```
 
-const handleLogin = async () => {
-  try {
-    setLoading(true);
-    await authService.signInWithGoogle();
-    // Redirect handled automatically
-  } catch (error) {
-    console.error('Login failed:', error);
-    setError(error.message);
-  } finally {
-    setLoading(false);
+#### Fix Pattern for files in `src/pages/`:
+```typescript
+// For a file like src/pages/HomePage.tsx
+
+// ❌ WRONG:
+import '../../services/SociallyFedConfigService';
+
+// ✅ CORRECT:
+import '../services/SociallyFedConfigService';
+```
+
+### Step 2.2: Automated Fix Script
+
+If you have many files to fix, use this script:
+
+```bash
+#!/bin/bash
+# Save this as fix_imports.sh and run it
+
+cd /home/ben/Development/sociallyfed-mobile/baseline
+
+echo "🔧 Starting import fix process..."
+
+# Fix imports in src/index.tsx or src/index.ts
+for index_file in src/index.tsx src/index.ts src/index.jsx src/index.js; do
+    if [ -f "$index_file" ]; then
+        echo "Fixing $index_file..."
+        # Change ../services to ./services
+        sed -i 's/\.\.\/services/\.\/services/g' "$index_file"
+        # Change ../utils to ./utils
+        sed -i 's/\.\.\/utils/\.\/utils/g' "$index_file"
+        echo "✅ Fixed $index_file"
+    fi
+done
+
+# Fix imports in src/App.tsx or src/App.ts
+for app_file in src/App.tsx src/App.ts src/App.jsx src/App.js; do
+    if [ -f "$app_file" ]; then
+        echo "Fixing $app_file..."
+        # Change ../services to ./services
+        sed -i 's/\.\.\/services/\.\/services/g' "$app_file"
+        # Change ../utils to ./utils
+        sed -i 's/\.\.\/utils/\.\/utils/g' "$app_file"
+        echo "✅ Fixed $app_file"
+    fi
+done
+
+# For components and pages (they need ../ to go up one level)
+find src/components src/pages -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -o -name "*.js" \) 2>/dev/null | while read file; do
+    # Count how many directories deep the file is
+    depth=$(echo "$file" | tr -cd '/' | wc -c)
+    
+    if [ $depth -eq 2 ]; then
+        # Files directly in components/ or pages/ need ../
+        echo "Checking $file (depth $depth)..."
+        # Make sure it uses ../ not ./ or ../../
+        sed -i 's/\.\.\.\/services/\.\.\/services/g' "$file"
+        sed -i 's/\.\/services/\.\.\/services/g' "$file"
+    elif [ $depth -eq 3 ]; then
+        # Files in subdirectories need ../../
+        echo "Checking $file (depth $depth)..."
+        sed -i 's/\.\.\/services/\.\.\/\.\.\/services/g' "$file"
+        sed -i 's/\.\/services/\.\.\/\.\.\/services/g' "$file"
+    fi
+done
+
+echo "🎯 Import fix complete!"
+```
+
+Run it:
+```bash
+chmod +x fix_imports.sh
+./fix_imports.sh
+```
+
+---
+
+## 🔬 Section 3: TypeScript/JavaScript Compatibility
+
+### Issue: Mixing .js and .ts Files
+
+Your project is TypeScript but the new services are JavaScript. This can cause issues.
+
+### Step 3.1: Check Project Type
+```bash
+# Check if tsconfig.json exists
+if [ -f "tsconfig.json" ]; then
+    echo "✅ This is a TypeScript project"
+    
+    # Check if it allows JS files
+    grep -i "allowjs" tsconfig.json
+else
+    echo "❌ No tsconfig.json found"
+fi
+```
+
+### Step 3.2: Option A - Allow JavaScript in TypeScript Project
+
+Edit `tsconfig.json`:
+```json
+{
+  "compilerOptions": {
+    "allowJs": true,           // ← Add this line
+    "checkJs": false,          // ← Add this line
+    // ... other options
   }
-};
+}
 ```
 
-### 2. App State Management
-Listen for auth changes:
-```javascript
-// In your main App component
-useEffect(() => {
-  const handleAuthChange = (event) => {
-    if (event.detail.user) {
-      // User logged in
-      setUser(event.detail.user);
-      navigate('/dashboard'); // or wherever
-    } else {
-      // User logged out
-      setUser(null);
-      navigate('/login');
-    }
-  };
-  
-  window.addEventListener('authStateChanged', handleAuthChange);
-  
-  return () => {
-    window.removeEventListener('authStateChanged', handleAuthChange);
-  };
-}, []);
+### Step 3.3: Option B - Convert Files to TypeScript
+
+```bash
+# Convert all .js files to .ts
+cd /home/ben/Development/sociallyfed-mobile/baseline
+
+# Convert service files
+for file in src/services/*.js; do
+    if [ -f "$file" ]; then
+        # Create TypeScript version with 'any' types for now
+        echo "Converting $file to TypeScript..."
+        
+        # Add TypeScript annotations (basic)
+        cat "$file" | sed 's/function /function /g' > "${file%.js}.ts"
+        
+        # Add export statements if missing
+        if ! grep -q "export" "${file%.js}.ts"; then
+            echo "" >> "${file%.js}.ts"
+            echo "export default $(basename ${file%.js});" >> "${file%.js}.ts"
+        fi
+        
+        # Remove old .js file
+        rm "$file"
+        echo "✅ Converted to ${file%.js}.ts"
+    fi
+done
+
+# Convert util files
+for file in src/utils/*.js; do
+    if [ -f "$file" ]; then
+        mv "$file" "${file%.js}.ts"
+        echo "✅ Converted $file to TypeScript"
+    fi
+done
 ```
 
-### 3. Protected Routes
-Check authentication before rendering:
-```javascript
-const ProtectedRoute = ({ children }) => {
-  if (!authService.isAuthenticated()) {
-    return <Navigate to="/login" />;
-  }
-  return children;
-};
+### Step 3.4: Option C - Use .js Extension in Imports
+
+If keeping JavaScript files, update imports to include `.js`:
+
+```typescript
+// In TypeScript files importing JavaScript
+import './services/SociallyFedConfigService.js';  // Note the .js extension
+import authService from './services/authService.js';
+import { PlatformDetection } from './utils/platformDetection.js';
 ```
 
 ---
 
-## ✅ Definition of Done for Today's Work
+## 🧪 Section 4: Testing and Verification
 
-### Test Checklist - ALL must pass:
-
-#### 1. **Config Service Working**
-Open browser console and run:
-```javascript
-// This should NOT throw an error:
-window.SociallyFedConfigService.isSimplifiedFlagEnabled()
-// Should return: false (or true, but no error)
-```
-
-#### 2. **No COOP Warnings**
-- Open Chrome DevTools Console
-- Navigate to login page
-- Click "Sign in with Google"
-- Should see NO warnings about third-party cookies or COOP
-
-#### 3. **Platform Detection Correct**
-On mobile device or PWA:
-```javascript
-window.Debug.platformInfo()
-// Should show platform: 'mobile' or 'pwa', not 'web'
-```
-
-#### 4. **Authentication Flow Works**
-Test both desktop and mobile:
-- Desktop: Should open Google popup
-- Mobile: Should redirect to Google, then back
-- After sign-in: localStorage should have `session_token`
-
-#### 5. **Debug Utilities Available**
-```javascript
-// All these should work:
-window.Debug.runAll()
-window.Debug.testAuth()
-window.Debug.testConfig()
-```
-
-#### 6. **Server Integration**
-After successful Google sign-in:
-- Network tab should show POST to `/api/auth/exchange`
-- Response should be 200 OK
-- localStorage should contain `session_token` and `user_id`
-
-### Visual Confirmation:
-- [ ] Login page loads without errors
-- [ ] Google sign-in button is clickable
-- [ ] Sign-in completes successfully
-- [ ] User is redirected to app after sign-in
-- [ ] No red errors in console
-
----
-
-## 🚨 If You Get Stuck
-
-### Quick Fixes for Common Issues:
-
-**Issue 1: "isSimplifiedFlagEnabled is not a function"**
-- Make sure `SociallyFedConfigService.js` is imported in your main App.js
-- Check console for "[CONFIG] SociallyFedConfigService attached to window"
-
-**Issue 2: "Firebase is not defined"**
+### Step 4.1: Verify All Files Are Present
 ```bash
-npm install firebase
+echo "=== Verifying file locations ==="
+
+# Check services
+for service in SociallyFedConfigService authService firebase; do
+    if ls src/services/${service}.* 2>/dev/null; then
+        echo "✅ Found $service"
+    else
+        echo "❌ Missing $service"
+    fi
+done
+
+# Check utils
+for util in platformDetection debug; do
+    if ls src/utils/${util}.* 2>/dev/null; then
+        echo "✅ Found $util"
+    else
+        echo "❌ Missing $util"
+    fi
+done
 ```
 
-**Issue 3: Popup blocked on mobile**
-- This is expected! The code should automatically fall back to redirect
-- Check that redirect flow is working
-
-**Issue 4: 401 from server**
-- The server team is fixing this today
-- For now, authentication might fail at the exchange step
-- Focus on fixing the client-side errors first
-
-**Issue 5: "Cannot read property 'auth' of undefined"**
-- Make sure firebase.js exports the auth object
-- Check import statements match exactly
-
-### Testing Sequence:
-1. First, fix the config service error
-2. Open browser console, run: `window.Debug.checkServices()`
-3. All services should be defined
-4. Then test login flow
-
-### Emergency Bypass (Development Only):
-```javascript
-// Add to console if you need to bypass auth temporarily:
-localStorage.setItem('session_token', 'dev_token_123');
-localStorage.setItem('user_id', 'dev_user');
-window.location.reload();
-```
-
----
-
-## 📝 End of Day Checklist
-
-Before you finish:
-1. [ ] All error messages in console are resolved
-2. [ ] Config service error is fixed
-3. [ ] Platform detection shows correct platform
-4. [ ] OAuth flow works (popup or redirect)
-5. [ ] Code committed to git with clear commit messages
-6. [ ] Brief status update in team Slack
-
-### Commit your work:
+### Step 4.2: Verify No Bad Imports Remain
 ```bash
-git add .
-git commit -m "fix: resolve config service and OAuth flow issues
+echo "=== Checking for problematic imports ==="
 
-- Added missing isSimplifiedFlagEnabled method
-- Implemented platform detection for mobile/PWA
-- Updated auth flow to use redirect on mobile
-- Added COOP headers for OAuth compatibility"
+# This should return NOTHING if all imports are fixed
+problematic=$(grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null)
 
-git push origin your-branch-name
+if [ -z "$problematic" ]; then
+    echo "✅ No problematic imports found in main files!"
+else
+    echo "❌ Still have issues:"
+    echo "$problematic"
+fi
 ```
 
-### Build and Deploy (only if everything works):
+### Step 4.3: Clean Build Test
 ```bash
-# Build the app
+# Clear all caches
+rm -rf node_modules/.cache
+rm -rf build
+rm -rf .parcel-cache
+
+# Install dependencies (just to be sure)
+npm ci
+
+# Try development build first (faster)
+echo "Testing development build..."
 npm run build
 
-# Test the build locally
-npx serve -s build -l 3000
-
-# Deploy to Cloud Run
-gcloud run deploy sociallyfed-mobile \
-  --source . \
-  --region=us-central1 \
-  --platform=managed \
-  --allow-unauthenticated
+if [ $? -eq 0 ]; then
+    echo "✅ Development build successful!"
+    
+    # Now try production build
+    echo "Testing production build..."
+    npm run build:production
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Production build successful!"
+    else
+        echo "❌ Production build failed - check errors above"
+    fi
+else
+    echo "❌ Development build failed - fix errors before trying production"
+fi
 ```
 
 ---
 
-## 🎯 Success Metrics
+## ✅ Definition of Done
 
-You know you're done when:
-1. **Zero console errors** on the login page
-2. **Platform shows as 'mobile'** on mobile devices
-3. **Google sign-in completes** without errors
-4. **Debug utilities work** in console
-5. **Can sign in and out** repeatedly without issues
+### Checklist - ALL must pass:
 
-Remember: Focus on fixing the immediate blocker (config service) first, then work through the other issues in order. Ask for help if you're stuck for more than 30 minutes on any issue!
+#### 1. **Import Audit Clean**
+```bash
+# This should show NO results
+grep -r "\.\.\/services" src/index.tsx src/App.tsx
+# Should return nothing (no ../services in main files)
+```
+
+#### 2. **Build Succeeds**
+```bash
+npm run build:production
+# Should complete without errors
+```
+
+#### 3. **No Module Not Found Errors**
+The build output should NOT contain:
+- `Module not found: Error: You attempted to import`
+- `which falls outside of the project src/ directory`
+
+#### 4. **Files in Correct Location**
+```bash
+ls -la src/services/ | grep -E "SociallyFedConfigService|authService|firebase"
+ls -la src/utils/ | grep -E "platformDetection|debug"
+# All files should be listed
+```
+
+#### 5. **Docker Build Works** (if applicable)
+```bash
+docker build -t sociallyfed-mobile .
+# Should complete successfully
+```
+
+---
+
+## 🚨 Troubleshooting Guide
+
+### Problem 1: "Module not found" after fixing imports
+
+**Diagnosis:**
+```bash
+# Check exact error message
+npm run build 2>&1 | grep -A 5 "Module not found"
+```
+
+**Solution:**
+The error message tells you EXACTLY which file has the problem. Fix that specific file.
+
+### Problem 2: "Cannot find module './services/SociallyFedConfigService'"
+
+**Diagnosis:**
+```bash
+# File might not exist or have wrong extension
+ls -la src/services/SociallyFed*
+```
+
+**Solutions:**
+1. If file is `.js` but import doesn't have extension:
+   ```typescript
+   import './services/SociallyFedConfigService.js';  // Add .js
+   ```
+
+2. If file doesn't exist:
+   ```bash
+   # Might still be in wrong location
+   find . -name "SociallyFedConfigService*" 2>/dev/null
+   ```
+
+### Problem 3: TypeScript errors about JavaScript files
+
+**Solution:**
+Add to `tsconfig.json`:
+```json
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  }
+}
+```
+
+### Problem 4: Import works in dev but not in build
+
+**Diagnosis:**
+```bash
+# Compare what works
+npm start  # If this works
+npm run build  # But this doesn't
+```
+
+**Solution:**
+Create React App has stricter rules for production builds. Ensure:
+1. No imports outside `src/`
+2. All relative paths are correct
+3. File extensions match (`.js` vs `.ts`)
+
+---
+
+## 📊 Import Rules Reference Table
+
+### Quick Reference for Import Paths
+
+| Your File Location | Importing From services/ | Importing From utils/ |
+|-------------------|------------------------|---------------------|
+| `src/index.tsx` | `'./services/...'` | `'./utils/...'` |
+| `src/App.tsx` | `'./services/...'` | `'./utils/...'` |
+| `src/pages/Home.tsx` | `'../services/...'` | `'../utils/...'` |
+| `src/components/Nav.tsx` | `'../services/...'` | `'../utils/...'` |
+| `src/components/auth/Login.tsx` | `'../../services/...'` | `'../../utils/...'` |
+| `src/features/user/Profile.tsx` | `'../../services/...'` | `'../../utils/...'` |
+
+### How to Count Directory Levels
+
+```
+src/
+├── index.tsx (current dir = src, use ./)
+├── App.tsx (current dir = src, use ./)
+├── services/
+│   └── authService.js
+├── utils/
+│   └── debug.js
+├── pages/
+│   └── Home.tsx (current dir = pages, use ../ to get to src)
+└── components/
+    ├── Nav.tsx (current dir = components, use ../ to get to src)
+    └── auth/
+        └── Login.tsx (current dir = auth, use ../../ to get to src)
+```
+
+---
+
+## 📝 Final Verification Script
+
+Save this as `verify_build.sh`:
+
+```bash
+#!/bin/bash
+echo "🔍 Final Build Verification"
+echo "=========================="
+
+cd /home/ben/Development/sociallyfed-mobile/baseline
+
+# 1. Check no bad imports
+echo -n "Checking for bad imports... "
+if grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null; then
+    echo "❌ FAILED - Fix the above imports"
+    exit 1
+else
+    echo "✅ PASSED"
+fi
+
+# 2. Check files exist
+echo -n "Checking all files exist... "
+missing=0
+for file in services/SociallyFedConfigService services/authService services/firebase utils/platformDetection utils/debug; do
+    if ! ls src/${file}.* >/dev/null 2>&1; then
+        echo "❌ Missing: src/$file"
+        missing=1
+    fi
+done
+if [ $missing -eq 0 ]; then
+    echo "✅ PASSED"
+else
+    exit 1
+fi
+
+# 3. Try build
+echo "Running build test... "
+npm run build:production
+
+if [ $? -eq 0 ]; then
+    echo "✅ BUILD SUCCESSFUL!"
+    echo "You can now deploy with: npm run deploy"
+else
+    echo "❌ BUILD FAILED - Review errors above"
+    exit 1
+fi
+```
+
+Run it:
+```bash
+chmod +x verify_build.sh
+./verify_build.sh
+```
+
+---
+
+## 🎯 Success Criteria
+
+You're done when:
+1. `npm run build:production` completes with no errors
+2. No "Module not found" errors appear
+3. The build creates a `build/` directory with your app
+4. Running `./verify_build.sh` shows all green checkmarks
+
+Remember: The computer is very literal - if it says `../services` is wrong, it means that EXACT path is wrong. Find it, fix it, and the build will work!
 ### Current Sprint:
 # Current Sprint Status - Terra API Integration & Professional Services Enhancement
 
@@ -1248,768 +1063,583 @@ gantt
 
 ## 📅 TODAY'S DEVELOPMENT BRIEF
 
-# SociallyFed Mobile PWA - Daily Implementation Brief
+# SociallyFed Mobile - Import Path Fix Daily Brief
 ## Date: August 28, 2025
-## Developer: Junior Developer  
+## Developer: Junior Developer
 ## Assigned by: Senior Developer
-## Sprint Goal: Fix Authentication Flow & Configuration Service
+## Sprint Goal: Fix All Import Path Issues Blocking Build
 
 ---
 
 ## 🎯 Today's Implementation Priorities
 
-**Mission Critical:** Fix the authentication flow so users can successfully log in via Google on the mobile PWA.
+**Mission Critical:** Find and fix all incorrect import paths that are preventing the app from building.
 
 ### Priority Order (Complete in this sequence):
-1. **[P0 - URGENT]** Fix `isSimplifiedFlagEnabled` error blocking the app
-2. **[P0 - URGENT]** Resolve Cross-Origin Policy issues for OAuth
-3. **[P1 - HIGH]** Implement proper mobile platform detection
-4. **[P1 - HIGH]** Update authentication flow to use redirect for mobile
-5. **[P2 - MEDIUM]** Add debug utilities for testing
+1. **[P0 - URGENT]** Find all files with incorrect `../services/` imports
+2. **[P0 - URGENT]** Update imports to correct relative paths
+3. **[P1 - HIGH]** Verify TypeScript/JavaScript compatibility
+4. **[P1 - HIGH]** Test build succeeds after fixes
+5. **[P2 - MEDIUM]** Document import pattern for future reference
 
-**Time Budget:** 8 hours
-- 1 hour fixing config service
-- 2 hours on COOP/OAuth issues  
-- 2 hours on platform detection
-- 2 hours on auth flow update
-- 1 hour on testing & debugging
-
----
-
-## 🔨 Specific Features to Build Today
-
-### Feature 1: Fix Configuration Service (DO THIS FIRST!)
-**File to Create:** `src/services/SociallyFedConfigService.js`
-
-```javascript
-// Copy this EXACTLY - this fixes the immediate error
-
-class SociallyFedConfigService {
-  constructor() {
-    console.log('[CONFIG] Initializing SociallyFedConfigService');
-    this.flags = {
-      simplifiedMode: false,
-      basicMode: false,
-      forceMobilePlatform: true
-    };
-    
-    // Load saved config from localStorage
-    try {
-      const saved = localStorage.getItem('sociallyfed_config');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        this.flags = { ...this.flags, ...parsed.flags };
-        console.log('[CONFIG] Loaded saved config:', this.flags);
-      }
-    } catch (e) {
-      console.log('[CONFIG] No saved config, using defaults');
-    }
-  }
-  
-  // THIS IS THE MISSING METHOD - Copy exactly!
-  isSimplifiedFlagEnabled() {
-    console.log('[CONFIG] isSimplifiedFlagEnabled called, returning:', this.flags.simplifiedMode);
-    return this.flags.simplifiedMode || false;
-  }
-  
-  // Add these helper methods too
-  isBasicModeEnabled() {
-    return this.flags.basicMode || false;
-  }
-  
-  isMobilePlatform() {
-    return this.flags.forceMobilePlatform || false;
-  }
-  
-  setFlag(flagName, value) {
-    this.flags[flagName] = value;
-    this.saveConfig();
-    console.log(`[CONFIG] Flag ${flagName} set to ${value}`);
-  }
-  
-  saveConfig() {
-    try {
-      localStorage.setItem('sociallyfed_config', JSON.stringify({ flags: this.flags }));
-    } catch (e) {
-      console.error('[CONFIG] Failed to save config:', e);
-    }
-  }
-  
-  // Platform detection helper
-  detectPlatform() {
-    const ua = navigator.userAgent.toLowerCase();
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
-    
-    if (isPWA) return 'pwa';
-    if (isMobile) return 'mobile';
-    return 'web';
-  }
-}
-
-// Create the singleton instance
-const configService = new SociallyFedConfigService();
-
-// IMPORTANT: Expose to window so the app can find it
-window.SociallyFedConfigService = configService;
-
-// Also export for module usage
-export default configService;
-
-console.log('[CONFIG] SociallyFedConfigService attached to window');
-```
-
-**Then import it in your main App.js or index.js:**
-```javascript
-// At the top of App.js or index.js
-import './services/SociallyFedConfigService';
-// This ensures it loads and attaches to window
-```
-
-### Feature 2: Fix Cross-Origin Policy Issues
-**File:** `public/index.html`
-
-Add these lines in the `<head>` section (around line 5-10):
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
-    <!-- ADD THESE NEW LINES FOR OAUTH FIX -->
-    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
-    <meta http-equiv="Cross-Origin-Embedder-Policy" content="credentialless">
-    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
-    <!-- END OF NEW LINES -->
-    
-    <meta name="theme-color" content="#000000" />
-    <!-- rest of your head content -->
-```
-
-### Feature 3: Platform Detection Service
-**File to Create:** `src/utils/platformDetection.js`
-
-```javascript
-// This properly detects if we're on mobile/PWA/web
-
-const PlatformDetection = {
-  // Check if running as installed PWA
-  isPWA() {
-    // Multiple ways to detect PWA
-    const checks = [
-      window.matchMedia('(display-mode: standalone)').matches,
-      window.navigator.standalone === true,
-      document.referrer.includes('android-app://'),
-      window.matchMedia('(display-mode: fullscreen)').matches,
-      window.matchMedia('(display-mode: minimal-ui)').matches
-    ];
-    
-    const result = checks.some(check => check === true);
-    console.log('[PLATFORM] PWA detection:', result, checks);
-    return result;
-  },
-  
-  // Check if on mobile device
-  isMobile() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    
-    // Check for mobile user agents
-    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i;
-    const isMobileUA = mobileRegex.test(userAgent);
-    
-    // Also check screen size
-    const isMobileScreen = window.screen.width <= 768;
-    
-    // Check for touch support
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    
-    const result = isMobileUA || (isMobileScreen && hasTouch);
-    console.log('[PLATFORM] Mobile detection:', result, {
-      userAgent: isMobileUA,
-      screen: isMobileScreen,
-      touch: hasTouch
-    });
-    
-    return result;
-  },
-  
-  // Get the platform type
-  getPlatform() {
-    if (this.isPWA()) return 'pwa';
-    if (this.isMobile()) return 'mobile';
-    return 'web';
-  },
-  
-  // Get all platform info for debugging
-  getInfo() {
-    const info = {
-      platform: this.getPlatform(),
-      isPWA: this.isPWA(),
-      isMobile: this.isMobile(),
-      userAgent: navigator.userAgent,
-      screenSize: `${window.screen.width}x${window.screen.height}`,
-      hasTouch: 'ontouchstart' in window,
-      displayMode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'
-    };
-    
-    console.log('[PLATFORM] Full platform info:', info);
-    return info;
-  }
-};
-
-// Auto-detect on load
-window.addEventListener('load', () => {
-  console.log('[PLATFORM] Initial detection:', PlatformDetection.getInfo());
-});
-
-export default PlatformDetection;
-```
-
-### Feature 4: Updated Authentication Service
-**File to Update/Create:** `src/services/authService.js`
-
-```javascript
-// Complete auth service with mobile redirect support
-
-import { 
-  getAuth, 
-  signInWithPopup, 
-  signInWithRedirect, 
-  getRedirectResult,
-  GoogleAuthProvider,
-  signOut as firebaseSignOut
-} from 'firebase/auth';
-import { app } from './firebase'; // Your Firebase app
-import PlatformDetection from '../utils/platformDetection';
-
-class AuthService {
-  constructor() {
-    this.auth = getAuth(app);
-    this.serverUrl = 'https://sociallyfed-server-a5kcra27d6o-uc.a.run.app';
-    
-    // Check for redirect result on page load
-    this.checkRedirectResult();
-  }
-  
-  // Check if we're returning from a redirect sign-in
-  async checkRedirectResult() {
-    try {
-      console.log('[AUTH] Checking for redirect result...');
-      const result = await getRedirectResult(this.auth);
-      
-      if (result && result.user) {
-        console.log('[AUTH] ✅ Redirect sign-in successful:', result.user.email);
-        await this.handleSuccessfulAuth(result.user);
-        return result.user;
-      }
-    } catch (error) {
-      console.error('[AUTH] Redirect result error:', error);
-    }
-    return null;
-  }
-  
-  // Main sign-in method
-  async signInWithGoogle() {
-    console.log('[AUTH] Starting Google sign-in...');
-    
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({
-      prompt: 'select_account' // Always show account chooser
-    });
-    
-    // Determine which method to use
-    const platform = PlatformDetection.getPlatform();
-    console.log('[AUTH] Platform detected:', platform);
-    
-    try {
-      let result;
-      
-      if (platform === 'pwa' || platform === 'mobile') {
-        // Use redirect for mobile/PWA (popups often blocked)
-        console.log('[AUTH] Using redirect flow for mobile/PWA');
-        
-        // Store a flag so we know we initiated sign-in
-        localStorage.setItem('auth_redirect_pending', 'true');
-        
-        // This will redirect away from the app
-        await signInWithRedirect(this.auth, provider);
-        // Code won't reach here - browser redirects
-        
-      } else {
-        // Use popup for desktop
-        console.log('[AUTH] Using popup flow for desktop');
-        result = await signInWithPopup(this.auth, provider);
-        
-        if (result && result.user) {
-          console.log('[AUTH] ✅ Popup sign-in successful:', result.user.email);
-          await this.handleSuccessfulAuth(result.user);
-          return result.user;
-        }
-      }
-      
-    } catch (error) {
-      console.error('[AUTH] Sign-in error:', error);
-      
-      // Handle specific errors
-      if (error.code === 'auth/popup-blocked') {
-        console.log('[AUTH] Popup blocked, falling back to redirect');
-        localStorage.setItem('auth_redirect_pending', 'true');
-        await signInWithRedirect(this.auth, provider);
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        console.log('[AUTH] User cancelled the popup');
-      } else {
-        throw error;
-      }
-    }
-  }
-  
-  // Handle successful authentication
-  async handleSuccessfulAuth(user) {
-    console.log('[AUTH] Processing successful authentication...');
-    
-    try {
-      // Get Firebase ID token
-      const idToken = await user.getIdToken();
-      console.log('[AUTH] Got Firebase ID token, length:', idToken.length);
-      
-      // Exchange with your server
-      const response = await fetch(`${this.serverUrl}/api/auth/exchange`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Platform': PlatformDetection.getPlatform()
-        },
-        body: JSON.stringify({
-          token: idToken,
-          platform: PlatformDetection.getPlatform(),
-          email: user.email,
-          uid: user.uid
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        console.log('[AUTH] ✅ Token exchange successful');
-        
-        // Store session info
-        localStorage.setItem('session_token', data.sessionToken);
-        localStorage.setItem('user_id', data.userId);
-        localStorage.setItem('user_email', user.email);
-        localStorage.removeItem('auth_redirect_pending');
-        
-        // Trigger any auth state change handlers
-        window.dispatchEvent(new CustomEvent('authStateChanged', { 
-          detail: { user: user, session: data } 
-        }));
-        
-        return data;
-      } else {
-        console.error('[AUTH] ❌ Token exchange failed:', data);
-        throw new Error(data.error || 'Token exchange failed');
-      }
-      
-    } catch (error) {
-      console.error('[AUTH] Error in handleSuccessfulAuth:', error);
-      throw error;
-    }
-  }
-  
-  // Get current user
-  getCurrentUser() {
-    return this.auth.currentUser;
-  }
-  
-  // Sign out
-  async signOut() {
-    try {
-      await firebaseSignOut(this.auth);
-      localStorage.removeItem('session_token');
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('user_email');
-      console.log('[AUTH] Signed out successfully');
-      
-      window.dispatchEvent(new CustomEvent('authStateChanged', { 
-        detail: { user: null } 
-      }));
-    } catch (error) {
-      console.error('[AUTH] Sign out error:', error);
-    }
-  }
-  
-  // Check if user is authenticated
-  isAuthenticated() {
-    return !!this.auth.currentUser || !!localStorage.getItem('session_token');
-  }
-}
-
-// Create singleton
-const authService = new AuthService();
-
-// Expose for debugging
-window.authService = authService;
-
-export default authService;
-```
-
-### Feature 5: Debug Utilities
-**File to Create:** `src/utils/debug.js`
-
-```javascript
-// Debug utilities - import this in index.js to have it available
-
-const Debug = {
-  // Check all services
-  checkServices() {
-    console.log('=== Service Status ===');
-    console.log('ConfigService:', typeof window.SociallyFedConfigService);
-    console.log('AuthService:', typeof window.authService);
-    console.log('Platform:', typeof window.PlatformDetection);
-    
-    if (window.SociallyFedConfigService) {
-      console.log('Config.isSimplifiedFlagEnabled:', 
-        typeof window.SociallyFedConfigService.isSimplifiedFlagEnabled);
-    }
-  },
-  
-  // Test configuration
-  testConfig() {
-    if (!window.SociallyFedConfigService) {
-      console.error('❌ ConfigService not found!');
-      return;
-    }
-    
-    console.log('=== Config Test ===');
-    console.log('Simplified:', window.SociallyFedConfigService.isSimplifiedFlagEnabled());
-    console.log('BasicMode:', window.SociallyFedConfigService.isBasicModeEnabled());
-    console.log('Platform:', window.SociallyFedConfigService.detectPlatform());
-  },
-  
-  // Test authentication
-  async testAuth() {
-    console.log('=== Auth Test ===');
-    
-    if (!window.authService) {
-      console.error('❌ AuthService not found!');
-      return;
-    }
-    
-    const user = window.authService.getCurrentUser();
-    if (user) {
-      console.log('✅ User signed in:', user.email);
-      const token = await user.getIdToken();
-      console.log('Token preview:', token.substring(0, 50) + '...');
-    } else {
-      console.log('❌ No user signed in');
-    }
-  },
-  
-  // Platform info
-  platformInfo() {
-    console.log('=== Platform Info ===');
-    if (window.PlatformDetection) {
-      return window.PlatformDetection.getInfo();
-    } else {
-      console.log('User Agent:', navigator.userAgent);
-      console.log('Screen:', window.screen.width + 'x' + window.screen.height);
-      console.log('PWA:', window.matchMedia('(display-mode: standalone)').matches);
-    }
-  },
-  
-  // Clear all data
-  clearAll() {
-    localStorage.clear();
-    sessionStorage.clear();
-    console.log('✅ All storage cleared');
-  },
-  
-  // Run all tests
-  runAll() {
-    this.checkServices();
-    this.testConfig();
-    this.testAuth();
-    this.platformInfo();
-  }
-};
-
-// Attach to window
-window.Debug = Debug;
-
-// Auto-run check on load
-setTimeout(() => {
-  console.log('Debug utilities loaded. Use window.Debug.* commands');
-  Debug.checkServices();
-}, 1000);
-
-export default Debug;
-```
+**Time Budget:** 2 hours
+- 30 minutes finding all incorrect imports
+- 45 minutes fixing import paths
+- 30 minutes testing and verification
+- 15 minutes documentation
 
 ---
 
-## 📋 Technical Requirements
+## 🔍 Section 1: Find All Import Issues
 
-### Required Package Versions:
-```json
-{
-  "dependencies": {
-    "firebase": "^10.7.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  }
-}
-```
-
-### Install if missing:
+### Step 1.1: Navigate to Project Directory
 ```bash
-npm install firebase@latest
+cd /home/ben/Development/sociallyfed-mobile/baseline
 ```
 
-### Firebase Configuration:
-**File:** `src/services/firebase.js`
-```javascript
-// Make sure this file exists with your config
-import { initializeApp } from 'firebase/app';
-import { getAuth, browserLocalPersistence, setPersistence } from 'firebase/auth';
+### Step 1.2: Create Import Audit Report
+Run these commands IN ORDER to find all import issues:
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDYR9IdLUmLVBnq4RwcM6fX8JpE5EI8Bls",
-  authDomain: "sociallyfed-55780.firebaseapp.com",
-  projectId: "sociallyfed-55780",
-  storageBucket: "sociallyfed-55780.appspot.com",
-  messagingSenderId: "512204327023",
-  appId: "1:512204327023:web:4682c5db3d42b5e1011468"
-};
+```bash
+# Create a temporary file to track our findings
+echo "=== IMPORT PATH AUDIT REPORT ===" > import_audit.txt
+echo "Generated: $(date)" >> import_audit.txt
+echo "" >> import_audit.txt
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+# Find ALL imports of SociallyFedConfigService
+echo "=== SociallyFedConfigService Imports ===" >> import_audit.txt
+grep -rn "SociallyFedConfigService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
 
-// Use local storage instead of session storage
-setPersistence(auth, browserLocalPersistence);
+# Find ALL imports using ../services pattern (PROBLEMATIC)
+echo "=== Problematic ../services Imports ===" >> import_audit.txt
+grep -rn "\.\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
 
-export { app, auth };
+# Find ALL imports using ./services pattern (POTENTIALLY CORRECT)
+echo "=== Current ./services Imports ===" >> import_audit.txt
+grep -rn "\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
+
+# Find ALL imports of authService
+echo "=== authService Imports ===" >> import_audit.txt
+grep -rn "authService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
+
+# Find ALL imports of firebase
+echo "=== Firebase Service Imports ===" >> import_audit.txt
+grep -rn "\/firebase" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" | grep -v "firebase/auth" | grep -v "@firebase" >> import_audit.txt 2>/dev/null
+echo "" >> import_audit.txt
+
+# Find ALL imports using ../utils pattern
+echo "=== Utils Imports ===" >> import_audit.txt
+grep -rn "\.\.\/utils\|\.\/utils" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
+
+# Display the report
+cat import_audit.txt
 ```
 
-### Import Order in Main App:
-**File:** `src/App.js` or `src/index.js`
-```javascript
-// Import in this exact order at the top of your main file
-import './services/SociallyFedConfigService'; // Must be first!
+### Step 1.3: Identify Problem Files
+After running the above, you'll see a list like:
+```
+src/index.tsx:5:import '../services/SociallyFedConfigService';  ← WRONG
+src/App.tsx:10:import authService from '../services/authService'; ← WRONG
+src/components/Login.tsx:3:import '../utils/debug'; ← MAYBE WRONG
+```
+
+**Write down each file that needs fixing!**
+
+---
+
+## 🔧 Section 2: Fix Import Paths
+
+### Understanding Correct Import Paths
+
+**RULE**: The import path depends on WHERE the importing file is located:
+
+```
+File Location                   → Import Path for services/SociallyFedConfigService.js
+─────────────────────────────────────────────────────────────────────────────────────
+src/index.tsx                   → './services/SociallyFedConfigService'
+src/App.tsx                     → './services/SociallyFedConfigService'  
+src/pages/Login.tsx             → '../services/SociallyFedConfigService'
+src/components/Button.tsx       → '../services/SociallyFedConfigService'
+src/components/auth/Login.tsx   → '../../services/SociallyFedConfigService'
+```
+
+### Step 2.1: Fix Each File Manually
+
+For EACH file found in Step 1.3, open it and fix the imports:
+
+```bash
+# Example for src/index.tsx
+nano src/index.tsx
+# or use your preferred editor
+code src/index.tsx
+```
+
+#### Fix Pattern for `src/index.tsx`:
+```typescript
+// ❌ WRONG - Don't use these:
+import '../services/SociallyFedConfigService';
+import SociallyFedConfigService from '../services/SociallyFedConfigService';
+
+// ✅ CORRECT - Use these:
+import './services/SociallyFedConfigService';
+import './services/authService';
 import './services/firebase';
 import './utils/debug';
+import './utils/platformDetection';
+```
+
+#### Fix Pattern for `src/App.tsx`:
+```typescript
+// ❌ WRONG:
+import '../services/authService';
+
+// ✅ CORRECT:
 import authService from './services/authService';
-import PlatformDetection from './utils/platformDetection';
-
-// Your other imports...
+import { PlatformDetection } from './utils/platformDetection';
 ```
 
----
+#### Fix Pattern for files in `src/components/`:
+```typescript
+// For a file like src/components/Login.tsx
 
-## 🔌 Integration Points to Consider
+// ❌ WRONG:
+import '../../services/authService';
+import './services/authService';
 
-### 1. Login Component Integration
-Update your login button to use the new auth service:
-```javascript
-// In your Login component
+// ✅ CORRECT:
 import authService from '../services/authService';
+```
 
-const handleLogin = async () => {
-  try {
-    setLoading(true);
-    await authService.signInWithGoogle();
-    // Redirect handled automatically
-  } catch (error) {
-    console.error('Login failed:', error);
-    setError(error.message);
-  } finally {
-    setLoading(false);
+#### Fix Pattern for files in `src/pages/`:
+```typescript
+// For a file like src/pages/HomePage.tsx
+
+// ❌ WRONG:
+import '../../services/SociallyFedConfigService';
+
+// ✅ CORRECT:
+import '../services/SociallyFedConfigService';
+```
+
+### Step 2.2: Automated Fix Script
+
+If you have many files to fix, use this script:
+
+```bash
+#!/bin/bash
+# Save this as fix_imports.sh and run it
+
+cd /home/ben/Development/sociallyfed-mobile/baseline
+
+echo "🔧 Starting import fix process..."
+
+# Fix imports in src/index.tsx or src/index.ts
+for index_file in src/index.tsx src/index.ts src/index.jsx src/index.js; do
+    if [ -f "$index_file" ]; then
+        echo "Fixing $index_file..."
+        # Change ../services to ./services
+        sed -i 's/\.\.\/services/\.\/services/g' "$index_file"
+        # Change ../utils to ./utils
+        sed -i 's/\.\.\/utils/\.\/utils/g' "$index_file"
+        echo "✅ Fixed $index_file"
+    fi
+done
+
+# Fix imports in src/App.tsx or src/App.ts
+for app_file in src/App.tsx src/App.ts src/App.jsx src/App.js; do
+    if [ -f "$app_file" ]; then
+        echo "Fixing $app_file..."
+        # Change ../services to ./services
+        sed -i 's/\.\.\/services/\.\/services/g' "$app_file"
+        # Change ../utils to ./utils
+        sed -i 's/\.\.\/utils/\.\/utils/g' "$app_file"
+        echo "✅ Fixed $app_file"
+    fi
+done
+
+# For components and pages (they need ../ to go up one level)
+find src/components src/pages -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -o -name "*.js" \) 2>/dev/null | while read file; do
+    # Count how many directories deep the file is
+    depth=$(echo "$file" | tr -cd '/' | wc -c)
+    
+    if [ $depth -eq 2 ]; then
+        # Files directly in components/ or pages/ need ../
+        echo "Checking $file (depth $depth)..."
+        # Make sure it uses ../ not ./ or ../../
+        sed -i 's/\.\.\.\/services/\.\.\/services/g' "$file"
+        sed -i 's/\.\/services/\.\.\/services/g' "$file"
+    elif [ $depth -eq 3 ]; then
+        # Files in subdirectories need ../../
+        echo "Checking $file (depth $depth)..."
+        sed -i 's/\.\.\/services/\.\.\/\.\.\/services/g' "$file"
+        sed -i 's/\.\/services/\.\.\/\.\.\/services/g' "$file"
+    fi
+done
+
+echo "🎯 Import fix complete!"
+```
+
+Run it:
+```bash
+chmod +x fix_imports.sh
+./fix_imports.sh
+```
+
+---
+
+## 🔬 Section 3: TypeScript/JavaScript Compatibility
+
+### Issue: Mixing .js and .ts Files
+
+Your project is TypeScript but the new services are JavaScript. This can cause issues.
+
+### Step 3.1: Check Project Type
+```bash
+# Check if tsconfig.json exists
+if [ -f "tsconfig.json" ]; then
+    echo "✅ This is a TypeScript project"
+    
+    # Check if it allows JS files
+    grep -i "allowjs" tsconfig.json
+else
+    echo "❌ No tsconfig.json found"
+fi
+```
+
+### Step 3.2: Option A - Allow JavaScript in TypeScript Project
+
+Edit `tsconfig.json`:
+```json
+{
+  "compilerOptions": {
+    "allowJs": true,           // ← Add this line
+    "checkJs": false,          // ← Add this line
+    // ... other options
   }
-};
+}
 ```
 
-### 2. App State Management
-Listen for auth changes:
-```javascript
-// In your main App component
-useEffect(() => {
-  const handleAuthChange = (event) => {
-    if (event.detail.user) {
-      // User logged in
-      setUser(event.detail.user);
-      navigate('/dashboard'); // or wherever
-    } else {
-      // User logged out
-      setUser(null);
-      navigate('/login');
-    }
-  };
-  
-  window.addEventListener('authStateChanged', handleAuthChange);
-  
-  return () => {
-    window.removeEventListener('authStateChanged', handleAuthChange);
-  };
-}, []);
+### Step 3.3: Option B - Convert Files to TypeScript
+
+```bash
+# Convert all .js files to .ts
+cd /home/ben/Development/sociallyfed-mobile/baseline
+
+# Convert service files
+for file in src/services/*.js; do
+    if [ -f "$file" ]; then
+        # Create TypeScript version with 'any' types for now
+        echo "Converting $file to TypeScript..."
+        
+        # Add TypeScript annotations (basic)
+        cat "$file" | sed 's/function /function /g' > "${file%.js}.ts"
+        
+        # Add export statements if missing
+        if ! grep -q "export" "${file%.js}.ts"; then
+            echo "" >> "${file%.js}.ts"
+            echo "export default $(basename ${file%.js});" >> "${file%.js}.ts"
+        fi
+        
+        # Remove old .js file
+        rm "$file"
+        echo "✅ Converted to ${file%.js}.ts"
+    fi
+done
+
+# Convert util files
+for file in src/utils/*.js; do
+    if [ -f "$file" ]; then
+        mv "$file" "${file%.js}.ts"
+        echo "✅ Converted $file to TypeScript"
+    fi
+done
 ```
 
-### 3. Protected Routes
-Check authentication before rendering:
-```javascript
-const ProtectedRoute = ({ children }) => {
-  if (!authService.isAuthenticated()) {
-    return <Navigate to="/login" />;
-  }
-  return children;
-};
+### Step 3.4: Option C - Use .js Extension in Imports
+
+If keeping JavaScript files, update imports to include `.js`:
+
+```typescript
+// In TypeScript files importing JavaScript
+import './services/SociallyFedConfigService.js';  // Note the .js extension
+import authService from './services/authService.js';
+import { PlatformDetection } from './utils/platformDetection.js';
 ```
 
 ---
 
-## ✅ Definition of Done for Today's Work
+## 🧪 Section 4: Testing and Verification
 
-### Test Checklist - ALL must pass:
-
-#### 1. **Config Service Working**
-Open browser console and run:
-```javascript
-// This should NOT throw an error:
-window.SociallyFedConfigService.isSimplifiedFlagEnabled()
-// Should return: false (or true, but no error)
-```
-
-#### 2. **No COOP Warnings**
-- Open Chrome DevTools Console
-- Navigate to login page
-- Click "Sign in with Google"
-- Should see NO warnings about third-party cookies or COOP
-
-#### 3. **Platform Detection Correct**
-On mobile device or PWA:
-```javascript
-window.Debug.platformInfo()
-// Should show platform: 'mobile' or 'pwa', not 'web'
-```
-
-#### 4. **Authentication Flow Works**
-Test both desktop and mobile:
-- Desktop: Should open Google popup
-- Mobile: Should redirect to Google, then back
-- After sign-in: localStorage should have `session_token`
-
-#### 5. **Debug Utilities Available**
-```javascript
-// All these should work:
-window.Debug.runAll()
-window.Debug.testAuth()
-window.Debug.testConfig()
-```
-
-#### 6. **Server Integration**
-After successful Google sign-in:
-- Network tab should show POST to `/api/auth/exchange`
-- Response should be 200 OK
-- localStorage should contain `session_token` and `user_id`
-
-### Visual Confirmation:
-- [ ] Login page loads without errors
-- [ ] Google sign-in button is clickable
-- [ ] Sign-in completes successfully
-- [ ] User is redirected to app after sign-in
-- [ ] No red errors in console
-
----
-
-## 🚨 If You Get Stuck
-
-### Quick Fixes for Common Issues:
-
-**Issue 1: "isSimplifiedFlagEnabled is not a function"**
-- Make sure `SociallyFedConfigService.js` is imported in your main App.js
-- Check console for "[CONFIG] SociallyFedConfigService attached to window"
-
-**Issue 2: "Firebase is not defined"**
+### Step 4.1: Verify All Files Are Present
 ```bash
-npm install firebase
+echo "=== Verifying file locations ==="
+
+# Check services
+for service in SociallyFedConfigService authService firebase; do
+    if ls src/services/${service}.* 2>/dev/null; then
+        echo "✅ Found $service"
+    else
+        echo "❌ Missing $service"
+    fi
+done
+
+# Check utils
+for util in platformDetection debug; do
+    if ls src/utils/${util}.* 2>/dev/null; then
+        echo "✅ Found $util"
+    else
+        echo "❌ Missing $util"
+    fi
+done
 ```
 
-**Issue 3: Popup blocked on mobile**
-- This is expected! The code should automatically fall back to redirect
-- Check that redirect flow is working
-
-**Issue 4: 401 from server**
-- The server team is fixing this today
-- For now, authentication might fail at the exchange step
-- Focus on fixing the client-side errors first
-
-**Issue 5: "Cannot read property 'auth' of undefined"**
-- Make sure firebase.js exports the auth object
-- Check import statements match exactly
-
-### Testing Sequence:
-1. First, fix the config service error
-2. Open browser console, run: `window.Debug.checkServices()`
-3. All services should be defined
-4. Then test login flow
-
-### Emergency Bypass (Development Only):
-```javascript
-// Add to console if you need to bypass auth temporarily:
-localStorage.setItem('session_token', 'dev_token_123');
-localStorage.setItem('user_id', 'dev_user');
-window.location.reload();
-```
-
----
-
-## 📝 End of Day Checklist
-
-Before you finish:
-1. [ ] All error messages in console are resolved
-2. [ ] Config service error is fixed
-3. [ ] Platform detection shows correct platform
-4. [ ] OAuth flow works (popup or redirect)
-5. [ ] Code committed to git with clear commit messages
-6. [ ] Brief status update in team Slack
-
-### Commit your work:
+### Step 4.2: Verify No Bad Imports Remain
 ```bash
-git add .
-git commit -m "fix: resolve config service and OAuth flow issues
+echo "=== Checking for problematic imports ==="
 
-- Added missing isSimplifiedFlagEnabled method
-- Implemented platform detection for mobile/PWA
-- Updated auth flow to use redirect on mobile
-- Added COOP headers for OAuth compatibility"
+# This should return NOTHING if all imports are fixed
+problematic=$(grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null)
 
-git push origin your-branch-name
+if [ -z "$problematic" ]; then
+    echo "✅ No problematic imports found in main files!"
+else
+    echo "❌ Still have issues:"
+    echo "$problematic"
+fi
 ```
 
-### Build and Deploy (only if everything works):
+### Step 4.3: Clean Build Test
 ```bash
-# Build the app
+# Clear all caches
+rm -rf node_modules/.cache
+rm -rf build
+rm -rf .parcel-cache
+
+# Install dependencies (just to be sure)
+npm ci
+
+# Try development build first (faster)
+echo "Testing development build..."
 npm run build
 
-# Test the build locally
-npx serve -s build -l 3000
-
-# Deploy to Cloud Run
-gcloud run deploy sociallyfed-mobile \
-  --source . \
-  --region=us-central1 \
-  --platform=managed \
-  --allow-unauthenticated
+if [ $? -eq 0 ]; then
+    echo "✅ Development build successful!"
+    
+    # Now try production build
+    echo "Testing production build..."
+    npm run build:production
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Production build successful!"
+    else
+        echo "❌ Production build failed - check errors above"
+    fi
+else
+    echo "❌ Development build failed - fix errors before trying production"
+fi
 ```
 
 ---
 
-## 🎯 Success Metrics
+## ✅ Definition of Done
 
-You know you're done when:
-1. **Zero console errors** on the login page
-2. **Platform shows as 'mobile'** on mobile devices
-3. **Google sign-in completes** without errors
-4. **Debug utilities work** in console
-5. **Can sign in and out** repeatedly without issues
+### Checklist - ALL must pass:
 
-Remember: Focus on fixing the immediate blocker (config service) first, then work through the other issues in order. Ask for help if you're stuck for more than 30 minutes on any issue!
+#### 1. **Import Audit Clean**
+```bash
+# This should show NO results
+grep -r "\.\.\/services" src/index.tsx src/App.tsx
+# Should return nothing (no ../services in main files)
+```
+
+#### 2. **Build Succeeds**
+```bash
+npm run build:production
+# Should complete without errors
+```
+
+#### 3. **No Module Not Found Errors**
+The build output should NOT contain:
+- `Module not found: Error: You attempted to import`
+- `which falls outside of the project src/ directory`
+
+#### 4. **Files in Correct Location**
+```bash
+ls -la src/services/ | grep -E "SociallyFedConfigService|authService|firebase"
+ls -la src/utils/ | grep -E "platformDetection|debug"
+# All files should be listed
+```
+
+#### 5. **Docker Build Works** (if applicable)
+```bash
+docker build -t sociallyfed-mobile .
+# Should complete successfully
+```
+
+---
+
+## 🚨 Troubleshooting Guide
+
+### Problem 1: "Module not found" after fixing imports
+
+**Diagnosis:**
+```bash
+# Check exact error message
+npm run build 2>&1 | grep -A 5 "Module not found"
+```
+
+**Solution:**
+The error message tells you EXACTLY which file has the problem. Fix that specific file.
+
+### Problem 2: "Cannot find module './services/SociallyFedConfigService'"
+
+**Diagnosis:**
+```bash
+# File might not exist or have wrong extension
+ls -la src/services/SociallyFed*
+```
+
+**Solutions:**
+1. If file is `.js` but import doesn't have extension:
+   ```typescript
+   import './services/SociallyFedConfigService.js';  // Add .js
+   ```
+
+2. If file doesn't exist:
+   ```bash
+   # Might still be in wrong location
+   find . -name "SociallyFedConfigService*" 2>/dev/null
+   ```
+
+### Problem 3: TypeScript errors about JavaScript files
+
+**Solution:**
+Add to `tsconfig.json`:
+```json
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false
+  }
+}
+```
+
+### Problem 4: Import works in dev but not in build
+
+**Diagnosis:**
+```bash
+# Compare what works
+npm start  # If this works
+npm run build  # But this doesn't
+```
+
+**Solution:**
+Create React App has stricter rules for production builds. Ensure:
+1. No imports outside `src/`
+2. All relative paths are correct
+3. File extensions match (`.js` vs `.ts`)
+
+---
+
+## 📊 Import Rules Reference Table
+
+### Quick Reference for Import Paths
+
+| Your File Location | Importing From services/ | Importing From utils/ |
+|-------------------|------------------------|---------------------|
+| `src/index.tsx` | `'./services/...'` | `'./utils/...'` |
+| `src/App.tsx` | `'./services/...'` | `'./utils/...'` |
+| `src/pages/Home.tsx` | `'../services/...'` | `'../utils/...'` |
+| `src/components/Nav.tsx` | `'../services/...'` | `'../utils/...'` |
+| `src/components/auth/Login.tsx` | `'../../services/...'` | `'../../utils/...'` |
+| `src/features/user/Profile.tsx` | `'../../services/...'` | `'../../utils/...'` |
+
+### How to Count Directory Levels
+
+```
+src/
+├── index.tsx (current dir = src, use ./)
+├── App.tsx (current dir = src, use ./)
+├── services/
+│   └── authService.js
+├── utils/
+│   └── debug.js
+├── pages/
+│   └── Home.tsx (current dir = pages, use ../ to get to src)
+└── components/
+    ├── Nav.tsx (current dir = components, use ../ to get to src)
+    └── auth/
+        └── Login.tsx (current dir = auth, use ../../ to get to src)
+```
+
+---
+
+## 📝 Final Verification Script
+
+Save this as `verify_build.sh`:
+
+```bash
+#!/bin/bash
+echo "🔍 Final Build Verification"
+echo "=========================="
+
+cd /home/ben/Development/sociallyfed-mobile/baseline
+
+# 1. Check no bad imports
+echo -n "Checking for bad imports... "
+if grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null; then
+    echo "❌ FAILED - Fix the above imports"
+    exit 1
+else
+    echo "✅ PASSED"
+fi
+
+# 2. Check files exist
+echo -n "Checking all files exist... "
+missing=0
+for file in services/SociallyFedConfigService services/authService services/firebase utils/platformDetection utils/debug; do
+    if ! ls src/${file}.* >/dev/null 2>&1; then
+        echo "❌ Missing: src/$file"
+        missing=1
+    fi
+done
+if [ $missing -eq 0 ]; then
+    echo "✅ PASSED"
+else
+    exit 1
+fi
+
+# 3. Try build
+echo "Running build test... "
+npm run build:production
+
+if [ $? -eq 0 ]; then
+    echo "✅ BUILD SUCCESSFUL!"
+    echo "You can now deploy with: npm run deploy"
+else
+    echo "❌ BUILD FAILED - Review errors above"
+    exit 1
+fi
+```
+
+Run it:
+```bash
+chmod +x verify_build.sh
+./verify_build.sh
+```
+
+---
+
+## 🎯 Success Criteria
+
+You're done when:
+1. `npm run build:production` completes with no errors
+2. No "Module not found" errors appear
+3. The build creates a `build/` directory with your app
+4. Running `./verify_build.sh` shows all green checkmarks
+
+Remember: The computer is very literal - if it says `../services` is wrong, it means that EXACT path is wrong. Find it, fix it, and the build will work!
