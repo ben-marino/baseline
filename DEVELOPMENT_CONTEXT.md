@@ -175,7 +175,7 @@ Ensure this aligns with our unified architecture strategy.
 ## 📋 CURRENT SESSION CONTEXT
 
 📊 Current session context:
-## Session Started: Thu 28 Aug 2025 15:12:42 AEST
+## Session Started: Thu 28 Aug 2025 15:59:45 AEST
 **Project Focus**: SociallyFed Mobile App
 **Repository**: /home/ben/Development/sociallyfed-mobile
 
@@ -186,580 +186,132 @@ Ensure this aligns with our unified architecture strategy.
 ## Assigned by: Senior Developer
 ## Sprint Goal: Fix All Import Path Issues Blocking Build
 
----
-
-## 🎯 Today's Implementation Priorities
-
-**Mission Critical:** Find and fix all incorrect import paths that are preventing the app from building.
-
-### Priority Order (Complete in this sequence):
-1. **[P0 - URGENT]** Find all files with incorrect `../services/` imports
-2. **[P0 - URGENT]** Update imports to correct relative paths
-3. **[P1 - HIGH]** Verify TypeScript/JavaScript compatibility
-4. **[P1 - HIGH]** Test build succeeds after fixes
-5. **[P2 - MEDIUM]** Document import pattern for future reference
-
-**Time Budget:** 2 hours
-- 30 minutes finding all incorrect imports
-- 45 minutes fixing import paths
-- 30 minutes testing and verification
-- 15 minutes documentation
-
----
-
-## 🔍 Section 1: Find All Import Issues
-
-### Step 1.1: Navigate to Project Directory
-```bash
-cd /home/ben/Development/sociallyfed-mobile/baseline
-```
-
-### Step 1.2: Create Import Audit Report
-Run these commands IN ORDER to find all import issues:
-
-```bash
-# Create a temporary file to track our findings
-echo "=== IMPORT PATH AUDIT REPORT ===" > import_audit.txt
-echo "Generated: $(date)" >> import_audit.txt
-echo "" >> import_audit.txt
-
-# Find ALL imports of SociallyFedConfigService
-echo "=== SociallyFedConfigService Imports ===" >> import_audit.txt
-grep -rn "SociallyFedConfigService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports using ../services pattern (PROBLEMATIC)
-echo "=== Problematic ../services Imports ===" >> import_audit.txt
-grep -rn "\.\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports using ./services pattern (POTENTIALLY CORRECT)
-echo "=== Current ./services Imports ===" >> import_audit.txt
-grep -rn "\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports of authService
-echo "=== authService Imports ===" >> import_audit.txt
-grep -rn "authService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports of firebase
-echo "=== Firebase Service Imports ===" >> import_audit.txt
-grep -rn "\/firebase" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" | grep -v "firebase/auth" | grep -v "@firebase" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports using ../utils pattern
-echo "=== Utils Imports ===" >> import_audit.txt
-grep -rn "\.\.\/utils\|\.\/utils" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-
-# Display the report
-cat import_audit.txt
-```
-
-### Step 1.3: Identify Problem Files
-After running the above, you'll see a list like:
-```
-src/index.tsx:5:import '../services/SociallyFedConfigService';  ← WRONG
-src/App.tsx:10:import authService from '../services/authService'; ← WRONG
-src/components/Login.tsx:3:import '../utils/debug'; ← MAYBE WRONG
-```
-
-**Write down each file that needs fixing!**
-
----
-
-## 🔧 Section 2: Fix Import Paths
-
-### Understanding Correct Import Paths
-
-**RULE**: The import path depends on WHERE the importing file is located:
-
-```
-File Location                   → Import Path for services/SociallyFedConfigService.js
-─────────────────────────────────────────────────────────────────────────────────────
-src/index.tsx                   → './services/SociallyFedConfigService'
-src/App.tsx                     → './services/SociallyFedConfigService'  
-src/pages/Login.tsx             → '../services/SociallyFedConfigService'
-src/components/Button.tsx       → '../services/SociallyFedConfigService'
-src/components/auth/Login.tsx   → '../../services/SociallyFedConfigService'
-```
-
-### Step 2.1: Fix Each File Manually
-
-For EACH file found in Step 1.3, open it and fix the imports:
-
-```bash
-# Example for src/index.tsx
-nano src/index.tsx
-# or use your preferred editor
-code src/index.tsx
-```
-
-#### Fix Pattern for `src/index.tsx`:
-```typescript
-// ❌ WRONG - Don't use these:
-import '../services/SociallyFedConfigService';
-import SociallyFedConfigService from '../services/SociallyFedConfigService';
-
-// ✅ CORRECT - Use these:
-import './services/SociallyFedConfigService';
-import './services/authService';
-import './services/firebase';
-import './utils/debug';
-import './utils/platformDetection';
-```
-
-#### Fix Pattern for `src/App.tsx`:
-```typescript
-// ❌ WRONG:
-import '../services/authService';
-
-// ✅ CORRECT:
-import authService from './services/authService';
-import { PlatformDetection } from './utils/platformDetection';
-```
-
-#### Fix Pattern for files in `src/components/`:
-```typescript
-// For a file like src/components/Login.tsx
-
-// ❌ WRONG:
-import '../../services/authService';
-import './services/authService';
-
-// ✅ CORRECT:
-import authService from '../services/authService';
-```
-
-#### Fix Pattern for files in `src/pages/`:
-```typescript
-// For a file like src/pages/HomePage.tsx
-
-// ❌ WRONG:
-import '../../services/SociallyFedConfigService';
-
-// ✅ CORRECT:
-import '../services/SociallyFedConfigService';
-```
-
-### Step 2.2: Automated Fix Script
-
-If you have many files to fix, use this script:
-
-```bash
-#!/bin/bash
-# Save this as fix_imports.sh and run it
-
-cd /home/ben/Development/sociallyfed-mobile/baseline
-
-echo "🔧 Starting import fix process..."
-
-# Fix imports in src/index.tsx or src/index.ts
-for index_file in src/index.tsx src/index.ts src/index.jsx src/index.js; do
-    if [ -f "$index_file" ]; then
-        echo "Fixing $index_file..."
-        # Change ../services to ./services
-        sed -i 's/\.\.\/services/\.\/services/g' "$index_file"
-        # Change ../utils to ./utils
-        sed -i 's/\.\.\/utils/\.\/utils/g' "$index_file"
-        echo "✅ Fixed $index_file"
-    fi
-done
-
-# Fix imports in src/App.tsx or src/App.ts
-for app_file in src/App.tsx src/App.ts src/App.jsx src/App.js; do
-    if [ -f "$app_file" ]; then
-        echo "Fixing $app_file..."
-        # Change ../services to ./services
-        sed -i 's/\.\.\/services/\.\/services/g' "$app_file"
-        # Change ../utils to ./utils
-        sed -i 's/\.\.\/utils/\.\/utils/g' "$app_file"
-        echo "✅ Fixed $app_file"
-    fi
-done
-
-# For components and pages (they need ../ to go up one level)
-find src/components src/pages -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -o -name "*.js" \) 2>/dev/null | while read file; do
-    # Count how many directories deep the file is
-    depth=$(echo "$file" | tr -cd '/' | wc -c)
-    
-    if [ $depth -eq 2 ]; then
-        # Files directly in components/ or pages/ need ../
-        echo "Checking $file (depth $depth)..."
-        # Make sure it uses ../ not ./ or ../../
-        sed -i 's/\.\.\.\/services/\.\.\/services/g' "$file"
-        sed -i 's/\.\/services/\.\.\/services/g' "$file"
-    elif [ $depth -eq 3 ]; then
-        # Files in subdirectories need ../../
-        echo "Checking $file (depth $depth)..."
-        sed -i 's/\.\.\/services/\.\.\/\.\.\/services/g' "$file"
-        sed -i 's/\.\/services/\.\.\/\.\.\/services/g' "$file"
-    fi
-done
-
-echo "🎯 Import fix complete!"
-```
-
-Run it:
-```bash
-chmod +x fix_imports.sh
-./fix_imports.sh
-```
-
----
-
-## 🔬 Section 3: TypeScript/JavaScript Compatibility
-
-### Issue: Mixing .js and .ts Files
-
-Your project is TypeScript but the new services are JavaScript. This can cause issues.
-
-### Step 3.1: Check Project Type
-```bash
-# Check if tsconfig.json exists
-if [ -f "tsconfig.json" ]; then
-    echo "✅ This is a TypeScript project"
-    
-    # Check if it allows JS files
-    grep -i "allowjs" tsconfig.json
-else
-    echo "❌ No tsconfig.json found"
-fi
-```
-
-### Step 3.2: Option A - Allow JavaScript in TypeScript Project
-
-Edit `tsconfig.json`:
-```json
 {
-  "compilerOptions": {
-    "allowJs": true,           // ← Add this line
-    "checkJs": false,          // ← Add this line
-    // ... other options
-  }
-}
-```
+  `path`: `C:\\Users\\ben_n\\Documents\\SociallyFedContext\\find_and_fix_socialyfedconfig.sh`,
+  `content`: `#!/bin/bash
+# Fix SociallyFedConfig Import Issues
+# Run this from: /home/ben/Development/sociallyfed-mobile/baseline
 
-### Step 3.3: Option B - Convert Files to TypeScript
-
-```bash
-# Convert all .js files to .ts
-cd /home/ben/Development/sociallyfed-mobile/baseline
-
-# Convert service files
-for file in src/services/*.js; do
-    if [ -f "$file" ]; then
-        # Create TypeScript version with 'any' types for now
-        echo "Converting $file to TypeScript..."
-        
-        # Add TypeScript annotations (basic)
-        cat "$file" | sed 's/function /function /g' > "${file%.js}.ts"
-        
-        # Add export statements if missing
-        if ! grep -q "export" "${file%.js}.ts"; then
-            echo "" >> "${file%.js}.ts"
-            echo "export default $(basename ${file%.js});" >> "${file%.js}.ts"
-        fi
-        
-        # Remove old .js file
-        rm "$file"
-        echo "✅ Converted to ${file%.js}.ts"
-    fi
-done
-
-# Convert util files
-for file in src/utils/*.js; do
-    if [ -f "$file" ]; then
-        mv "$file" "${file%.js}.ts"
-        echo "✅ Converted $file to TypeScript"
-    fi
-done
-```
-
-### Step 3.4: Option C - Use .js Extension in Imports
-
-If keeping JavaScript files, update imports to include `.js`:
-
-```typescript
-// In TypeScript files importing JavaScript
-import './services/SociallyFedConfigService.js';  // Note the .js extension
-import authService from './services/authService.js';
-import { PlatformDetection } from './utils/platformDetection.js';
-```
-
----
-
-## 🧪 Section 4: Testing and Verification
-
-### Step 4.1: Verify All Files Are Present
-```bash
-echo "=== Verifying file locations ==="
-
-# Check services
-for service in SociallyFedConfigService authService firebase; do
-    if ls src/services/${service}.* 2>/dev/null; then
-        echo "✅ Found $service"
-    else
-        echo "❌ Missing $service"
-    fi
-done
-
-# Check utils
-for util in platformDetection debug; do
-    if ls src/utils/${util}.* 2>/dev/null; then
-        echo "✅ Found $util"
-    else
-        echo "❌ Missing $util"
-    fi
-done
-```
-
-### Step 4.2: Verify No Bad Imports Remain
-```bash
-echo "=== Checking for problematic imports ==="
-
-# This should return NOTHING if all imports are fixed
-problematic=$(grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null)
-
-if [ -z "$problematic" ]; then
-    echo "✅ No problematic imports found in main files!"
-else
-    echo "❌ Still have issues:"
-    echo "$problematic"
-fi
-```
-
-### Step 4.3: Clean Build Test
-```bash
-# Clear all caches
-rm -rf node_modules/.cache
-rm -rf build
-rm -rf .parcel-cache
-
-# Install dependencies (just to be sure)
-npm ci
-
-# Try development build first (faster)
-echo "Testing development build..."
-npm run build
-
-if [ $? -eq 0 ]; then
-    echo "✅ Development build successful!"
-    
-    # Now try production build
-    echo "Testing production build..."
-    npm run build:production
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ Production build successful!"
-    else
-        echo "❌ Production build failed - check errors above"
-    fi
-else
-    echo "❌ Development build failed - fix errors before trying production"
-fi
-```
-
----
-
-## ✅ Definition of Done
-
-### Checklist - ALL must pass:
-
-#### 1. **Import Audit Clean**
-```bash
-# This should show NO results
-grep -r "\.\.\/services" src/index.tsx src/App.tsx
-# Should return nothing (no ../services in main files)
-```
-
-#### 2. **Build Succeeds**
-```bash
-npm run build:production
-# Should complete without errors
-```
-
-#### 3. **No Module Not Found Errors**
-The build output should NOT contain:
-- `Module not found: Error: You attempted to import`
-- `which falls outside of the project src/ directory`
-
-#### 4. **Files in Correct Location**
-```bash
-ls -la src/services/ | grep -E "SociallyFedConfigService|authService|firebase"
-ls -la src/utils/ | grep -E "platformDetection|debug"
-# All files should be listed
-```
-
-#### 5. **Docker Build Works** (if applicable)
-```bash
-docker build -t sociallyfed-mobile .
-# Should complete successfully
-```
-
----
-
-## 🚨 Troubleshooting Guide
-
-### Problem 1: "Module not found" after fixing imports
-
-**Diagnosis:**
-```bash
-# Check exact error message
-npm run build 2>&1 | grep -A 5 "Module not found"
-```
-
-**Solution:**
-The error message tells you EXACTLY which file has the problem. Fix that specific file.
-
-### Problem 2: "Cannot find module './services/SociallyFedConfigService'"
-
-**Diagnosis:**
-```bash
-# File might not exist or have wrong extension
-ls -la src/services/SociallyFed*
-```
-
-**Solutions:**
-1. If file is `.js` but import doesn't have extension:
-   ```typescript
-   import './services/SociallyFedConfigService.js';  // Add .js
-   ```
-
-2. If file doesn't exist:
-   ```bash
-   # Might still be in wrong location
-   find . -name "SociallyFedConfigService*" 2>/dev/null
-   ```
-
-### Problem 3: TypeScript errors about JavaScript files
-
-**Solution:**
-Add to `tsconfig.json`:
-```json
-{
-  "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false
-  }
-}
-```
-
-### Problem 4: Import works in dev but not in build
-
-**Diagnosis:**
-```bash
-# Compare what works
-npm start  # If this works
-npm run build  # But this doesn't
-```
-
-**Solution:**
-Create React App has stricter rules for production builds. Ensure:
-1. No imports outside `src/`
-2. All relative paths are correct
-3. File extensions match (`.js` vs `.ts`)
-
----
-
-## 📊 Import Rules Reference Table
-
-### Quick Reference for Import Paths
-
-| Your File Location | Importing From services/ | Importing From utils/ |
-|-------------------|------------------------|---------------------|
-| `src/index.tsx` | `'./services/...'` | `'./utils/...'` |
-| `src/App.tsx` | `'./services/...'` | `'./utils/...'` |
-| `src/pages/Home.tsx` | `'../services/...'` | `'../utils/...'` |
-| `src/components/Nav.tsx` | `'../services/...'` | `'../utils/...'` |
-| `src/components/auth/Login.tsx` | `'../../services/...'` | `'../../utils/...'` |
-| `src/features/user/Profile.tsx` | `'../../services/...'` | `'../../utils/...'` |
-
-### How to Count Directory Levels
-
-```
-src/
-├── index.tsx (current dir = src, use ./)
-├── App.tsx (current dir = src, use ./)
-├── services/
-│   └── authService.js
-├── utils/
-│   └── debug.js
-├── pages/
-│   └── Home.tsx (current dir = pages, use ../ to get to src)
-└── components/
-    ├── Nav.tsx (current dir = components, use ../ to get to src)
-    └── auth/
-        └── Login.tsx (current dir = auth, use ../../ to get to src)
-```
-
----
-
-## 📝 Final Verification Script
-
-Save this as `verify_build.sh`:
-
-```bash
-#!/bin/bash
-echo "🔍 Final Build Verification"
-echo "=========================="
+echo \"🔍 Searching for SociallyFedConfig import issues...\"
+echo \"================================================\"
 
 cd /home/ben/Development/sociallyfed-mobile/baseline
 
-# 1. Check no bad imports
-echo -n "Checking for bad imports... "
-if grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null; then
-    echo "❌ FAILED - Fix the above imports"
-    exit 1
+# Find all mentions of SociallyFedConfig
+echo -e \"\
+1. Files mentioning SociallyFedConfig:\"
+grep -l \"SociallyFedConfig\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null
+
+echo -e \"\
+2. Specific import statements with SociallyFedConfig:\"
+grep -n \"import.*SociallyFedConfig\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null
+
+echo -e \"\
+3. Checking what SociallyFedConfigService.js actually exports:\"
+if [ -f \"src/services/SociallyFedConfigService.js\" ]; then
+    echo \"Exports in SociallyFedConfigService.js:\"
+    grep -n \"export\" src/services/SociallyFedConfigService.js
 else
-    echo "✅ PASSED"
+    echo \"❌ SociallyFedConfigService.js not found in src/services/\"
+    echo \"Checking other locations...\"
+    find . -name \"SociallyFedConfigService*\" -type f 2>/dev/null
 fi
 
-# 2. Check files exist
-echo -n "Checking all files exist... "
-missing=0
-for file in services/SociallyFedConfigService services/authService services/firebase utils/platformDetection utils/debug; do
-    if ! ls src/${file}.* >/dev/null 2>&1; then
-        echo "❌ Missing: src/$file"
-        missing=1
-    fi
+echo -e \"\
+4. Checking for the complex TypeScript version:\"
+if [ -f \"src/services/SociallyFedConfigService.ts\" ]; then
+    echo \"Found TypeScript version - checking exports:\"
+    grep -n \"export\" src/services/SociallyFedConfigService.ts | head -20
+fi
+
+echo -e \"\
+================================================\"
+echo \"🔧 Attempting automatic fixes...\"
+echo \"================================================\"
+
+# Fix attempt 1: Change named imports to side-effect imports
+echo -e \"\
+Fix 1: Converting named imports to side-effect imports...\"
+for file in $(grep -l \"import.*{.*SociallyFedConfig.*}\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null); do
+    echo \"Fixing: $file\"
+    # Backup original
+    cp \"$file\" \"${file}.backup\"
+    
+    # Try different fix patterns
+    # Pattern 1: Named import to side-effect import
+    sed -i \"s/import\\s*{\\s*SociallyFedConfig\\s*}\\s*from\\s*['\\\"].*SociallyFedConfigService.*['\\\"]/import '.\\/services\\/SociallyFedConfigService.js'/g\" \"$file\"
+    
+    # Pattern 2: Any import with SociallyFedConfig to side-effect
+    sed -i \"s/import.*SociallyFedConfig.*from.*SociallyFedConfigService.*/import '.\\/services\\/SociallyFedConfigService.js';/g\" \"$file\"
 done
-if [ $missing -eq 0 ]; then
-    echo "✅ PASSED"
-else
-    exit 1
+
+# Fix attempt 2: Check if the TypeScript version is being used instead
+echo -e \"\
+Fix 2: Checking if TypeScript version should be used...\"
+if [ -f \"src/services/SociallyFedConfigService.ts\" ]; then
+    echo \"TypeScript version exists. Checking if it exports SociallyFedConfig...\"
+    if grep -q \"export.*SociallyFedConfig\" src/services/SociallyFedConfigService.ts; then
+        echo \"✅ TypeScript version has the export. Updating imports to use .ts file...\"
+        
+        for file in $(grep -l \"SociallyFedConfigService\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null); do
+            # Change .js references to use the .ts version
+            sed -i \"s/SociallyFedConfigService\\.js/SociallyFedConfigService/g\" \"$file\"
+        done
+    fi
 fi
 
-# 3. Try build
-echo "Running build test... "
-npm run build:production
+echo -e \"\
+================================================\"
+echo \"📋 Verification\"
+echo \"================================================\"
 
-if [ $? -eq 0 ]; then
-    echo "✅ BUILD SUCCESSFUL!"
-    echo "You can now deploy with: npm run deploy"
+# Check if the error still exists
+echo -e \"\
+Checking for remaining problematic imports...\"
+remaining=$(grep -n \"import.*{.*SociallyFedConfig.*}\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null | grep -v \"backup\")
+
+if [ -z \"$remaining\" ]; then
+    echo \"✅ No problematic imports found!\"
 else
-    echo "❌ BUILD FAILED - Review errors above"
-    exit 1
+    echo \"⚠️ Still have problematic imports:\"
+    echo \"$remaining\"
+    echo -e \"\
+Manual fix needed for these files.\"
 fi
-```
 
-Run it:
-```bash
-chmod +x verify_build.sh
-./verify_build.sh
-```
+echo -e \"\
+================================================\"
+echo \"💡 Manual Fix Instructions (if automatic fix failed):\"
+echo \"================================================\"
+echo \"For each file listed above, open it and change:\"
+echo \"\"
+echo \"FROM:\"
+echo \"  import { SociallyFedConfig } from './services/SociallyFedConfigService';\"
+echo \"  import { SociallyFedConfig } from '../services/SociallyFedConfigService';\"
+echo \"\"
+echo \"TO one of these options:\"
+echo \"\"
+echo \"Option 1 (if you just need the service to initialize):\"
+echo \"  import './services/SociallyFedConfigService.js';\"
+echo \"\"
+echo \"Option 2 (if you need the service instance):\"
+echo \"  import configService from './services/SociallyFedConfigService.js';\"
+echo \"\"
+echo \"Option 3 (if using the TypeScript version):\"
+echo \"  import { SociallyFedConfig } from './services/SociallyFedConfigService';\"
+echo \"  (without the .js extension)\"
+echo \"\"
+echo \"================================================\"
 
----
-
-## 🎯 Success Criteria
-
-You're done when:
-1. `npm run build:production` completes with no errors
-2. No "Module not found" errors appear
-3. The build creates a `build/` directory with your app
-4. Running `./verify_build.sh` shows all green checkmarks
-
-Remember: The computer is very literal - if it says `../services` is wrong, it means that EXACT path is wrong. Find it, fix it, and the build will work!
+# Offer to restore backups
+echo -e \"\
+Backup files created. To restore if needed:\"
+echo \"  find . -name '*.backup' -exec sh -c 'mv \\\"\\$1\\\" \\\"\\${1%.backup}\\\"' _ {} \\;\"
+echo \"\"
+echo \"To delete backups after confirming fixes work:\"
+echo \"  find . -name '*.backup' -delete\"
+`
+}
 ### Current Sprint:
 # Current Sprint Status - Terra API Integration & Professional Services Enhancement
 
@@ -1069,577 +621,129 @@ gantt
 ## Assigned by: Senior Developer
 ## Sprint Goal: Fix All Import Path Issues Blocking Build
 
----
-
-## 🎯 Today's Implementation Priorities
-
-**Mission Critical:** Find and fix all incorrect import paths that are preventing the app from building.
-
-### Priority Order (Complete in this sequence):
-1. **[P0 - URGENT]** Find all files with incorrect `../services/` imports
-2. **[P0 - URGENT]** Update imports to correct relative paths
-3. **[P1 - HIGH]** Verify TypeScript/JavaScript compatibility
-4. **[P1 - HIGH]** Test build succeeds after fixes
-5. **[P2 - MEDIUM]** Document import pattern for future reference
-
-**Time Budget:** 2 hours
-- 30 minutes finding all incorrect imports
-- 45 minutes fixing import paths
-- 30 minutes testing and verification
-- 15 minutes documentation
-
----
-
-## 🔍 Section 1: Find All Import Issues
-
-### Step 1.1: Navigate to Project Directory
-```bash
-cd /home/ben/Development/sociallyfed-mobile/baseline
-```
-
-### Step 1.2: Create Import Audit Report
-Run these commands IN ORDER to find all import issues:
-
-```bash
-# Create a temporary file to track our findings
-echo "=== IMPORT PATH AUDIT REPORT ===" > import_audit.txt
-echo "Generated: $(date)" >> import_audit.txt
-echo "" >> import_audit.txt
-
-# Find ALL imports of SociallyFedConfigService
-echo "=== SociallyFedConfigService Imports ===" >> import_audit.txt
-grep -rn "SociallyFedConfigService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports using ../services pattern (PROBLEMATIC)
-echo "=== Problematic ../services Imports ===" >> import_audit.txt
-grep -rn "\.\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports using ./services pattern (POTENTIALLY CORRECT)
-echo "=== Current ./services Imports ===" >> import_audit.txt
-grep -rn "\.\/services" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports of authService
-echo "=== authService Imports ===" >> import_audit.txt
-grep -rn "authService" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports of firebase
-echo "=== Firebase Service Imports ===" >> import_audit.txt
-grep -rn "\/firebase" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" | grep -v "firebase/auth" | grep -v "@firebase" >> import_audit.txt 2>/dev/null
-echo "" >> import_audit.txt
-
-# Find ALL imports using ../utils pattern
-echo "=== Utils Imports ===" >> import_audit.txt
-grep -rn "\.\.\/utils\|\.\/utils" src/ --include="*.tsx" --include="*.ts" --include="*.jsx" --include="*.js" >> import_audit.txt 2>/dev/null
-
-# Display the report
-cat import_audit.txt
-```
-
-### Step 1.3: Identify Problem Files
-After running the above, you'll see a list like:
-```
-src/index.tsx:5:import '../services/SociallyFedConfigService';  ← WRONG
-src/App.tsx:10:import authService from '../services/authService'; ← WRONG
-src/components/Login.tsx:3:import '../utils/debug'; ← MAYBE WRONG
-```
-
-**Write down each file that needs fixing!**
-
----
-
-## 🔧 Section 2: Fix Import Paths
-
-### Understanding Correct Import Paths
-
-**RULE**: The import path depends on WHERE the importing file is located:
-
-```
-File Location                   → Import Path for services/SociallyFedConfigService.js
-─────────────────────────────────────────────────────────────────────────────────────
-src/index.tsx                   → './services/SociallyFedConfigService'
-src/App.tsx                     → './services/SociallyFedConfigService'  
-src/pages/Login.tsx             → '../services/SociallyFedConfigService'
-src/components/Button.tsx       → '../services/SociallyFedConfigService'
-src/components/auth/Login.tsx   → '../../services/SociallyFedConfigService'
-```
-
-### Step 2.1: Fix Each File Manually
-
-For EACH file found in Step 1.3, open it and fix the imports:
-
-```bash
-# Example for src/index.tsx
-nano src/index.tsx
-# or use your preferred editor
-code src/index.tsx
-```
-
-#### Fix Pattern for `src/index.tsx`:
-```typescript
-// ❌ WRONG - Don't use these:
-import '../services/SociallyFedConfigService';
-import SociallyFedConfigService from '../services/SociallyFedConfigService';
-
-// ✅ CORRECT - Use these:
-import './services/SociallyFedConfigService';
-import './services/authService';
-import './services/firebase';
-import './utils/debug';
-import './utils/platformDetection';
-```
-
-#### Fix Pattern for `src/App.tsx`:
-```typescript
-// ❌ WRONG:
-import '../services/authService';
-
-// ✅ CORRECT:
-import authService from './services/authService';
-import { PlatformDetection } from './utils/platformDetection';
-```
-
-#### Fix Pattern for files in `src/components/`:
-```typescript
-// For a file like src/components/Login.tsx
-
-// ❌ WRONG:
-import '../../services/authService';
-import './services/authService';
-
-// ✅ CORRECT:
-import authService from '../services/authService';
-```
-
-#### Fix Pattern for files in `src/pages/`:
-```typescript
-// For a file like src/pages/HomePage.tsx
-
-// ❌ WRONG:
-import '../../services/SociallyFedConfigService';
-
-// ✅ CORRECT:
-import '../services/SociallyFedConfigService';
-```
-
-### Step 2.2: Automated Fix Script
-
-If you have many files to fix, use this script:
-
-```bash
-#!/bin/bash
-# Save this as fix_imports.sh and run it
-
-cd /home/ben/Development/sociallyfed-mobile/baseline
-
-echo "🔧 Starting import fix process..."
-
-# Fix imports in src/index.tsx or src/index.ts
-for index_file in src/index.tsx src/index.ts src/index.jsx src/index.js; do
-    if [ -f "$index_file" ]; then
-        echo "Fixing $index_file..."
-        # Change ../services to ./services
-        sed -i 's/\.\.\/services/\.\/services/g' "$index_file"
-        # Change ../utils to ./utils
-        sed -i 's/\.\.\/utils/\.\/utils/g' "$index_file"
-        echo "✅ Fixed $index_file"
-    fi
-done
-
-# Fix imports in src/App.tsx or src/App.ts
-for app_file in src/App.tsx src/App.ts src/App.jsx src/App.js; do
-    if [ -f "$app_file" ]; then
-        echo "Fixing $app_file..."
-        # Change ../services to ./services
-        sed -i 's/\.\.\/services/\.\/services/g' "$app_file"
-        # Change ../utils to ./utils
-        sed -i 's/\.\.\/utils/\.\/utils/g' "$app_file"
-        echo "✅ Fixed $app_file"
-    fi
-done
-
-# For components and pages (they need ../ to go up one level)
-find src/components src/pages -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.jsx" -o -name "*.js" \) 2>/dev/null | while read file; do
-    # Count how many directories deep the file is
-    depth=$(echo "$file" | tr -cd '/' | wc -c)
-    
-    if [ $depth -eq 2 ]; then
-        # Files directly in components/ or pages/ need ../
-        echo "Checking $file (depth $depth)..."
-        # Make sure it uses ../ not ./ or ../../
-        sed -i 's/\.\.\.\/services/\.\.\/services/g' "$file"
-        sed -i 's/\.\/services/\.\.\/services/g' "$file"
-    elif [ $depth -eq 3 ]; then
-        # Files in subdirectories need ../../
-        echo "Checking $file (depth $depth)..."
-        sed -i 's/\.\.\/services/\.\.\/\.\.\/services/g' "$file"
-        sed -i 's/\.\/services/\.\.\/\.\.\/services/g' "$file"
-    fi
-done
-
-echo "🎯 Import fix complete!"
-```
-
-Run it:
-```bash
-chmod +x fix_imports.sh
-./fix_imports.sh
-```
-
----
-
-## 🔬 Section 3: TypeScript/JavaScript Compatibility
-
-### Issue: Mixing .js and .ts Files
-
-Your project is TypeScript but the new services are JavaScript. This can cause issues.
-
-### Step 3.1: Check Project Type
-```bash
-# Check if tsconfig.json exists
-if [ -f "tsconfig.json" ]; then
-    echo "✅ This is a TypeScript project"
-    
-    # Check if it allows JS files
-    grep -i "allowjs" tsconfig.json
-else
-    echo "❌ No tsconfig.json found"
-fi
-```
-
-### Step 3.2: Option A - Allow JavaScript in TypeScript Project
-
-Edit `tsconfig.json`:
-```json
 {
-  "compilerOptions": {
-    "allowJs": true,           // ← Add this line
-    "checkJs": false,          // ← Add this line
-    // ... other options
-  }
-}
-```
+  `path`: `C:\\Users\\ben_n\\Documents\\SociallyFedContext\\find_and_fix_socialyfedconfig.sh`,
+  `content`: `#!/bin/bash
+# Fix SociallyFedConfig Import Issues
+# Run this from: /home/ben/Development/sociallyfed-mobile/baseline
 
-### Step 3.3: Option B - Convert Files to TypeScript
-
-```bash
-# Convert all .js files to .ts
-cd /home/ben/Development/sociallyfed-mobile/baseline
-
-# Convert service files
-for file in src/services/*.js; do
-    if [ -f "$file" ]; then
-        # Create TypeScript version with 'any' types for now
-        echo "Converting $file to TypeScript..."
-        
-        # Add TypeScript annotations (basic)
-        cat "$file" | sed 's/function /function /g' > "${file%.js}.ts"
-        
-        # Add export statements if missing
-        if ! grep -q "export" "${file%.js}.ts"; then
-            echo "" >> "${file%.js}.ts"
-            echo "export default $(basename ${file%.js});" >> "${file%.js}.ts"
-        fi
-        
-        # Remove old .js file
-        rm "$file"
-        echo "✅ Converted to ${file%.js}.ts"
-    fi
-done
-
-# Convert util files
-for file in src/utils/*.js; do
-    if [ -f "$file" ]; then
-        mv "$file" "${file%.js}.ts"
-        echo "✅ Converted $file to TypeScript"
-    fi
-done
-```
-
-### Step 3.4: Option C - Use .js Extension in Imports
-
-If keeping JavaScript files, update imports to include `.js`:
-
-```typescript
-// In TypeScript files importing JavaScript
-import './services/SociallyFedConfigService.js';  // Note the .js extension
-import authService from './services/authService.js';
-import { PlatformDetection } from './utils/platformDetection.js';
-```
-
----
-
-## 🧪 Section 4: Testing and Verification
-
-### Step 4.1: Verify All Files Are Present
-```bash
-echo "=== Verifying file locations ==="
-
-# Check services
-for service in SociallyFedConfigService authService firebase; do
-    if ls src/services/${service}.* 2>/dev/null; then
-        echo "✅ Found $service"
-    else
-        echo "❌ Missing $service"
-    fi
-done
-
-# Check utils
-for util in platformDetection debug; do
-    if ls src/utils/${util}.* 2>/dev/null; then
-        echo "✅ Found $util"
-    else
-        echo "❌ Missing $util"
-    fi
-done
-```
-
-### Step 4.2: Verify No Bad Imports Remain
-```bash
-echo "=== Checking for problematic imports ==="
-
-# This should return NOTHING if all imports are fixed
-problematic=$(grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null)
-
-if [ -z "$problematic" ]; then
-    echo "✅ No problematic imports found in main files!"
-else
-    echo "❌ Still have issues:"
-    echo "$problematic"
-fi
-```
-
-### Step 4.3: Clean Build Test
-```bash
-# Clear all caches
-rm -rf node_modules/.cache
-rm -rf build
-rm -rf .parcel-cache
-
-# Install dependencies (just to be sure)
-npm ci
-
-# Try development build first (faster)
-echo "Testing development build..."
-npm run build
-
-if [ $? -eq 0 ]; then
-    echo "✅ Development build successful!"
-    
-    # Now try production build
-    echo "Testing production build..."
-    npm run build:production
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ Production build successful!"
-    else
-        echo "❌ Production build failed - check errors above"
-    fi
-else
-    echo "❌ Development build failed - fix errors before trying production"
-fi
-```
-
----
-
-## ✅ Definition of Done
-
-### Checklist - ALL must pass:
-
-#### 1. **Import Audit Clean**
-```bash
-# This should show NO results
-grep -r "\.\.\/services" src/index.tsx src/App.tsx
-# Should return nothing (no ../services in main files)
-```
-
-#### 2. **Build Succeeds**
-```bash
-npm run build:production
-# Should complete without errors
-```
-
-#### 3. **No Module Not Found Errors**
-The build output should NOT contain:
-- `Module not found: Error: You attempted to import`
-- `which falls outside of the project src/ directory`
-
-#### 4. **Files in Correct Location**
-```bash
-ls -la src/services/ | grep -E "SociallyFedConfigService|authService|firebase"
-ls -la src/utils/ | grep -E "platformDetection|debug"
-# All files should be listed
-```
-
-#### 5. **Docker Build Works** (if applicable)
-```bash
-docker build -t sociallyfed-mobile .
-# Should complete successfully
-```
-
----
-
-## 🚨 Troubleshooting Guide
-
-### Problem 1: "Module not found" after fixing imports
-
-**Diagnosis:**
-```bash
-# Check exact error message
-npm run build 2>&1 | grep -A 5 "Module not found"
-```
-
-**Solution:**
-The error message tells you EXACTLY which file has the problem. Fix that specific file.
-
-### Problem 2: "Cannot find module './services/SociallyFedConfigService'"
-
-**Diagnosis:**
-```bash
-# File might not exist or have wrong extension
-ls -la src/services/SociallyFed*
-```
-
-**Solutions:**
-1. If file is `.js` but import doesn't have extension:
-   ```typescript
-   import './services/SociallyFedConfigService.js';  // Add .js
-   ```
-
-2. If file doesn't exist:
-   ```bash
-   # Might still be in wrong location
-   find . -name "SociallyFedConfigService*" 2>/dev/null
-   ```
-
-### Problem 3: TypeScript errors about JavaScript files
-
-**Solution:**
-Add to `tsconfig.json`:
-```json
-{
-  "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false
-  }
-}
-```
-
-### Problem 4: Import works in dev but not in build
-
-**Diagnosis:**
-```bash
-# Compare what works
-npm start  # If this works
-npm run build  # But this doesn't
-```
-
-**Solution:**
-Create React App has stricter rules for production builds. Ensure:
-1. No imports outside `src/`
-2. All relative paths are correct
-3. File extensions match (`.js` vs `.ts`)
-
----
-
-## 📊 Import Rules Reference Table
-
-### Quick Reference for Import Paths
-
-| Your File Location | Importing From services/ | Importing From utils/ |
-|-------------------|------------------------|---------------------|
-| `src/index.tsx` | `'./services/...'` | `'./utils/...'` |
-| `src/App.tsx` | `'./services/...'` | `'./utils/...'` |
-| `src/pages/Home.tsx` | `'../services/...'` | `'../utils/...'` |
-| `src/components/Nav.tsx` | `'../services/...'` | `'../utils/...'` |
-| `src/components/auth/Login.tsx` | `'../../services/...'` | `'../../utils/...'` |
-| `src/features/user/Profile.tsx` | `'../../services/...'` | `'../../utils/...'` |
-
-### How to Count Directory Levels
-
-```
-src/
-├── index.tsx (current dir = src, use ./)
-├── App.tsx (current dir = src, use ./)
-├── services/
-│   └── authService.js
-├── utils/
-│   └── debug.js
-├── pages/
-│   └── Home.tsx (current dir = pages, use ../ to get to src)
-└── components/
-    ├── Nav.tsx (current dir = components, use ../ to get to src)
-    └── auth/
-        └── Login.tsx (current dir = auth, use ../../ to get to src)
-```
-
----
-
-## 📝 Final Verification Script
-
-Save this as `verify_build.sh`:
-
-```bash
-#!/bin/bash
-echo "🔍 Final Build Verification"
-echo "=========================="
+echo \"🔍 Searching for SociallyFedConfig import issues...\"
+echo \"================================================\"
 
 cd /home/ben/Development/sociallyfed-mobile/baseline
 
-# 1. Check no bad imports
-echo -n "Checking for bad imports... "
-if grep -r "\.\.\/services\|\.\.\/utils" src/index.tsx src/App.tsx 2>/dev/null; then
-    echo "❌ FAILED - Fix the above imports"
-    exit 1
+# Find all mentions of SociallyFedConfig
+echo -e \"\
+1. Files mentioning SociallyFedConfig:\"
+grep -l \"SociallyFedConfig\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null
+
+echo -e \"\
+2. Specific import statements with SociallyFedConfig:\"
+grep -n \"import.*SociallyFedConfig\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null
+
+echo -e \"\
+3. Checking what SociallyFedConfigService.js actually exports:\"
+if [ -f \"src/services/SociallyFedConfigService.js\" ]; then
+    echo \"Exports in SociallyFedConfigService.js:\"
+    grep -n \"export\" src/services/SociallyFedConfigService.js
 else
-    echo "✅ PASSED"
+    echo \"❌ SociallyFedConfigService.js not found in src/services/\"
+    echo \"Checking other locations...\"
+    find . -name \"SociallyFedConfigService*\" -type f 2>/dev/null
 fi
 
-# 2. Check files exist
-echo -n "Checking all files exist... "
-missing=0
-for file in services/SociallyFedConfigService services/authService services/firebase utils/platformDetection utils/debug; do
-    if ! ls src/${file}.* >/dev/null 2>&1; then
-        echo "❌ Missing: src/$file"
-        missing=1
-    fi
+echo -e \"\
+4. Checking for the complex TypeScript version:\"
+if [ -f \"src/services/SociallyFedConfigService.ts\" ]; then
+    echo \"Found TypeScript version - checking exports:\"
+    grep -n \"export\" src/services/SociallyFedConfigService.ts | head -20
+fi
+
+echo -e \"\
+================================================\"
+echo \"🔧 Attempting automatic fixes...\"
+echo \"================================================\"
+
+# Fix attempt 1: Change named imports to side-effect imports
+echo -e \"\
+Fix 1: Converting named imports to side-effect imports...\"
+for file in $(grep -l \"import.*{.*SociallyFedConfig.*}\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null); do
+    echo \"Fixing: $file\"
+    # Backup original
+    cp \"$file\" \"${file}.backup\"
+    
+    # Try different fix patterns
+    # Pattern 1: Named import to side-effect import
+    sed -i \"s/import\\s*{\\s*SociallyFedConfig\\s*}\\s*from\\s*['\\\"].*SociallyFedConfigService.*['\\\"]/import '.\\/services\\/SociallyFedConfigService.js'/g\" \"$file\"
+    
+    # Pattern 2: Any import with SociallyFedConfig to side-effect
+    sed -i \"s/import.*SociallyFedConfig.*from.*SociallyFedConfigService.*/import '.\\/services\\/SociallyFedConfigService.js';/g\" \"$file\"
 done
-if [ $missing -eq 0 ]; then
-    echo "✅ PASSED"
-else
-    exit 1
+
+# Fix attempt 2: Check if the TypeScript version is being used instead
+echo -e \"\
+Fix 2: Checking if TypeScript version should be used...\"
+if [ -f \"src/services/SociallyFedConfigService.ts\" ]; then
+    echo \"TypeScript version exists. Checking if it exports SociallyFedConfig...\"
+    if grep -q \"export.*SociallyFedConfig\" src/services/SociallyFedConfigService.ts; then
+        echo \"✅ TypeScript version has the export. Updating imports to use .ts file...\"
+        
+        for file in $(grep -l \"SociallyFedConfigService\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null); do
+            # Change .js references to use the .ts version
+            sed -i \"s/SociallyFedConfigService\\.js/SociallyFedConfigService/g\" \"$file\"
+        done
+    fi
 fi
 
-# 3. Try build
-echo "Running build test... "
-npm run build:production
+echo -e \"\
+================================================\"
+echo \"📋 Verification\"
+echo \"================================================\"
 
-if [ $? -eq 0 ]; then
-    echo "✅ BUILD SUCCESSFUL!"
-    echo "You can now deploy with: npm run deploy"
+# Check if the error still exists
+echo -e \"\
+Checking for remaining problematic imports...\"
+remaining=$(grep -n \"import.*{.*SociallyFedConfig.*}\" src/**/*.tsx src/**/*.ts src/*.tsx src/*.ts 2>/dev/null | grep -v \"backup\")
+
+if [ -z \"$remaining\" ]; then
+    echo \"✅ No problematic imports found!\"
 else
-    echo "❌ BUILD FAILED - Review errors above"
-    exit 1
+    echo \"⚠️ Still have problematic imports:\"
+    echo \"$remaining\"
+    echo -e \"\
+Manual fix needed for these files.\"
 fi
-```
 
-Run it:
-```bash
-chmod +x verify_build.sh
-./verify_build.sh
-```
+echo -e \"\
+================================================\"
+echo \"💡 Manual Fix Instructions (if automatic fix failed):\"
+echo \"================================================\"
+echo \"For each file listed above, open it and change:\"
+echo \"\"
+echo \"FROM:\"
+echo \"  import { SociallyFedConfig } from './services/SociallyFedConfigService';\"
+echo \"  import { SociallyFedConfig } from '../services/SociallyFedConfigService';\"
+echo \"\"
+echo \"TO one of these options:\"
+echo \"\"
+echo \"Option 1 (if you just need the service to initialize):\"
+echo \"  import './services/SociallyFedConfigService.js';\"
+echo \"\"
+echo \"Option 2 (if you need the service instance):\"
+echo \"  import configService from './services/SociallyFedConfigService.js';\"
+echo \"\"
+echo \"Option 3 (if using the TypeScript version):\"
+echo \"  import { SociallyFedConfig } from './services/SociallyFedConfigService';\"
+echo \"  (without the .js extension)\"
+echo \"\"
+echo \"================================================\"
 
----
-
-## 🎯 Success Criteria
-
-You're done when:
-1. `npm run build:production` completes with no errors
-2. No "Module not found" errors appear
-3. The build creates a `build/` directory with your app
-4. Running `./verify_build.sh` shows all green checkmarks
-
-Remember: The computer is very literal - if it says `../services` is wrong, it means that EXACT path is wrong. Find it, fix it, and the build will work!
+# Offer to restore backups
+echo -e \"\
+Backup files created. To restore if needed:\"
+echo \"  find . -name '*.backup' -exec sh -c 'mv \\\"\\$1\\\" \\\"\\${1%.backup}\\\"' _ {} \\;\"
+echo \"\"
+echo \"To delete backups after confirming fixes work:\"
+echo \"  find . -name '*.backup' -delete\"
+`
+}
